@@ -731,6 +731,105 @@ function pickSupportWithTheMostPt()
     return finalPt;
 }
 
+//截屏取色
+//已知坐标和像素颜色
+var knownPx = {
+    mainMenuOpen: {
+        coords: {
+            x:   1829,
+            y:   51,
+            pos: "top"
+        },
+        color: "#ff7ea7"
+    },
+    mainMenuClosed: {
+        coords: {
+            x:   1830,
+            y:   11,
+            pos: "top"
+        },
+        color: "#c3a35a"
+    },
+    skipButton: {
+        coords: {
+            x:   1822,
+            y:   74,
+            pos: "top"
+        },
+        color: "#f4e9d3"
+    },
+    logButton: {
+        coords: {
+            x:   75,
+            y:   85,
+            pos: "top"
+        },
+        color: "#ff5f96"
+    },
+    storyAutoButton: {
+        coords: {
+            x:   75,
+            y:   205,
+            pos: "top"
+        },
+        color: "#ff5f96"
+    }
+};
+
+function isSkipButtonCovered() {
+    var threshold = 20;
+    screenshot = captureScreen();
+    var buttons = [];
+
+    buttons.push(knownPx.logButton, knownPx.storyAutoButton, knownPx.skipButton);
+
+    for (let i = 0; i < buttons.length; i++) {
+        var converted = convert_coords(buttons[i].coords);
+        if (!images.detectsColor(screenshot, buttons[i].color, converted.x, converted.y, threshold, "diff")) {
+            log("看不清SKIP按钮，可能被遮挡了");
+            return true;
+        }
+    }
+    log("可以看到SKIP按钮");
+    return false;
+}
+
+//判断主菜单是否打开
+function getMainMenuStatus() {
+    var result = {
+        open:    false,
+        exist:   false,
+        covered: true
+    };
+    var threshold = 20;
+    if (id("menu")) {
+        result.exist = true;
+        screenshot = captureScreen();
+        var converted = convert_coords(knownPx.mainMenuOpen.coords);
+        if (images.detectsColor(screenshot, knownPx.mainMenuOpen.color, converted.x, converted.y, threshold, "diff")) {
+            log("主菜单处于打开状态");
+            result.covered = false;
+            result.open = true;
+        } else {
+            converted = convert_coords(knownPx.mainMenuClosed.coords);
+            if (images.detectsColor(screenshot, knownPx.mainMenuClosed.color, converted.x, converted.y, threshold, "diff")) {
+                log("主菜单处于关闭状态");
+                result.covered = false;
+                result.open = false;
+            } else {
+                log("看不清主菜单是否打开，可能被遮挡了");
+                result.covered = true;
+            }
+        }
+    } else {
+        log("找不到id为menu的控件");
+        result.exist = false;
+        result.open = false;
+        resuil.covered = true;
+    }
+    return result;
+}
+
 function autoMain() {
     while (true) {
         //开始
@@ -1086,8 +1185,21 @@ function autoMainver2() {
         }
         //--------------skip--------------------------
         while (!id("ap").findOnce()) {
-            screenutilClick(clickSets.skip)
-            sleep(3000)
+            if (!isSkipButtonCovered()) screenutilClick(clickSets.skip);
+            sleep(2000);
+        }
+        while (id("ap").findOnce()) {
+            var mainMenuStatus = getMainMenuStatus();
+            if (mainMenuStatus.exist && (!mainMenuStatus.covered)) {
+                if (mainMenuStatus.open) {
+                    log("点击MENU按钮以关闭主菜单");
+                    screenutilClick(clickSets.skip); //skip按钮和menu按钮重合
+                } else {
+                    log("主菜单已被关闭");
+                    break;
+                }
+            }
+            sleep(1000);
         }
 
     }
