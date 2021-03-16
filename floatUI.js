@@ -290,7 +290,9 @@ floatUI.main = function () {
 
     win.id_3_click.on("click", () => {
         toastLog("结束")
-        exit();
+        threads.start(function () {
+            exit();
+        });
         //如果可以反复启动、结束的话，用户可能在点“结束”后切出游戏，然后就可能掉截屏权限，所以没办法，只能exit()
         //if (task != null) {
         //    task.interrupt()
