@@ -152,25 +152,6 @@ parmasMap["lang"] = "chs"
 //同步值
 floatUI.adjust(parmasMap)
 
-var screenCapThread = threads.start(function() {
-    //申请截屏权限
-    var success = false;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        let screencap_landscape = true;
-        if (requestScreenCapture(screencap_landscape)) {
-            log("成功获取截屏权限");
-            success = true;
-            break;
-        } else {
-            log("第", attempt, "次获取截图权限失败");
-            sleep(1000);
-        }
-    }
-    if (!success) {
-        log("截图权限获取失败，退出");
-        exit();
-    }
-});
 
 ui.start.click(() => {
     for (let i = 0; i < parmasList.length; i++) {

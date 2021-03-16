@@ -28,6 +28,89 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+//申请截屏权限
+//可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
+//VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
+//应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
+//猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
+var scrCapLock = threads.lock();
+var canCaptureScreen = false;
+var screenCapThread = null;
+function startScreenCapture() {
+    var isGameFg = false;
+    for (let i = 1; i <= 5; i++) {
+        if(id("ap").findOnce()) {
+            log("游戏在前台");
+            isGameFg = true;
+            break;
+        } else {
+            toastLog("请务必先把魔纪切换到前台");
+        }
+        sleep(2000);
+    }
+
+    if (!isGameFg) {
+        toastLog("游戏没有切到前台，退出");
+        exit();
+    }
+
+    scrCapLock.lock();
+    if (canCaptureScreen) {
+        return;
+    }
+    scrCapLock.unlock();
+
+    var isThreadAlive = false;
+    try {
+        isThreadAlive = screenCapThread.isAlive();
+    } catch(err) {
+        isThreadAlive = false;
+    }
+
+    if (isThreadAlive) return;
+
+    screenCapThread = threads.start(function() {
+        var success = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            let screencap_landscape = true;
+            if (requestScreenCapture(screencap_landscape)) {
+                sleep(1000);
+                toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
+                sleep(2000);
+                toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
+                success = true;
+                break;
+            } else {
+                log("第", attempt, "次获取截图权限失败");
+                sleep(1000);
+            }
+        }
+        scrCapLock.lock();
+        canCaptureScreen = success;
+        scrCapLock.unlock();
+        if (!success) {
+            log("截图权限获取失败，退出");
+            exit();
+        }
+    });
+
+    return;
+}
+function waitUntilScreenCaptureReady() {
+    while(true){
+        sleep(1000);
+        scrCapLock.lock();
+        if (!canCaptureScreen) {
+            scrCapLock.unlock();
+            //截图权限申请失败时会直接exit()
+            continue;
+        } else {
+            scrCapLock.unlock();
+            break;
+        }
+    }
+}
+
 floatUI.main = function () {
     var task = null;
     var logo_switch = false;//全局: 悬浮窗的开启关闭检测
@@ -207,10 +290,12 @@ floatUI.main = function () {
 
     win.id_3_click.on("click", () => {
         toastLog("结束")
-        if (task != null) {
-            task.interrupt()
-        }
-        img_down()
+        exit();
+        //如果可以反复启动、结束的话，用户可能在点“结束”后切出游戏，然后就可能掉截屏权限，所以没办法，只能exit()
+        //if (task != null) {
+        //    task.interrupt()
+        //}
+        //img_down()
     })
 
     win.id_4_click.on("click", () => {
@@ -865,6 +950,8 @@ function getMainMenuStatus() {
 }
 
 function autoMain() {
+    startScreenCapture();
+    waitUntilScreenCaptureReady();
     while (true) {
         //开始
         //---------嗑药模块------------------
@@ -1035,6 +1122,8 @@ function autoMain() {
 }
 
 function autoMainver2() {
+    startScreenCapture();
+    waitUntilScreenCaptureReady();
     while (true) {
         //开始
         //---------嗑药模块------------------
