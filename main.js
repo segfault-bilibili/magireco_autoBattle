@@ -148,7 +148,7 @@ for (let i = 0; i < parmasList.length; i++) {
 for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
-parmasMap["lang"] = "zh"
+parmasMap["lang"] = "chs"
 //同步值
 floatUI.adjust(parmasMap)
 
@@ -201,12 +201,12 @@ ui.start.click(() => {
         parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
     }
     if (ui.cb1.checked) {
-        parmasMap["lang"] = "zh"
+        parmasMap["lang"] = "chs"
     } else if (ui.cb2.checked) {
         parmasMap["lang"] = "jp"
     } 
     else if (ui.cb3.checked) {
-        parmasMap["lang"] = "tai"
+        parmasMap["lang"] = "cht"
     }
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
