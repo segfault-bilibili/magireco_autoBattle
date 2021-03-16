@@ -169,14 +169,6 @@ var screenCapThread = threads.start(function() {
     if (!success) {
         log("截图权限获取失败，退出");
         exit();
-    } else {
-        //长时间不截图，截图权限貌似会掉
-        log("每隔大约3秒截图一次");
-        var periodicalScreenShot = null;
-        while(true) {
-            sleep(3072);
-            periodicalScreenShot = captureScreen();
-        }
     }
 });
 
