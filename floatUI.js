@@ -47,7 +47,7 @@ floatUI.main = function () {
      */
     var win = floaty.rawWindow(
         <frame >//子菜单悬浮窗
-        <frame id="id_logo" w="150" h="210" alpha="0"  >
+            <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
                     <img w="44" h="44" src="#009687" circle="true" />
                     <img w="28" h="28" src="@drawable/ic_perm_identity_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
@@ -72,6 +72,11 @@ floatUI.main = function () {
                     <img w="44" h="44" src="#bfc1c0" circle="true" />
                     <img w="28" h="28" src="@drawable/ic_settings_black_48dp" tint="#ffffff" margin="8" />
                     <img id="id_4_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
+                </frame>
+                <frame id="id_5" w="44" h="44" margin="0 83 50 0" alpha="1" gravity="right" layout_gravity="right">
+                    <img w="44" h="44" src="#9140f3" circle="true" />
+                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" margin="8" />
+                    <img id="id_5_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
                 </frame>
             </frame>
             <frame id="logo" w="44" h="44" marginTop="83" alpha="1" />
@@ -139,7 +144,8 @@ floatUI.main = function () {
                     [win.id_1, TT[0] - win.id_1.getX(), TT[1] - win.id_1.getY()],
                     [win.id_2, TT[0] - win.id_2.getX(), 0],
                     [win.id_3, TT[0] - win.id_3.getX(), TT[1] - win.id_3.getY()],
-                    [win.id_4, TT[0] - win.id_4.getX(), TT[1] - win.id_4.getY()]]
+                    [win.id_4, TT[0] - win.id_4.getX(), TT[1] - win.id_4.getY()],
+                    [win.id_5, TT[0] - win.id_5.getX(), 0]]
                 // log("上下Y值差值:" + XY[0][2] + "DP值:" + (XY[0][2] / 83))
                 dpZ = XY[0][2] / 83
                 dpB = dpZ * 22
@@ -148,7 +154,8 @@ floatUI.main = function () {
                     [parseInt(dpZ * -65), TT1[0] - win.id_1.getLeft(), TT1[1] - win.id_1.getTop()],
                     [parseInt(dpZ * -106), TT1[0] - win.id_2.getLeft(), TT1[1] - win.id_2.getTop()],
                     [parseInt(dpZ * -65), TT1[0] - win.id_3.getLeft(), TT1[1] - win.id_3.getTop()],
-                    [parseInt(dpZ * 41), TT1[0] - win.id_4.getLeft(), TT1[1] - win.id_4.getTop()]]
+                    [parseInt(dpZ * 41), TT1[0] - win.id_4.getLeft(), TT1[1] - win.id_4.getTop()],
+                    [parseInt(dpZ * -56), TT1[0] - win.id_5.getLeft(), TT1[1] - win.id_5.getTop()]]
                 img_dp.h_b = XY[0][2]//两个悬浮窗Y差值
                 img_dp.w = parseInt(dpZ * 9)//计算logo左边隐藏时 X值
                 img_dp.ww = parseInt(dpZ * (44 - 9))//计算logo右边隐藏时 X值
@@ -207,6 +214,11 @@ floatUI.main = function () {
     })
 
     win.id_4_click.on("click", () => {
+        toastLog("暂时无功能定义")
+        img_down();
+    })
+
+    win.id_5_click.on("click", () => {
         toastLog("暂时无功能定义")
         img_down();
     })
