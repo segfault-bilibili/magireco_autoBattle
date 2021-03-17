@@ -571,7 +571,7 @@ var limit = {
     isStable: false,
     justNPC: false,
     jjcisuse: false,
-    lang: 'chs'
+    lang: 'chs',
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
@@ -1279,7 +1279,7 @@ function autoMainver2() {
                 if (druglimit.drug1limit) {
                     druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
                 }
-                while (!text(keywords.confirmRefill[currentLang]).findOnce()).findOnce()) {
+                while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.ap50)
                     sleep(2000)
@@ -1460,13 +1460,13 @@ var knownImgs = {
 
 
 //矩形参数计算，宽度、高度、中心坐标等等
-function getAreaWidth(topLeft, bottomRight) {
+function getAreaWidth_(topLeft, bottomRight) {
     return bottomRight.x - topLeft.x + 1;
 }
-function getAreaHeight(topLeft, bottomRight) {
+function getAreaHeight_(topLeft, bottomRight) {
     return bottomRight.y - topLeft.y + 1;
 }
-function getAreaCenter(topLeft, bottomRight) {
+function getAreaCenter_(topLeft, bottomRight) {
     var result = {x: 0, y: 0, pos: "top"};
     var width = getAreaWidth(topLeft, bottomRight);
     var height = getAreaHeight(topLeft, bottomRight);
@@ -1475,14 +1475,50 @@ function getAreaCenter(topLeft, bottomRight) {
     result.pos = topLeft.pos;
     return result;
 }
-function getAreaWidth(area) {
-    return getAreaWidth(area.topLeft, area.bottomRight);
+function getAreaWidth() {
+    switch(arguments.length) {
+    case 1:
+        var area = arguments[0];
+        return getAreaWidth_(area.topLeft, area.bottomRight);
+        break;
+    case 2:
+        var topLeft = arguments[0];
+        var bottomRight = arguments[1];
+        return getAreaWidth_(topLeft, bottomRight);
+        break;
+    default:
+        throw "getAreaWidthArgcIncorrect"
+    };
 }
-function getAreaHeight(area) {
-    return getAreaHeight(area.topLeft, area.bottomRight);
+function getAreaHeight() {
+    switch(arguments.length) {
+    case 1:
+        var area = arguments[0];
+        return getAreaHeight_(area.topLeft, area.bottomRight);
+        break;
+    case 2:
+        var topLeft = arguments[0];
+        var bottomRight = arguments[1];
+        return getAreaHeight_(topLeft, bottomRight);
+        break;
+    default:
+        throw "getAreaWidthArgcIncorrect"
+    };
 }
-function getAreaCenter(area) {
-    return getAreaCenter(area.topLeft, area.bottomRight);
+function getAreaCenter() {
+    switch(arguments.length) {
+    case 1:
+        var area = arguments[0];
+        return getAreaCenter_(area.topLeft, area.bottomRight);
+        break;
+    case 2:
+        var topLeft = arguments[0];
+        var bottomRight = arguments[1];
+        return getAreaCenter_(topLeft, bottomRight);
+        break;
+    default:
+        throw "getAreaWidthArgcIncorrect"
+    };
 }
 
 
@@ -1511,7 +1547,7 @@ var knownFirstStandPointCoords = {
             y:   567,
             pos: "center"
         }
-    }
+    },
     //r1c1x: 1090, r1c1y: 280,
     //r2c1x: 1165, r2c1y: 383,
     //r2c2x: 1420, r2c2y: 383,
@@ -1589,8 +1625,8 @@ function getStandPointCoords(row, column, part, corner) {
 }
 function getStandPointArea(row, column, part) {
     var result = {
-        topLeft:     getDiskCoords(row, column, part, "topLeft");
-        bottomRight: getDiskCoords(row, column, part, "bottomRight");
+        topLeft:     getDiskCoords(row, column, part, "topLeft"),
+        bottomRight: getDiskCoords(row, column, part, "bottomRight"),
     };
     return result;
 }
@@ -1665,7 +1701,7 @@ var knownFirstDiskCoords = {
             y:   882,
             pos: "bottom"
         }
-    }
+    },
     //行动盘之间的距离
     distance: 270
 };
@@ -1738,8 +1774,8 @@ function getDiskCoords(diskPos, part, corner) {
 }
 function getDiskArea(diskPos, part) {
     var result = {
-        topLeft:     getDiskCoords(diskPos, part, "topLeft");
-        bottomRight: getDiskCoords(diskPos, part, "bottomRight");
+        topLeft:     getDiskCoords(diskPos, part, "topLeft"),
+        bottomRight: getDiskCoords(diskPos, part, "bottomRight"),
     };
     return result;
 }
@@ -1862,9 +1898,9 @@ function scanDisks() {
     }
     //分辨不同的角色，用charaId标记
     for (let i=0; i<5-1; i++) {
-        var diskI = actionDisks.disks[i]];
+        var diskI = actionDisks.disks[i];
         for (let j=i+1; j<5; j++) {
-            var diskJ = actionDisks.disks[j]];
+            var diskJ = actionDisks.disks[j];
             if (areDisksSimilar(screenshot, i, j)) {
                 diskJ.charaId = diskI.charaId;
             }
@@ -2019,8 +2055,8 @@ function getFirstSelectedConnectedDiskCoords(corner) {
 }
 function getFirstSelectedConnectedDiskArea() {
     var result = {
-        topLeft:     getFirstSelectedConnectedDiskCoords("topLeft");
-        bottomRight: getFirstSelectedConnectedDiskCoords("bottomRight");
+        topLeft:     getFirstSelectedConnectedDiskCoords("topLeft"),
+        bottomRight: getFirstSelectedConnectedDiskCoords("bottomRight"),
     };
     return result;
 }
@@ -2253,7 +2289,7 @@ function mirrorsAutoBattleMain() {
         }
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-        for (let i=nextDisk; i<3, i++) {
+        for (let i=nextDisk; i<3; i++) {
             clickDisk(getDiskByPriority(i));
         }
     }
