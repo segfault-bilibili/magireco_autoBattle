@@ -112,15 +112,15 @@ function waitUntilScreenCaptureReady() {
 }
 
 floatUI.main = function () {
-    var task = null;
-    var logo_switch = false;//全局: 悬浮窗的开启关闭检测
-    var logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
-    var logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
-    var time_0, time_1, time_3//全局: 定时器 点击退出悬浮窗时定时器关闭
+    let task = null;
+    let logo_switch = false;//全局: 悬浮窗的开启关闭检测
+    let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
+    let logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
+    let time_0, time_1, time_3//全局: 定时器 点击退出悬浮窗时定时器关闭
     //可修改参数
-    var logo_ms = 200//全局:  动画播放时间
-    var DHK_ms = 200//全局:  对话框动画播放时间
-    var tint_color = "#00000"//全局:  对话框图片颜色
+    let logo_ms = 200//全局:  动画播放时间
+    let DHK_ms = 200//全局:  对话框动画播放时间
+    let tint_color = "#00000"//全局:  对话框图片颜色
     /**
      * 需要三个悬浮窗一起协作达到Auto.js悬浮窗效果
      * win  子菜单悬浮窗 处理子菜单选项点击事件
@@ -128,12 +128,12 @@ floatUI.main = function () {
      * win_2  悬浮按钮动画替身,只有在手指移动主按钮的时候才会被触发 
      * 触发时,替身Y值会跟主按钮Y值绑定一起,手指弹起时代替主按钮显示跳动的小球动画
      */
-    var win = floaty.rawWindow(
+    let win = floaty.rawWindow(
         <frame >//子菜单悬浮窗
             <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
                     <img w="44" h="44" src="#009687" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_perm_identity_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
+                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
                     <img id="id_0_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
                 </frame>
                 <frame id="id_1" w="44" h="44" margin="86 28 0 0" alpha="1">
@@ -168,7 +168,7 @@ floatUI.main = function () {
     )
     // win.setTouchable(false);//设置子菜单不接收触摸消息
 
-    var win_1 = floaty.rawWindow(
+    let win_1 = floaty.rawWindow(
         <frame id="logo" w="44" h="44" alpha="0.4" >//悬浮按钮
         <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
             <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" gravity="center" layout_gravity="center" />
@@ -177,7 +177,7 @@ floatUI.main = function () {
     )
     // win_1.setPosition(-30, device.height / 4)//悬浮按钮定位
 
-    var win_2 = floaty.rawWindow(
+    let win_2 = floaty.rawWindow(
         <frame id="logo" w="{{device.width}}px" h="44" alpha="0" >//悬浮按钮 弹性替身
         <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
             <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" margin="6 6" />
@@ -188,7 +188,7 @@ floatUI.main = function () {
     /**
      * 脚本广播事件
      */
-    var XY = [], XY1 = [], TT = [], TT1 = [], img_dp = {}, dpZ = 0, logo_right = 0, dpB = 0, dp_H = 0
+    let XY = [], XY1 = [], TT = [], TT1 = [], img_dp = {}, dpZ = 0, logo_right = 0, dpB = 0, dp_H = 0
     events.broadcast.on("定时器关闭", function (X) { clearInterval(X) })
     events.broadcast.on("悬浮开关", function (X) {
         ui.run(function () {
@@ -217,7 +217,7 @@ floatUI.main = function () {
     /**
      * 等待悬浮窗初始化
      */
-    var terid = setInterval(() => {
+    let terid = setInterval(() => {
         // log("13")
         if (TT.length == 0 && win.logo.getY() > 0) {// 不知道界面初始化的事件  只能放到这里将就下了
             ui.run(function () {
@@ -266,7 +266,11 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
-        toastLog("暂时无功能定义")
+        toastLog("镜界周回启动")
+        if (task) {
+            task.interrupt()
+        }
+        task = threads.start(jingMain)
         img_down()
     })
 
@@ -301,12 +305,44 @@ floatUI.main = function () {
     })
 
     win.id_4_click.on("click", () => {
-        toastLog("暂时无功能定义")
+        try {
+            let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+            if (res.statusCode != 200) {
+                toastLog("请求超时")
+            } else {
+                let resJson = res.body.json();
+                if (parseInt(resJson.versionName.split(".").join("")) == parseInt(limit.version.split(".").join(""))) {
+                    toastLog("为最新版本，无需更新")
+                } else {
+                    let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
+                    let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                    if (main_script.statusCode == 200 && float_script.statusCode == 200) {
+                        toastLog("更新加载中");
+                        let mainjs = main_script.body.string();
+                        let floatjs = float_script.body.string();
+                        files.write(engines.myEngine().cwd() + "/main.js", mainjs)
+                        files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                        engines.stopAll()
+                        events.on("exit", function () {
+                            engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+                            toast("更新完毕")
+                        })
+                    } else {
+                        toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
+                    }
+                }
+            }
+            // -------
+
+        } catch (error) {
+            toastLog("请求超时，可再一次尝试")
+        }
+
         img_down();
     })
 
     win.id_5_click.on("click", () => {
-        toastLog("镜层自动战斗")
+        toastLog("一次镜界自动战斗")
         if (task) {
             task.interrupt()
         }
@@ -321,7 +357,7 @@ floatUI.main = function () {
      * 补间动画
      */
     function 动画() {
-        var anX = [], anY = [], slX = [], slY = []
+        let anX = [], anY = [], slX = [], slY = []
         if (logo_switch) {
             if (logo_fx) {
                 for (let i = 0; i < XY.length; i++) {
@@ -378,7 +414,7 @@ floatUI.main = function () {
         set.start();
     }
     function 对话框动画(X, Y, Z) {//X布尔值 标识显示还是隐藏 Y背景的视图 Z对话框的视图
-        var anX = [], anY = [], slX = [], slY = []
+        let anX = [], anY = [], slX = [], slY = []
         if (X) {
             anX = ObjectAnimator.ofFloat(Z, "translationX", win_1.getX() - (Z.getRight() / 2) + dpB - Z.getLeft(), 0);
             anY = ObjectAnimator.ofFloat(Z, "translationY", win_1.getY() - (Z.getBottom() / 2) + img_dp.h_b - Z.getTop(), 0);
@@ -402,12 +438,12 @@ floatUI.main = function () {
     }
 
     //记录按键被按下时的触摸坐标
-    var x = 0,
+    let x = 0,
         y = 0;
     //记录按键被按下时的悬浮窗位置
-    var windowX, windowY; G_Y = 0
+    let windowX, windowY; G_Y = 0
     //记录按键被按下的时间以便判断长按等动作
-    var downTime; yd = false;
+    let downTime; yd = false;
     win_1.logo.setOnTouchListener(function (view, event) {
         if (logo_buys) { return false }
         // log(event.getAction())
@@ -525,14 +561,21 @@ var keywords = {
 var currentLang = "chs";
 var limit = {
     limitAP: '20',
-    shuix: '250',
-    shuiy: '200',
+    shuix: '',
+    shuiy: '',
+    helpx: '',
+    helpy: '',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
     justNPC: false,
+    jjcisuse: false,
     lang: 'chs'
+    version: '2.2.0',
+    drug1num: '',
+    drug2num: '',
+    drug3num: ''
 }
 var clickSets = {
     ap: {
@@ -604,7 +647,42 @@ var clickSets = {
         x: 1600,
         y: 800,
         pos: "center"
-    }
+    },
+    bphui: {
+        x: 1180,
+        y: 830,
+        pos: "center"
+    },
+    bphui2: {
+        x: 960,
+        y: 880,
+        pos: "center"
+    },
+    bphuiok: {
+        x: 960,
+        y: 900,
+        pos: "center"
+    },
+    bpclose: {
+        x: 750,
+        y: 830,
+        pos: "center"
+    },
+    battlePan1: {
+        x: 400,
+        y: 950,
+        pos: "bottom"
+    },
+    battlePan2: {
+        x: 700,
+        y: 950,
+        pos: "bottom"
+    },
+    battlePan3: {
+        x: 1000,
+        y: 950,
+        pos: "bottom"
+    },
 }
 
 //坐标转换
@@ -958,6 +1036,12 @@ function getMainMenuStatus() {
 function autoMain() {
     startScreenCapture();
     waitUntilScreenCaptureReady();
+
+    let druglimit = {
+        drug1limit: limit.drug1num,
+        drug2limit: limit.drug2num,
+        drug3limit: limit.drug3num
+    }
     while (true) {
         //开始
         //---------嗑药模块------------------
@@ -994,7 +1078,10 @@ function autoMain() {
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
 
-            if (apDrug50Num > 0 && limit.drug1) {
+            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
+                if (druglimit.drug1limit) {
+                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+                }
                 while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.ap50)
@@ -1008,7 +1095,10 @@ function autoMain() {
                     screenutilClick(clickSets.aphui)
                     sleep(2000)
                 }
-            } else if (apDrugFullNum > 0 && limit.drug2) {
+            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
+                if (druglimit.drug2limit) {
+                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
+                }
                 while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apfull)
@@ -1023,7 +1113,10 @@ function autoMain() {
                     sleep(2000)
                 }
             }
-            else if (apMoneyNum > 5 && limit.drug3) {
+            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+                if (druglimit.drug3limit) {
+                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
+                }
                 while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apjin)
@@ -1130,6 +1223,12 @@ function autoMain() {
 function autoMainver2() {
     startScreenCapture();
     waitUntilScreenCaptureReady();
+
+    let druglimit = {
+        drug1limit: limit.drug1num,
+        drug2limit: limit.drug2num,
+        drug3limit: limit.drug3num
+    }
     while (true) {
         //开始
         //---------嗑药模块------------------
@@ -1176,8 +1275,11 @@ function autoMainver2() {
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
 
-            if (apDrug50Num > 0 && limit.drug1) {
-                while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
+            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
+                if (druglimit.drug1limit) {
+                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+                }
+                while (!text(keywords.confirmRefill[currentLang]).findOnce()).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.ap50)
                     sleep(2000)
@@ -1190,7 +1292,10 @@ function autoMainver2() {
                     screenutilClick(clickSets.aphui)
                     sleep(2000)
                 }
-            } else if (apDrugFullNum > 0 && limit.drug2) {
+            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
+                if (druglimit.drug2limit) {
+                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
+                }
                 while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apfull)
@@ -1205,7 +1310,10 @@ function autoMainver2() {
                     sleep(2000)
                 }
             }
-            else if (apMoneyNum > 5 && limit.drug3) {
+            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+                if (druglimit.drug3limit) {
+                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
+                }
                 while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apjin)
@@ -1336,7 +1444,7 @@ function autoMainver2() {
 
 
 
-//镜层自动战斗
+//镜界自动战斗
 
 //已知参照图像，包括A/B/C盘等
 var knownImgs = {
@@ -1496,7 +1604,7 @@ function getStandPointArea(row, column, part) {
 function getStandPointImg(screenshot, row, column, part) {
     var area = getStandPointArea(row, column, part);
     return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
-]
+}
 
 //判断某个站位有没有人（根据是否显示血条右边缘）
 function isStandPointOccupied(screenshot, row, column) {
@@ -2022,7 +2130,7 @@ function didWeWinOrLose(screenshot, winOrLose) {
     var imgA = knownImgs[winOrLose];
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-    log("镜层胜负判断 MSSIM=", similarity);
+    log("镜界胜负判断 MSSIM=", similarity);
     if (similarity > 0.8) {
         return true;
     }
@@ -2046,17 +2154,17 @@ function clickMirrorsBattleResult() {
     while (true) {
         cycles++
         if (didWeWin()) {
-            log("镜层战斗胜利，即将点击屏幕以退出结算界面...");
+            log("镜界战斗胜利，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
         } else if (didWeLose()) {
-            log("镜层战斗败北，即将点击屏幕以退出结算界面...");
+            log("镜界战斗败北，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
         } else {
-            log("没看到镜层胜利或败北特征，应该已不在镜层结算界面");
+            log("没看到镜界胜利或败北特征，应该已不在镜界结算界面");
             break;
         }
         if (cycles > 600) {
-            log("在镜层结算界面已经滞留超过10分钟，结束运行");
+            log("在镜界结算界面已经滞留超过10分钟，结束运行");
             exit();
         }
         sleep(1000);
@@ -2105,13 +2213,13 @@ for (let imgName in knownImgs) {
 
 
 function mirrorsAutoBattleMain() {
-    //开始镜层自动战斗
+    //开始一次镜界自动战斗
 
     turn = 0;
     while(true) {
         if (!waitForOurTurn()) {
             //战斗结束了
-            log("镜层战斗结束");
+            log("镜界战斗结束");
             break;
         }
         //我的回合，抽盘
@@ -2160,6 +2268,67 @@ function mirrorsAutoBattleMain() {
     clickMirrorsBattleResult();
 }
 
+
+function jingMain() {
+
+    while (true) {
+        let matchWrap = id("matchingWrap").findOne().bounds()
+        while (!id("battleStartBtn").findOnce()) {
+            sleep(1000)
+            click(matchWrap.centerX(), matchWrap.bottom - 50)
+            sleep(2000)
+        }
+        let btn = id("battleStartBtn").findOne().bounds()
+        while (id("battleStartBtn").findOnce()) {
+            sleep(1000)
+            click(btn.centerX(), btn.centerY())
+            sleep(1000)
+            if (id("popupInfoDetailTitle").findOnce()) {
+                if (limit.jjcisuse) {
+                    while (!id("BpCureWrap").findOnce()) {
+                        screenutilClick(clickSets.bphui)
+                        sleep(1500)
+                    }
+                    while (id("BpCureWrap").findOnce()) {
+                        screenutilClick(clickSets.bphui2)
+                        sleep(1500)
+                    }
+                    while (id("popupInfoDetailTitle").findOnce()) {
+                        screenutilClick(clickSets.bphuiok)
+                        sleep(1500)
+                    }
+                } else {
+                    screenutilClick(clickSets.bpclose)
+                    log("jjc结束")
+                    return;
+                }
+            }
+            sleep(1000)
+        }
+        log("进入战斗")
+        mirrorsAutoBattleMain();
+        //简单自动战斗
+        //while (!id("matchingWrap").findOnce()) {
+        //    if (!id("ArenaResult").findOnce()) {
+        //        screenutilClick(clickSets.battlePan1)
+        //        sleep(1000)
+        //    }
+        //    if (!id("ArenaResult").findOnce()) {
+        //        screenutilClick(clickSets.battlePan2)
+        //        sleep(1000)
+        //    }
+        //    if (!id("ArenaResult").findOnce()) {
+        //        screenutilClick(clickSets.battlePan3)
+        //        sleep(1000)
+        //    }
+        //    if (id("ArenaResult").findOnce()) {
+        //        screenutilClick(clickSets.levelup)
+        //    }
+        //    sleep(3000)
+        //}
+    }
+
+}
 
 function getPt(com) {
     let txt = com.text()
