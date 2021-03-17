@@ -2005,6 +2005,7 @@ function prioritiseDisks(disks) {
 
 //进行连携
 function connectDisk(fromDisk) {
+    isConnectDone = false;
     for (let row=0; row<3; row++) {
         for (let column=0; column<3; column++) {
             if (ourBattleField[rows[row]][columns[column]].occupied) {
@@ -2018,6 +2019,7 @@ function connectDisk(fromDisk) {
                 if (isConnectableDiskDown(captureScreen(), fromDisk.position)) {
                     log("连携动作完成");
                     actionDisks.clickedDisksCount++;
+                    isConnectDone = true;
                     break;
                 } else {
                     log("连携动作失败，可能是因为连携到了自己身上");
@@ -2025,6 +2027,7 @@ function connectDisk(fromDisk) {
                 }
             }
         }
+        if (isConnectDone) break;
     }
 }
 
@@ -2206,7 +2209,7 @@ function didWeWinOrLose(screenshot, winOrLose) {
     var imgA = knownImgs[winOrLose];
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-    log("镜界胜负判断 MSSIM=", similarity);
+    log("镜界胜负判断", winOrLose, " MSSIM=", similarity);
     if (similarity > 2.1) {
         return true;
     }
