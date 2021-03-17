@@ -1646,7 +1646,7 @@ function isStandPointOccupied(screenshot, row, column) {
     var img = getStandPointImg(screenshot, row, column, "HPBarRightEdge");
     var similarity = images.getSimilarity(knownImgs.HPBarRightEdge, img, {"type": "MSSIM"});
     if (similarity > 2.4) {
-        log("第", row+1, "行，第", column+1, "列站位有人 MSSIM=", similarity);
+        log("第", row+1, "行，第", column+1, "列站位【有】人 MSSIM=", similarity);
         return true;
     }
     log("第", row+1, "行，第", column+1, "列站位无人 MSSIM=", similarity);
@@ -1847,7 +1847,7 @@ function isDiskConnectable(screenshot, diskPos) {
     var img = getDiskImg(screenshot, diskPos, "connectIndicator");
     var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
     if (similarity > 2.1) {
-        log("第", diskPos+1, "号盘可以连携，MSSIM=", similarity);
+        log("第", diskPos+1, "号盘【可以连携】，MSSIM=", similarity);
         return true;
     }
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
@@ -1864,7 +1864,7 @@ function isConnectableDiskDown(screenshot, diskPos) {
     var img = getDiskImg(screenshot, diskPos, "connectIndicator");
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
     if (similarity > 2.1) {
-        log("第", diskPos+1, "号连携盘处于按下状态，MSSIM=", similarity);
+        log("第", diskPos+1, "号连携盘处于【按下】状态，MSSIM=", similarity);
         return true;
     }
     var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
@@ -1886,7 +1886,7 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
     if (imgB == null) imgB = getDiskImg(screenshot, diskBPos, "charaImg");
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
     if (similarity > 2.4) {
-        log("第", diskA.position+1, "盘与第", diskB.position+1,"盘像是同一角色 MSSIM=", similarity);
+        log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
         return true;
     }
     log("第", diskA.position+1, "盘与第", diskB.position+1,"盘不像同一角色 MSSIM=", similarity);
