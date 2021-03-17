@@ -1814,7 +1814,7 @@ function recognizeDiskAction(actionImg) {
     switch (arguments.length) {
     case 1:
         try {
-            result = recognizeDiskAction_(actionImg, 2.1);
+            result = recognizeDiskAction_(actionImg, 0.5);
         } catch(err) {
             log("当作accel盘，继续运行");
             result = "accel";
