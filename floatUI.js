@@ -78,8 +78,9 @@ function startScreenCapture() {
             if (requestScreenCapture(screencap_landscape)) {
                 sleep(1000);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
-                sleep(2000);
+                sleep(3000);
                 toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
+                sleep(3000);
                 success = true;
                 break;
             } else {
