@@ -39,7 +39,9 @@ var screenCapThread = null;
 function startScreenCapture() {
     var isGameFg = false;
     for (let i = 1; i <= 5; i++) {
-        if(id("ap").findOnce()) {
+        if (packageName("com.aniplex.magireco").findOnce() ||
+          packageName("com.bilibili.madoka.bilibili").findOnce() ||
+          packageName("com.komoe.madokagp").findOnce()) {
             log("游戏在前台");
             isGameFg = true;
             break;
@@ -98,7 +100,7 @@ function startScreenCapture() {
 }
 function waitUntilScreenCaptureReady() {
     while(true){
-        sleep(1000);
+        sleep(500);
         scrCapLock.lock();
         if (!canCaptureScreen) {
             scrCapLock.unlock();
@@ -108,6 +110,7 @@ function waitUntilScreenCaptureReady() {
             scrCapLock.unlock();
             break;
         }
+        sleep(500);
     }
 }
 
@@ -563,7 +566,6 @@ var limit = {
     limitAP: '20',
     shuix: '',
     shuiy: '',
-    helpx: '',
     helpy: '',
     drug1: false,
     drug2: false,
@@ -1551,7 +1553,7 @@ var knownFirstStandPointCoords = {
     //r1c1x: 1090, r1c1y: 280,
     //r2c1x: 1165, r2c1y: 383,
     //r2c2x: 1420, r2c2y: 383,
-    distancex: 1420-1090,
+    distancex: 1420-1165,
     distancey: 383-280,
     indent: 1165-1090
 }
@@ -1625,8 +1627,8 @@ function getStandPointCoords(row, column, part, corner) {
 }
 function getStandPointArea(row, column, part) {
     var result = {
-        topLeft:     getDiskCoords(row, column, part, "topLeft"),
-        bottomRight: getDiskCoords(row, column, part, "bottomRight"),
+        topLeft:     getStandPointCoords(row, column, part, "topLeft"),
+        bottomRight: getStandPointCoords(row, column, part, "bottomRight"),
     };
     return result;
 }
@@ -1634,18 +1636,18 @@ function getStandPointArea(row, column, part) {
 //截取指定站位所需部分的图像
 function getStandPointImg(screenshot, row, column, part) {
     var area = getStandPointArea(row, column, part);
-    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
 //判断某个站位有没有人（根据是否显示血条右边缘）
 function isStandPointOccupied(screenshot, row, column) {
     var img = getStandPointImg(screenshot, row, column, "HPBarRightEdge");
     var similarity = images.getSimilarity(knownImgs.HPBarRightEdge, img, {"type": "MSSIM"});
-    if (similarity > 0.8) {
-        log("第", row, "行，第", column, "列站位有人 MSSIM=", similarity);
+    if (similarity > 2.4) {
+        log("第", row+1, "行，第", column+1, "列站位有人 MSSIM=", similarity);
         return true;
     }
-    log("第", row, "行，第", column, "列站位无人 MSSIM=", similarity);
+    log("第", row+1, "行，第", column+1, "列站位无人 MSSIM=", similarity);
     return false;
 }
 
@@ -1711,7 +1713,7 @@ var actionDisks = {
     selectedCount: 0,
     disks: [
         {
-            position:    "first",
+            position:    0,
             priority:    "first",
             action:      "accel",
             charaImg:    null,
@@ -1719,7 +1721,7 @@ var actionDisks = {
             connectable: false
         },
         {
-            position:    "second",
+            position:    1,
             priority:    "second",
             action:      "accel",
             charaImg:    null,
@@ -1727,7 +1729,7 @@ var actionDisks = {
             connectable: false
         },
         {
-            position:    "third",
+            position:    2,
             priority:    "third",
             action:      "accel",
             img:         null,
@@ -1736,7 +1738,7 @@ var actionDisks = {
             connectable: false
         },
         {
-            position:    "fourth",
+            position:    3,
             priority:    "fourth",
             action:      "accel",
             charaImg:    null,
@@ -1744,7 +1746,7 @@ var actionDisks = {
             connectable: false
         },
         {
-            position:    "fifth",
+            position:    4,
             priority:    "fifth",
             action:      "accel",
             charaImg:    null,
@@ -1783,12 +1785,12 @@ function getDiskArea(diskPos, part) {
 //截取行动盘所需部位的图像
 function getDiskImg(screenshot, diskPos, part) {
     var area = getDiskArea(diskPos, part);
-    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
 //识别ABC盘
-function recognizeDiskAction(actionImg, threshold) {
-    var maxSimilarity = 0;
+function recognizeDiskAction_(actionImg, threshold) {
+    var maxSimilarity = -1.0;
     var mostSimilar = 0;
     for (let i=0; i<diskActions.length; i++) {
         var refImg = knownImgs[diskActions[i]];
@@ -1801,18 +1803,28 @@ function recognizeDiskAction(actionImg, threshold) {
     }
     if (maxSimilarity < threshold) {
         log("MSSIM=", maxSimilarity, "小于阈值=", threshold, "无法识别ABC盘");
-        throw "lower_than_threshold"
+        throw "recognizeDiskActionLowerThanThreshold"
     }
     log("识别为", diskActions[mostSimilar], "盘 MSSIM=", maxSimilarity);
     return diskActions[mostSimilar];
 }
 function recognizeDiskAction(actionImg) {
     var result = "accel";
-    try {
-        result = recognizeDiskAction(actionImg, 0.7);
-    } catch(err) {
-        log("当作accel盘，继续运行");
-        result = "accel";
+    switch (arguments.length) {
+    case 1:
+        try {
+            result = recognizeDiskAction_(actionImg, 1.1);
+        } catch(err) {
+            log("当作accel盘，继续运行");
+            result = "accel";
+        }
+        break;
+    case 2:
+        threshold = arguments[1];
+        result = recognizeDiskAction_(actionImg, threshold);
+        break;
+    default:
+        throw "recognizeDiskActionArgcIncorrect"
     }
     return result;
 }
@@ -1833,16 +1845,16 @@ function getDiskCharaImg(screenshot, diskPos) {
 function isDiskConnectable(screenshot, diskPos) {
     var img = getDiskImg(screenshot, diskPos, "connectIndicator");
     var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
-    if (similarity > 0.8) {
-        log(diskPos+1, "号盘可以连携，MSSIM=", similarity);
+    if (similarity > 2.1) {
+        log("第", diskPos+1, "号盘可以连携，MSSIM=", similarity);
         return true;
     }
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
-    if (similarity > 0.8) {
-        log(diskPos+1, "号盘可以连携，并且已经被按下，MSSIM=", similarity);
+    if (similarity > 2.1) {
+        log("第", diskPos+1, "号盘可以连携，并且已经被按下，MSSIM=", similarity);
         return true;
     }
-    log(diskPos+1, "号盘不能连携，MSSIM=", similarity);
+    log("第", diskPos+1, "号盘不能连携，MSSIM=", similarity);
     return false;
 }
 
@@ -1850,27 +1862,29 @@ function isDiskConnectable(screenshot, diskPos) {
 function isConnectableDiskDown(screenshot, diskPos) {
     var img = getDiskImg(screenshot, diskPos, "connectIndicator");
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
-    if (similarity > 0.8) {
-        log(diskPos+1, "号连携盘处于按下状态，MSSIM=", similarity);
+    if (similarity > 2.1) {
+        log("第", diskPos+1, "号连携盘处于按下状态，MSSIM=", similarity);
         return true;
     }
     var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
-    if (similarity > 0.8) {
-        log(diskPos+1, "号连携盘处于没有按下的状态，MSSIM=", similarity);
+    if (similarity > 2.1) {
+        log("第", diskPos+1, "号连携盘处于没有按下的状态，MSSIM=", similarity);
         return false;
     }
-    log(diskPos+1, "号盘不像是连携盘，MSSIM=", similarity);
+    log("第", diskPos+1, "号盘不像是连携盘，MSSIM=", similarity);
     return false;
 }
 
 //判断两个盘是否是同一角色
-function areDisksSimilar(screenshot, diskA, diskB) {
+function areDisksSimilar(screenshot, diskAPos, diskBPos) {
+    var diskA = actionDisks.disks[diskAPos];
+    var diskB = actionDisks.disks[diskBPos];
     var imgA = diskA.charaImg;
     var imgB = diskB.charaImg;
-    if (imgA == null) imgA = getDiskImg(screenshot, diskA.position, "charaImg");
-    if (imgB == null) imgB = getDiskImg(screenshot, diskB.position, "charaImg");
+    if (imgA == null) imgA = getDiskImg(screenshot, diskAPos, "charaImg");
+    if (imgB == null) imgB = getDiskImg(screenshot, diskBPos, "charaImg");
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-    if (similarity > 0.7) {
+    if (similarity > 2.4) {
         log("第", diskA.position+1, "盘与第", diskB.position+1,"盘像是同一角色 MSSIM=", similarity);
         return true;
     }
@@ -1982,8 +1996,8 @@ function prioritiseDisks(disks) {
         var posB = diskB.position;
         var priA = diskA.priority;
         var priB = diskB.priority;
-        actionDisks.disks[posB] = priA;
-        actionDisks.disks[posA] = priB;
+        actionDisks.disks[posB].priority = priA;
+        actionDisks.disks[posA].priority = priB;
         actionDisks.selectedCount++;
         if (actionDisks.selectedCount >=3) break; //三个盘都选完了
     }
@@ -1996,7 +2010,7 @@ function connectDisk(fromDisk) {
         for (let column=0; column<3; column++) {
             if (ourBattleField[rows[row]][columns[column]].occupied) {
                 //找到有人的站位
-                log("从", fromDisk.position+1, "盘向第", rows[row], "行第", columns[column], "列站位进行连携");
+                log("从", fromDisk.position+1, "盘向第", row+1, "行第", column+1, "列站位进行连携");
                 var src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
                 var dst = getAreaCenter(getStandPointArea(row, column, "floor"));
                 //连携划动
@@ -2012,6 +2026,8 @@ function connectDisk(fromDisk) {
             }
         }
     }
+    var fromDisk_ = [fromDisk];
+    prioritiseDisks(fromDisk_);
 }
 
 //点击行动盘
@@ -2064,7 +2080,7 @@ function getFirstSelectedConnectedDiskArea() {
 //截取行动盘所需部位的图像
 function getFirstSelectedConnectedDiskImg(screenshot) {
     var area = getFirstSelectedConnectedDiskArea();
-    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
 //返回接到连携的角色
@@ -2073,7 +2089,7 @@ function getConnectAcceptorCharaId() {
     var imgA = getFirstSelectedConnectedDiskImg(screenshot);
 
     var max = 0;
-    var maxSimilarity = 0;
+    var maxSimilarity = -1.0;
     for (let diskPos=0; diskPos<actionDisks.disks.length; diskPos++) {
         var imgB = getDiskImg(screenshot, diskPos, "charaImg");
         var area = getFirstSelectedConnectedDiskArea();
@@ -2092,25 +2108,41 @@ function getConnectAcceptorCharaId() {
 
 //等待己方回合
 function waitForOurTurn() {
+    var result = false;
     log("等待己方回合...");
     var diskAppearedCount = 0;
     var cycles = 0;
     while(true) {
         cycles++;
         var diskAppeared = true;
-        var img = getDiskImg(captureScreen(), 0, "action");
+        var screenshot = captureScreen();
+        var img = getDiskImg(screenshot, 0, "action");
+        if (img != null) {
+            log("已截取第一个盘的动作图片");
+         } else {
+            log("截取第一个盘的动作图片时出现问题");
+         }
         try {
-            recognizeDiskAction(img, 0.7);
+            recognizeDiskAction(img, 1.1);
         } catch(e) {
+            if (e.toString() != "recognizeDiskActionLowerThanThreshold") log(e);
             diskAppeared = false;
         }
         if (diskAppeared) {
+            log("出现我方行动盘");
             diskAppearedCount++;
         } else {
+            log("未出现我方行动盘");
+            if(didWeWin(screenshot) || didWeLose(screenshot)) {
+                log("战斗已经结束，不再等待我方回合");
+                result = false;
+                break;
+            }
             diskAppearedCount = 0;
         }
-        if (diskAppearedCount >= 3) {
+        if (diskAppearedCount >= 5) {
             log("已来到己方回合");
+            result = true;
             break;
         }
         if(cycles>300*5) {
@@ -2119,6 +2151,7 @@ function waitForOurTurn() {
         }
         sleep(200);
     }
+    return result;
 }
 
 //判断是否胜利
@@ -2158,14 +2191,14 @@ function getMirrorsWinLoseCoords(winOrLose, corner) {
 }
 function getMirrorsWinLoseImg(screenshot, winOrLose) {
     var area = getMirrorsWinLoseArea(winOrLose);
-    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
     var imgA = knownImgs[winOrLose];
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
     log("镜界胜负判断 MSSIM=", similarity);
-    if (similarity > 0.8) {
+    if (similarity > 1.2) {
         return true;
     }
     return false;
@@ -2187,10 +2220,10 @@ function clickMirrorsBattleResult() {
     };
     while (true) {
         cycles++
-        if (didWeWin()) {
+        if (didWeWin(captureScreen())) {
             log("镜界战斗胜利，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
-        } else if (didWeLose()) {
+        } else if (didWeLose(captureScreen())) {
             log("镜界战斗败北，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
         } else {
@@ -2236,11 +2269,7 @@ function mirrorsAutoBattleMain() {
     //开始一次镜界自动战斗
     turn = 0;
     while(true) {
-        if (!waitForOurTurn()) {
-            //战斗结束了
-            log("镜界战斗结束");
-            break;
-        }
+        if(!waitForOurTurn()) break;
         //我的回合，抽盘
         turn++;
 
@@ -2278,7 +2307,7 @@ function mirrorsAutoBattleMain() {
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
         for (let i=nextDisk; i<3; i++) {
-            clickDisk(getDiskByPriority(i));
+            clickDisk(getDiskByPriority(actionDisks.disks, ordinalWord[i]));
         }
     }
 
