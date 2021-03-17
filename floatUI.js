@@ -802,7 +802,8 @@ if (scr.ratio.x == known.ratio.x && scr.ratio.y == known.ratio.y) {
 //换算坐标 1920x1080=>当前屏幕分辨率
 function convertCoords(d)
 {
-  log("换算前的坐标: x=", d.x, " y=", d.y, " pos=", d.pos);
+  var verboselog = false
+  if (verboselog) log("换算前的坐标: x=", d.x, " y=", d.y, " pos=", d.pos);
   var actual = {
     x:   0,
     y:   0,
@@ -815,37 +816,37 @@ function convertCoords(d)
   actual.y = d.y * scr.ref.height / known.res.height;
   if (conversion_mode == "simple_scaling") {
     //简单缩放，参照屏幕完全覆盖真实屏幕，无需进一步处理
-    log("  换算方法：简单缩放");
+  if (verboselog) log("  换算方法：简单缩放");
   } else if (conversion_mode == "wider_screen") {
     //左右黑边，参照屏幕在Y轴方向正好完全覆盖，在X轴方向不能完全覆盖，所以需要右移
-    log("  换算方法：放缩后跳过左右黑边");
+    if (verboselog) log("  换算方法：放缩后跳过左右黑边");
     actual.x += scr.ref.offset.wider.x;
   } else if (conversion_mode == "higher_screen") {
     //最麻烦的方块屏
-    log("  换算方法：放缩后下移居中和底端控件");
+    if (verboselog) log("  换算方法：放缩后下移居中和底端控件");
     if (pos == "top") {
       //顶端控件无需进一步处理
-      log("    顶端控件");
+      if (verboselog) log("    顶端控件");
     } else if (pos == "center") {
       //居中控件，想象一个放大过的16:9的参照屏幕，覆盖在当前这个方块屏的正中央，X轴正好完全覆盖，Y轴只覆盖了中间部分，所以需要下移
-      log("    居中控件");
+      if (verboselog) log("    居中控件");
       actual.y += scr.ref.offset.higher.center.y;
     } else if (pos == "bottom") {
       //底端控件同理，只是参照屏幕位于底端，需要下移更远
-      log("    底端控件");
+      if (verboselog) log("    底端控件");
       actual.y += scr.ref.offset.higher.bottom.y;
     } else {
-      log("    未知控件类型");
+      if (verboselog) log("    未知控件类型");
       throw "unknown_pos_value";
     }
   } else {
-    log("  未知换算方法");
+    if (verboselog) log("  未知换算方法");
     throw "unknown_conversion_mode"
   }
   actual.x = parseInt(actual.x);
   actual.y = parseInt(actual.y);
   actual.pos = d.pos;
-  log("换算后的坐标", " x=", actual.x, " y=", actual.y);
+  if (verboselog) log("换算后的坐标", " x=", actual.x, " y=", actual.y);
   return actual;
 }
 
