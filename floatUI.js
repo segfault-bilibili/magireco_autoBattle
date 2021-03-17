@@ -1902,6 +1902,7 @@ function scanDisks() {
         actionDisks.disks[i].priority = ordinalWord[i];
         actionDisks.disks[i].action = "accel";
         actionDisks.disks[i].charaImg = null;
+        actionDisks.disks[i].charaID = i;
         actionDisks.disks[i].connectable = false;
     }
     actionDisks.clickedDisksCount = 0;
