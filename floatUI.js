@@ -2027,7 +2027,7 @@ function clickDisk(disk) {
 //判断接到连携的角色
 
 //已知接第一盘角色头像坐标
-knownFirstSelectedConnectedDiskCoords = {
+var knownFirstSelectedConnectedDiskCoords = {
     topLeft: {
         x:   809,
         y:   91,
@@ -2122,7 +2122,7 @@ function waitForOurTurn() {
 }
 
 //判断是否胜利
-knownMirrorsWinLoseCoords = {
+var knownMirrorsWinLoseCoords = {
     mirrorsWinLetterI: {
         topLeft: {
             x:   962,
@@ -2149,13 +2149,16 @@ knownMirrorsWinLoseCoords = {
     }
 };
 
+function getMirrorsWinLoseArea(winOrLose) {
+    return knownMirrorsWinLoseCoords[winOrLose];
+}
+function getMirrorsWinLoseCoords(winOrLose, corner) {
+    var knownArea = getMirrorsWinLoseArea(winOrLose);
+    return convertCoords(knownArea.corner);
+}
 function getMirrorsWinLoseImg(screenshot, winOrLose) {
-    var knownArea = knownMirrorsWinLoseCoords[winOrLose];
-    var convertedArea = {
-        topLeft:     convertCoords(knownArea.topLeft),
-        bottomRight: convertCoords(knownArea.bottomRight)
-    };
-    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(convertedArea), getAreaHeight(convertedArea));
+    var area = getMirrorsWinLoseArea(winOrLose);
+    return images.clip(screenshot, topLeft.x, topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
     var imgA = knownImgs[winOrLose];
@@ -2206,40 +2209,23 @@ function clickMirrorsBattleResult() {
 //放缩参考图像以适配当前屏幕分辨率
 for (let imgName in knownImgs) {
     var newsize = [0, 0];
-    var topLeft = {
-        x:   0,
-        y:   0,
-        pos: "top"
-    };
-    var bottomRight = {
-        x:   0,
-        y:   0,
-        pos: "top"
-    }
+    var area = null;
     if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
-        topLeft = getDiskCoords(0, "action", "topLeft");
-        bottomRight = getDiskCoords(0, "action", "bottomRight");
+        area = knownFirstDiskCoords["action"];
+    } else if (imgName == "connectIndicatorBtnDown") {
+        area = knownFirstDiskCoords["connectIndicator"];
     } else {
-        var area = knownFirstStandPointCoords[imgName];
-        if (area != null) {
-            row = 0; column = 0;
-            topLeft = getStandPointCoords(row, column, imgName, "topLeft");
-            bottomRight = getStandPointCoords(row, column, imgName, "bottomRight");
-        }
-        area = knownFirstDiskCoords[imgName];
-        if (area != null) {
-            topLeft = getDiskCoords(0, 0, imgName, "topLeft");
-            bottomRight = getDiskCoords(0, 0, imgName, "bottomRight");
-        }
-        area = knownMirrorsWinLoseCoords[imgName];
-        if (area != null) {
-            topLeft = getDiskCoords(0, 0, imgName, "topLeft");
-            bottomRight = getDiskCoords(0, 0, imgName, "bottomRight");
-        }
+        area = knownFirstStandPointCoords[imgName];
+        if (area == null) area = knownFirstDiskCoords[imgName];
+        if (area == null) area = knownMirrorsWinLoseCoords[imgName];
     }
-
-    var resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(topLeft, bottomRight), getAreaHeight(topLeft, bottomRight)]);
-    knownImgs[imgName] = resizedImg;
+    if (area != null) {
+        log("缩放图片 imgName", imgName, "area", area);
+        var resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(area), getAreaHeight(area)]);
+        knownImgs[imgName] = resizedImg;
+    } else {
+        log("缩放图片出错 imgName", imgName);
+    }
 }
 
 
