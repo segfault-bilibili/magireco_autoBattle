@@ -2098,7 +2098,7 @@ function getConnectAcceptorCharaID(fromDisk) {
     if (actionDisks.disks[max].charaID == fromDisk.charaID) {
         log("识图比对结果有误，和连携发出角色相同");
         for (let diskPos = 0; diskPos < actionDisks.disks.length; diskPos++) {
-            if (actionDisks.disk[diskPos].charaID != fromDisk.charaID) {
+            if (actionDisks.disks[diskPos].charaID != fromDisk.charaID) {
                 log("为避免问题，返回另一位不同的角色 charaID=", actionDisks.disk[diskPos].charaID);
                 return actionDisks.disk[diskPos].charaID;
             }
