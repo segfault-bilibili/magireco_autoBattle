@@ -2201,7 +2201,7 @@ function getMirrorsWinLoseImg(screenshot, winOrLose) {
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
-    //结算页面有闪光，会干扰判断
+    //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
     var imgA = knownImgs[winOrLose];
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
@@ -2236,8 +2236,8 @@ function clickMirrorsBattleResult() {
             log("镜界战斗败北，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
         } else {
-            log("没看到镜界胜利或败北特征，应该已不在镜界结算界面");
-            break;
+            //结算页面有闪光，会干扰判断
+            log("没看到镜界胜利或败北特征");
         }
         if (cycles > 600) {
             log("在镜界结算界面已经滞留超过10分钟，结束运行");
