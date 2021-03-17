@@ -1685,7 +1685,7 @@ var knownFirstDiskCoords = {
     charaImg: {
         topLeft: {
             x:   393,
-            y:   854,
+            y:   925,
             pos: "bottom"
         },
         bottomRight: {
@@ -1854,7 +1854,8 @@ function isDiskConnectable(screenshot, diskPos) {
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
     if (similarity > 2.1) {
         log("第", diskPos+1, "号盘可以连携，并且已经被按下，MSSIM=", similarity);
-        return true;
+        return false; //只剩下一个人，无法连携时的识别结果是一样的，只能返回false避免误识别
+        //已经按下的连携盘也不应再点击（会取消），所以也应该返回false。需要用来判断连携是否完成时，应该用isConnectableDiskDown()函数
     }
     log("第", diskPos+1, "号盘不能连携，MSSIM=", similarity);
     return false;
@@ -1886,7 +1887,7 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
     if (imgA == null) imgA = getDiskImg(screenshot, diskAPos, "charaImg");
     if (imgB == null) imgB = getDiskImg(screenshot, diskBPos, "charaImg");
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-    if (similarity > 2.4) { //有属性克制时的闪光会干扰判断
+    if (similarity > 2.4) { //有属性克制时的闪光可能会干扰判断，会造成假阴性，实际上是同一个角色，却被误识别为不同的角色
         log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
         return true;
     }
@@ -2044,7 +2045,7 @@ function clickDisk(disk) {
 var knownFirstSelectedConnectedDiskCoords = {
     topLeft: {
         x:   809,
-        y:   91,
+        y:   112,
         pos: "top"
     },
     bottomRight: {
