@@ -2126,7 +2126,9 @@ function waitForOurTurn() {
     while(true) {
         cycles++;
         var screenshot = captureScreen();
-        if(didWeWin(screenshot) || didWeLose(screenshot)) {
+        if (id("ArenaResult").findOnce()) {
+        //不再通过识图判断战斗是否结束
+        //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
             result = false;
             break;
@@ -2224,36 +2226,28 @@ function didWeLose(screenshot) {
 
 //判断最终输赢
 function clickMirrorsBattleResult() {
-    var cycles = 0
     var screenCenter = {
         x:   960,
         y:   540,
         pos: "center"
     };
-    while (true) {
-        cycles++
+    while (id("ArenaResult").findOnce()) {
+        log("匹配到镜层战斗结算控件");
         var screenshot = captureScreen();
         var win = false;
         if (didWeWin(screenshot)) {
             win = true;
-            log("镜界战斗胜利，即将点击屏幕以退出结算界面...");
-            screenutilClick(screenCenter);
+            log("镜界战斗胜利");
         } else if (didWeLose(screenshot)) {
             win = false;
-            log("镜界战斗败北，即将点击屏幕以退出结算界面...");
-            screenutilClick(screenCenter);
+            log("镜界战斗败北");
         } else {
             //结算页面有闪光，会干扰判断
-            log("没看到镜界胜利或败北特征");
+            log("没在屏幕上识别到镜界胜利或败北特征");
             //有时候点击结算页面后会无法正确判断胜利或失败
-            //log("image.save ...");
-            //images.save(screenshot, "/sdcard/1/lose_negative.png");
-            //log("image.save done");
         }
-        if (cycles > 600) {
-            log("在镜界结算界面已经滞留超过10分钟，结束运行");
-            exit();
-        }
+        log("即将点击屏幕以退出结算界面...");
+        screenutilClick(screenCenter);
         sleep(1000);
     }
 }
