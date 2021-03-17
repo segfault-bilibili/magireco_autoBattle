@@ -1985,17 +1985,16 @@ function getDiskByPriority(disks, priority) {
 }
 
 //选盘，实质上是把选到的盘在actionDisks.disks数组里排到前面
-function prioritiseDisks(disks, startDiskPos) {
-    for (let i=startDiskPos; i<disks.length; i++) {
-        var diskA = getDiskByPriority(actionDisks.disks, ordinalWord[actionDisks.selectedCount]);
-        var diskB = disks[i];
-        var posA = diskA.position;
-        var posB = diskB.position;
-        var priA = diskA.priority;
-        var priB = diskB.priority;
-        actionDisks.disks[posB].priority = priA;
-        actionDisks.disks[posA].priority = priB;
-        actionDisks.selectedCount++;
+function prioritiseDisks(disks, startDiskPriority) {
+    for (let i=0; i<disks.length; i++) {
+        var targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[startDiskPriority]);
+        var diskToPrioritise = disks[i];
+        var posA = targetDisk.position;
+        var posB = diskToPrioritise.position;
+        var tempPriority = actionDisks.disks[posB].priority;
+        actionDisks.disks[posB].priority = actionDisks.disks[posA].priority;
+        actionDisks.disks[posA].priority = tempPriority;
+        startDiskPriority++;
     }
 }
 
@@ -2285,32 +2284,31 @@ function mirrorsAutoBattleMain() {
         var connectableDisk = null;
         connectableDisk = getFirstConnectableDisk(actionDisks.disks);
 
-        var skipDiskFromPos = 0;
+        var disksClickedCount = 0;
         if (connectableDisk != null) {
             //如果有连携，第一个盘上连携
             connectDisk(connectableDisk);
-            skipDiskFromPos = 1;
+            disksClickedCount++;
             //判断接连携的角色是谁
             var connectAcceptorCharaId = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
             var connectAcceptorDisks = findDisksByCharaId(actionDisks, connectAcceptorCharaId);
-            prioritiseDisks(connectAcceptorDisks, skipDiskFromPos);
+            prioritiseDisks(connectAcceptorDisks, disksClickedCount);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
-            prioritiseDisks(blastDisks, skipDiskFromPos);
+            prioritiseDisks(blastDisks, disksClickedCount);
         } else {
             //没有连携
-            skipDiskFromPos = 0;
             //先找Puella Combo
             var sameCharaDisks = findSameCharaDisks(actionDisks.disks);
-            prioritiseDisks(sameCharaDisks, skipDiskFromPos);
+            prioritiseDisks(sameCharaDisks, disksClickedCount);
             //Pcombo内尽量Blast Combo
             var blastDisks = findSameActionDisks(sameCharaDisks, "blast");
-            prioritiseDisks(blastDisks, skipDiskFromPos);
+            prioritiseDisks(blastDisks, disksClickedCount);
         }
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-        for (let i=skipDiskFromPos; i<3; i++) {
+        for (let i=disksClickedCount; i<3; i++) {
             clickDisk(getDiskByPriority(actionDisks.disks, ordinalWord[i]));
         }
     }
