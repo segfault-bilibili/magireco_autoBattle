@@ -2115,6 +2115,11 @@ function waitForOurTurn() {
     var cycles = 0;
     while(true) {
         cycles++;
+        if(didWeWin(screenshot) || didWeLose(screenshot)) {
+            log("战斗已经结束，不再等待我方回合");
+            result = false;
+            break;
+        }
         var diskAppeared = true;
         var screenshot = captureScreen();
         var img = getDiskImg(screenshot, 0, "action");
@@ -2134,11 +2139,6 @@ function waitForOurTurn() {
             diskAppearedCount++;
         } else {
             log("未出现我方行动盘");
-            if(didWeWin(screenshot) || didWeLose(screenshot)) {
-                log("战斗已经结束，不再等待我方回合");
-                result = false;
-                break;
-            }
             diskAppearedCount = 0;
         }
         if (diskAppearedCount >= 5) {
@@ -2199,7 +2199,7 @@ function didWeWinOrLose(screenshot, winOrLose) {
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
     log("镜界胜负判断 MSSIM=", similarity);
-    if (similarity > 1.2) {
+    if (similarity > 2.1) {
         return true;
     }
     return false;
