@@ -1565,43 +1565,43 @@ var ourBattleField = {
     topRow: {
         left: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         middle: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         right: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         }
     },
     middleRow: {
         left: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         middle: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         right: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         }
     },
     bottomRow: {
         left: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         middle: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         },
         right: {
             occupied: false,
-            charaId: -1
+            charaID: -1
         }
     }
 };
@@ -1660,7 +1660,7 @@ function scanOurBattleField()
     for(let i=0; i<3; i++) {
         for(let j=0; j<3; j++) {
             ourBattleField[rows[i]][columns[j]].occupied = isStandPointOccupied(screenshot, i, j);
-            ourBattleField[rows[i]][columns[j]].charaId = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
+            ourBattleField[rows[i]][columns[j]].charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
         }
     }
 }
@@ -1718,7 +1718,7 @@ var actionDisks = {
             priority:    "first",
             action:      "accel",
             charaImg:    null,
-            charaId:     0,
+            charaID:     0,
             connectable: false
         },
         {
@@ -1726,7 +1726,7 @@ var actionDisks = {
             priority:    "second",
             action:      "accel",
             charaImg:    null,
-            charaId:     1,
+            charaID:     1,
             connectable: false
         },
         {
@@ -1735,7 +1735,7 @@ var actionDisks = {
             action:      "accel",
             img:         null,
             charaImg:    null,
-            charaId:     2,
+            charaID:     2,
             connectable: false
         },
         {
@@ -1743,7 +1743,7 @@ var actionDisks = {
             priority:    "fourth",
             action:      "accel",
             charaImg:    null,
-            charaId:     3,
+            charaID:     3,
             connectable: false
         },
         {
@@ -1751,7 +1751,7 @@ var actionDisks = {
             priority:    "fifth",
             action:      "accel",
             charaImg:    null,
-            charaId:     4,
+            charaID:     4,
             connectable: false
         }
     ]
@@ -1814,7 +1814,7 @@ function recognizeDiskAction(actionImg) {
     switch (arguments.length) {
     case 1:
         try {
-            result = recognizeDiskAction_(actionImg, 1.1);
+            result = recognizeDiskAction_(actionImg, 2.1);
         } catch(err) {
             log("当作accel盘，继续运行");
             result = "accel";
@@ -1911,13 +1911,13 @@ function scanDisks() {
         disk.charaImg = getDiskCharaImg(screenshot, i);
         disk.connectable = isDiskConnectable(screenshot, i);
     }
-    //分辨不同的角色，用charaId标记
+    //分辨不同的角色，用charaID标记
     for (let i=0; i<5-1; i++) {
         var diskI = actionDisks.disks[i];
         for (let j=i+1; j<5; j++) {
             var diskJ = actionDisks.disks[j];
             if (areDisksSimilar(screenshot, i, j)) {
-                diskJ.charaId = diskI.charaId;
+                diskJ.charaID = diskI.charaID;
             }
         }
     }
@@ -1932,11 +1932,11 @@ function getFirstConnectableDisk(disks) {
 }
 
 //找出某一角色的盘
-function findDisksByCharaId(disks, charaId) {
+function findDisksByCharaId(disks, charaID) {
     result = [];
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
-        if (disk.charaId == charaId) result.push(disk);
+        if (disk.charaID == charaID) result.push(disk);
     }
     return result;
 }
@@ -1959,7 +1959,7 @@ function findSameCharaDisks(disks) {
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
         //本角色出现盘数+1
-        diskCount[disk.charaId]++;
+        diskCount[disk.charaID]++;
     }
 
     //找到出现盘数最多的角色
@@ -2078,7 +2078,7 @@ function getFirstSelectedConnectedDiskImg(screenshot) {
 }
 
 //返回接到连携的角色
-function getConnectAcceptorCharaId() {
+function getConnectAcceptorCharaID(fromDisk) {
     var screenshot = captureScreen();
     var imgA = getFirstSelectedConnectedDiskImg(screenshot);
 
@@ -2095,8 +2095,17 @@ function getConnectAcceptorCharaId() {
             max = diskPos;
         }
     }
-    log("比对结束，与第", max+1, "号盘最相似，charaId=", actionDisks.disks[max].charaId, "MSSIM=", maxSimilarity);
-    return actionDisks.disks[max].charaId;
+    log("比对结束，与第", max+1, "号盘最相似，charaID=", actionDisks.disks[max].charaID, "MSSIM=", maxSimilarity);
+    if (actionDisks.disks[max].charaID == fromDisk.charaID) {
+        log("识图比对结果有误，和连携发出角色相同");
+        for (let diskPos = 0; diskPos < actionDisks.disks.length; diskPos++) {
+            if (actionDisks.disk[diskPos].charaID != fromDisk.charaID) {
+                log("为避免问题，返回另一位不同的角色 charaID=", actionDisks.disk[diskPos].charaID);
+                return actionDisks.disk[diskPos].charaID;
+            }
+        }
+    }
+    return actionDisks.disks[max].charaID;
 }
 
 
@@ -2122,7 +2131,7 @@ function waitForOurTurn() {
             log("截取第一个盘的动作图片时出现问题");
          }
         try {
-            recognizeDiskAction(img, 1.1);
+            recognizeDiskAction(img, 2.1);
         } catch(e) {
             if (e.toString() != "recognizeDiskActionLowerThanThreshold") log(e);
             diskAppeared = false;
@@ -2281,7 +2290,7 @@ function mirrorsAutoBattleMain() {
             connectDisk(connectableDisk);
             skipDiskFromPos = 1;
             //判断接连携的角色是谁
-            var connectAcceptorCharaId = getConnectAcceptorCharaId();
+            var connectAcceptorCharaId = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
             var connectAcceptorDisks = findDisksByCharaId(actionDisks, connectAcceptorCharaId);
             prioritiseDisks(connectAcceptorDisks, skipDiskFromPos);
