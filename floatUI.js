@@ -2230,8 +2230,10 @@ for (let imgName in knownImgs) {
 
 
 function mirrorsAutoBattleMain() {
-    //开始一次镜界自动战斗
+    startScreenCapture();
+    waitUntilScreenCaptureReady();
 
+    //开始一次镜界自动战斗
     turn = 0;
     while(true) {
         if (!waitForOurTurn()) {
@@ -2287,6 +2289,8 @@ function mirrorsAutoBattleMain() {
 
 
 function jingMain() {
+    startScreenCapture();
+    waitUntilScreenCaptureReady();
 
     while (true) {
         let matchWrap = id("matchingWrap").findOne().bounds()
