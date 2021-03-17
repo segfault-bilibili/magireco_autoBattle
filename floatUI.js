@@ -1448,23 +1448,15 @@ function autoMainver2() {
 
 //已知参照图像，包括A/B/C盘等
 var knownImgs = {
-    accel: null,
-    blast: null,
-    charge: null,
-    connectIndicator: null,
-    connectIndicatorBtnDown: null,
-    HPBarRightEdge: null,
-    mirrorsWinLetterI: null,
-    mirrorsLose: null
+    accel: images.read("./images/accel.png"),
+    blast: images.read("./images/blast.png"),
+    charge: images.read("./images/charge.png"),
+    connectIndicator: images.read("./images/connectIndicator.png"),
+    connectIndicatorBtnDown: images.read("./images/connectIndicatorBtnDown.png"),
+    HPBarRightEdge: images.read("./images/HPBarRightEdge.png"),
+    mirrorsWinLetterI: images.read("./images/mirrorsWinLetterI.png"),
+    mirrorsLose: images.read("./images/mirrorsLose.png")
 };
-knownImgs.accel = images.fromBase64("");
-knownImgs.blast = images.fromBase64("");
-knownImgs.charge = images.fromBase64("");
-knownImgs.connectIndicator = images.fromBase64("");
-knownImgs.connectIndicatorBtnDown = images.fromBase64("");
-knownImgs.HPBarRightEdge = images.fromBase64("");
-knownImgs.mirrorsWinLetterI = images.fromBase64("");
-knownImgs.mirrorsLose = images.fromBase64("");
 
 
 //矩形参数计算，宽度、高度、中心坐标等等
@@ -1495,34 +1487,37 @@ function getAreaCenter(area) {
 
 
 //已知左上角站位坐标等数据
-var knownFirstBattleFieldCoords = {
+var knownFirstStandPointCoords = {
     HPBarRightEdge: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   1188,
+            y:   282,
             pos: "center"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   1191,
+            y:   291,
             pos: "center"
         }
     },
     floor: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   1025,
+            y:   529,
             pos: "center"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   1114,
+            y:   567,
             pos: "center"
         }
     }
-    distancex: 0,
-    distancey: 0,
-    indent: 0
+    //r1c1x: 1090, r1c1y: 280,
+    //r2c1x: 1165, r2c1y: 383,
+    //r2c2x: 1420, r2c2y: 383,
+    distancex: 1420-1090,
+    distancey: 383-280,
+    indent: 1165-1090
 }
 
 //我方阵地信息
@@ -1583,10 +1578,10 @@ function getStandPointCoords(row, column, part, corner) {
         y:   0,
         pos: "bottom"
     };
-    var knownCoords = knownFirstBattleFieldCoords[part][corner];
-    var distancex = knownFirstBattleFieldCoords.distancex;
-    var distancey = knownFirstBattleFieldCoords.distancey;
-    var indent = knownFirstBattleFieldCoords.indent;
+    var knownCoords = knownFirstStandPointCoords[part][corner];
+    var distancex = knownFirstStandPointCoords.distancex;
+    var distancey = knownFirstStandPointCoords.distancey;
+    var indent = knownFirstStandPointCoords.indent;
     convertedCoords.x = knownCoords.x + row * indent + distancex * column;
     convertedCoords.y = knownCoords.y + row * distancey;
     convertedCoords.pos = knownCoords.pos;
@@ -1637,42 +1632,42 @@ function scanOurBattleField()
 var knownFirstDiskCoords = {
     action: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   359,
+            y:   1016,
             pos: "bottom"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   480,
+            y:   1039,
             pos: "bottom"
         }
     },
     charaImg: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   393,
+            y:   854,
             pos: "bottom"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   449,
+            y:   996,
             pos: "bottom"
         }
     },
     connectIndicator: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   340, //第五个盘是1420
+            y:   865,
             pos: "bottom"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   370,
+            y:   882,
             pos: "bottom"
         }
     }
     //行动盘之间的距离
-    distance: 0
+    distance: 270
 };
 
 //行动盘信息
@@ -1998,13 +1993,13 @@ function clickDisk(disk) {
 //已知接第一盘角色头像坐标
 knownFirstSelectedConnectedDiskCoords = {
     topLeft: {
-        x:   0,
-        y:   0,
+        x:   809,
+        y:   91,
         pos: "top"
     },
     bottomRight: {
-        x:   0,
-        y:   0,
+        x:   825,
+        y:   133,
         pos: "top"
     }
 };
@@ -2094,25 +2089,25 @@ function waitForOurTurn() {
 knownMirrorsWinLoseCoords = {
     mirrorsWinLetterI: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   962,
+            y:   370,
             pos: "center"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   989,
+            y:   464,
             pos: "center"
         }
     },
     mirrorsLose: {
         topLeft: {
-            x:   0,
-            y:   0,
+            x:   757,
+            y:   371,
             pos: "center"
         },
         bottomRight: {
-            x:   0,
-            y:   0,
+            x:   1161,
+            y:   463,
             pos: "center"
         }
     }
@@ -2189,7 +2184,7 @@ for (let imgName in knownImgs) {
         topLeft = getDiskCoords(0, "action", "topLeft");
         bottomRight = getDiskCoords(0, "action", "bottomRight");
     } else {
-        var area = knownFirstBattleFieldCoords[imgName];
+        var area = knownFirstStandPointCoords[imgName];
         if (area != null) {
             row = 0; column = 0;
             topLeft = getStandPointCoords(row, column, imgName, "topLeft");
