@@ -2117,13 +2117,13 @@ function waitForOurTurn() {
     var cycles = 0;
     while(true) {
         cycles++;
+        var screenshot = captureScreen();
         if(didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
             result = false;
             break;
         }
         var diskAppeared = true;
-        var screenshot = captureScreen();
         var img = getDiskImg(screenshot, 0, "action");
         if (img != null) {
             log("已截取第一个盘的动作图片");
@@ -2223,10 +2223,11 @@ function clickMirrorsBattleResult() {
     };
     while (true) {
         cycles++
-        if (didWeWin(captureScreen())) {
+        var screenshot = captureScreen();
+        if (didWeWin(screenshot)) {
             log("镜界战斗胜利，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
-        } else if (didWeLose(captureScreen())) {
+        } else if (didWeLose(screenshot)) {
             log("镜界战斗败北，即将点击屏幕以退出结算界面...");
             screenutilClick(screenCenter);
         } else {
