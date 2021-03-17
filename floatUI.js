@@ -1754,7 +1754,8 @@ var actionDisks = {
             charaID:     4,
             connectable: false
         }
-    ]
+    ],
+    clickedDisksCount: 0
 };
 
 var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
@@ -1885,7 +1886,7 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
     if (imgA == null) imgA = getDiskImg(screenshot, diskAPos, "charaImg");
     if (imgB == null) imgB = getDiskImg(screenshot, diskBPos, "charaImg");
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-    if (similarity > 2.4) {
+    if (similarity > 2.4) { //有属性克制时的闪光会干扰判断
         log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
         return true;
     }
@@ -1902,6 +1903,7 @@ function scanDisks() {
         actionDisks.disks[i].charaImg = null;
         actionDisks.disks[i].connectable = false;
     }
+    actionDisks.clickedDisksCount = 0;
 
     //截屏，对盘进行识别
     var screenshot = captureScreen();
@@ -1985,16 +1987,17 @@ function getDiskByPriority(disks, priority) {
 }
 
 //选盘，实质上是把选到的盘在actionDisks.disks数组里排到前面
-function prioritiseDisks(disks, startDiskPriority) {
+function prioritiseDisks(disks) {
+    var replaceDiskAtThisPriority = actionDisks.clickedDisksCount;
     for (let i=0; i<disks.length; i++) {
-        var targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[startDiskPriority]);
+        var targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[replaceDiskAtThisPriority]);
         var diskToPrioritise = disks[i];
         var posA = targetDisk.position;
         var posB = diskToPrioritise.position;
         var tempPriority = actionDisks.disks[posB].priority;
         actionDisks.disks[posB].priority = actionDisks.disks[posA].priority;
         actionDisks.disks[posA].priority = tempPriority;
-        startDiskPriority++;
+        replaceDiskAtThisPriority++;
     }
 }
 
@@ -2013,6 +2016,7 @@ function connectDisk(fromDisk) {
                 sleep(1000);
                 if (isConnectableDiskDown(captureScreen(), fromDisk.position)) {
                     log("连携动作完成");
+                    actionDisks.clickedDisksCount++;
                     break;
                 } else {
                     log("连携动作失败，可能是因为连携到了自己身上");
@@ -2030,6 +2034,7 @@ function clickDisk(disk) {
     click(point.x, point.y);
     sleep(1000);
     log("点击动作完成");
+    actionDisks.clickedDisksCount++;
 }
 
 
@@ -2196,6 +2201,7 @@ function getMirrorsWinLoseImg(screenshot, winOrLose) {
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
+    //结算页面有闪光，会干扰判断
     var imgA = knownImgs[winOrLose];
     var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
     var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
@@ -2284,31 +2290,30 @@ function mirrorsAutoBattleMain() {
         var connectableDisk = null;
         connectableDisk = getFirstConnectableDisk(actionDisks.disks);
 
-        var disksClickedCount = 0;
         if (connectableDisk != null) {
             //如果有连携，第一个盘上连携
+            prioritiseDisks([connectableDisk]); //将当前连携盘从选盘中排除
             connectDisk(connectableDisk);
-            disksClickedCount++;
             //判断接连携的角色是谁
             var connectAcceptorCharaId = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
             var connectAcceptorDisks = findDisksByCharaId(actionDisks, connectAcceptorCharaId);
-            prioritiseDisks(connectAcceptorDisks, disksClickedCount);
+            prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
-            prioritiseDisks(blastDisks, disksClickedCount);
+            prioritiseDisks(blastDisks);
         } else {
             //没有连携
             //先找Puella Combo
             var sameCharaDisks = findSameCharaDisks(actionDisks.disks);
-            prioritiseDisks(sameCharaDisks, disksClickedCount);
+            prioritiseDisks(sameCharaDisks);
             //Pcombo内尽量Blast Combo
             var blastDisks = findSameActionDisks(sameCharaDisks, "blast");
-            prioritiseDisks(blastDisks, disksClickedCount);
+            prioritiseDisks(blastDisks);
         }
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-        for (let i=disksClickedCount; i<3; i++) {
+        for (let i=actionDisks.clickedDisksCount; i<3; i++) {
             clickDisk(getDiskByPriority(actionDisks.disks, ordinalWord[i]));
         }
     }
