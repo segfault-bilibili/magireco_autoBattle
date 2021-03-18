@@ -1047,6 +1047,7 @@ function getMainMenuStatus() {
 //检测AP
 function detectAP() {
     while (true) {
+        let detectAttempt = 0;
         log("开始检测ap");
         let IDEqualsAP = id("ap").find();
         if (IDEqualsAP.empty()) {
@@ -1129,12 +1130,17 @@ function detectAP() {
                 log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
                 log("apMin", apMin);
                 if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
-            }
-        }
+            }// end for (iteration)
+        }//end for (useDesc)
         log("检测AP失败，等待1秒后重试...");
         sleep(1000);
-    }
-}
+        detectAttempt++;
+        if (detectAttempt > 300) {
+            log("超过5分钟没有成功检测AP，退出");
+            exit();
+        }
+    } //end while
+}//end function
 
 function autoMain() {
     startScreenCapture();
