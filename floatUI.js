@@ -1060,7 +1060,6 @@ function detectAP() {
         if (useDesc) {
             log("尝试匹配desc");
             apComlikes = descMatches(/^\d+$/).find();
-            log("能匹配到：", descMatches(/^\d+$/).find());
         }
         log("apComlikes", apComlikes);
         var knownApComCoords = {
