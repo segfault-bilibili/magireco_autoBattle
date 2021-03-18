@@ -1037,6 +1037,73 @@ function getMainMenuStatus() {
     return result;
 }
 
+//检测AP
+function detectAP() {
+    log("开始检测ap")
+    let apComlikes = textMatches(/^\d+\/\d+$/).find()
+    let apCom;
+    let useDesc = false;
+    if (!apComlikes.empty()) {
+        log(apComlikes)
+        apCom = apComlikes[0]
+        log(apCom.bounds())
+        for (let i = 1; i < apComlikes.length; i++) {
+            log(apComlikes[i].bounds())
+            if (apCom.bounds().top > apComlikes[i].bounds().top) {
+                apCom = apComlikes[i]
+            }
+        }
+    } else {
+        log("尝试使用另一个ap正则");
+        apComlikes = textMatches(/^\d+$/).find();
+        if (apComlikes.empty()) useDesc = true;
+        if (useDesc) {
+            log("尝试匹配desc");
+            apComlikes = descMatches(/^\d+$/).find();
+            log("能匹配到：", descMatches(/^\d+$/).find());
+        }
+        log("apComlikes", apComlikes);
+        var knownApComCoords = {
+            topLeft: {
+                x: 880,
+                y: 0,
+                pos: "top"
+            },
+            bottomRight: {
+                x: 1210,
+                y: 100,
+                pos: "top"
+            }
+        };
+        var convertedApComCoords = {
+            topLeft: convertCoords(knownApComCoords.topLeft),
+            bottomRight: convertCoords(knownApComCoords.bottomRight)
+        };
+        var apComNums = [];
+        for (let i=0; i<apComlikes.length; i++) {
+            var apComlikesTop = apComlikes[i].bounds().top;
+            var apComlikesLeft = apComlikes[i].bounds().left;
+            var apComlikesBottom = apComlikes[i].bounds().bottom;
+            var apComlikesRight = apComlikes[i].bounds().right;
+            if (apComlikesTop >= convertedApComCoords.topLeft.y && apComlikesLeft >= convertedApComCoords.topLeft.x &&
+            apComlikesBottom <= convertedApComCoords.bottomRight.y && apComlikesRight <= convertedApComCoords.bottomRight.x) {
+                apComNums.push(apComlikes[i]);
+                break;
+            }
+        }
+        log("apComNums", apComNums);
+        apCom = apComNums[0];
+    }
+    sleep(1000)
+    let aps = apCom.text();
+    if (useDesc) {
+        aps = apCom.desc();
+    }
+    log("ap:", aps)
+    // aps  55/122  获得字符串中第一串数字
+    return parseInt(aps.match(/\d+/)[0])
+}
+
 function autoMain() {
     startScreenCapture();
     waitUntilScreenCaptureReady();
@@ -1049,13 +1116,8 @@ function autoMain() {
     while (true) {
         //开始
         //---------嗑药模块------------------
-        log("开始检测ap")
-        let apCom = textMatches(/^\d+\/\d+$/).findOne()
-        sleep(1000)
-        let aps = apCom.text()
-        log("ap:", aps)
-        // aps  55/122  获得字符串中第一串数字
-        let apNow = parseInt(aps.match(/\d+/)[0])
+        //检测AP
+        let apNow = detectAP();
 
         log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
         log("嗑药设置体力：", limit.limitAP)
@@ -1236,24 +1298,8 @@ function autoMainver2() {
     while (true) {
         //开始
         //---------嗑药模块------------------
-        log("开始检测ap")
-        id("ap").findOne()
-        sleep(1000)
-        let apComlikes = textMatches(/^\d+\/\d+$/).find()
-        log(apComlikes)
-        let apCom = apComlikes[0]
-        log(apCom.bounds())
-        for (let i = 1; i < apComlikes.length; i++) {
-            log(apComlikes[i].bounds())
-            if (apCom.bounds().top > apComlikes[i].bounds().top) {
-                apCom = apComlikes[i]
-            }
-        }
-        sleep(1000)
-        let aps = apCom.text()
-        log("ap:", aps)
-        // aps  55/122  获得字符串中第一串数字
-        let apNow = parseInt(aps.match(/\d+/)[0])
+        //检测AP
+        let apNow = detectAP();
 
         log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
         log("嗑药设置体力：", limit.limitAP)
@@ -1719,7 +1765,8 @@ var actionDisks = {
             action:      "accel",
             charaImg:    null,
             charaID:     0,
-            connectable: false
+            connectable: false,
+            connectTo:   -1
         },
         {
             position:    1,
@@ -1727,7 +1774,8 @@ var actionDisks = {
             action:      "accel",
             charaImg:    null,
             charaID:     1,
-            connectable: false
+            connectable: false,
+            connectTo:   -1
         },
         {
             position:    2,
@@ -1736,7 +1784,8 @@ var actionDisks = {
             img:         null,
             charaImg:    null,
             charaID:     2,
-            connectable: false
+            connectable: false,
+            connectTo:   -1
         },
         {
             position:    3,
@@ -1744,7 +1793,8 @@ var actionDisks = {
             action:      "accel",
             charaImg:    null,
             charaID:     3,
-            connectable: false
+            connectable: false,
+            connectTo:   -1
         },
         {
             position:    4,
@@ -1752,7 +1802,8 @@ var actionDisks = {
             action:      "accel",
             charaImg:    null,
             charaID:     4,
-            connectable: false
+            connectable: false,
+            connectTo:   -1
         }
     ],
     clickedDisksCount: 0
@@ -1898,32 +1949,39 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
 //扫描行动盘信息
 function scanDisks() {
     //重新赋值，覆盖上一轮选盘残留的数值
-    for (let i=0; i<5; i++) {
+    for (let i=0; i<actionDisks.disks.length; i++) {
         actionDisks.disks[i].priority = ordinalWord[i];
         actionDisks.disks[i].action = "accel";
         actionDisks.disks[i].charaImg = null;
         actionDisks.disks[i].charaID = i;
         actionDisks.disks[i].connectable = false;
+        actionDisks.disks[i].connectTo = -1;
     }
     actionDisks.clickedDisksCount = 0;
 
     //截屏，对盘进行识别
     var screenshot = captureScreen();
-    for (let i=0; i<5; i++) {
+    for (let i=0; i<actionDisks.disks.length; i++) {
         var disk = actionDisks.disks[i];
         disk.action = getDiskAction(screenshot, i);
         disk.charaImg = getDiskCharaImg(screenshot, i);
         disk.connectable = isDiskConnectable(screenshot, i);
     }
     //分辨不同的角色，用charaID标记
-    for (let i=0; i<5-1; i++) {
+    for (let i=0; i<actionDisks.disks.length-1; i++) {
         var diskI = actionDisks.disks[i];
-        for (let j=i+1; j<5; j++) {
+        for (let j=i+1; j<actionDisks.disks.length; j++) {
             var diskJ = actionDisks.disks[j];
             if (areDisksSimilar(screenshot, i, j)) {
                 diskJ.charaID = diskI.charaID;
             }
         }
+    }
+
+    log("行动盘扫描结果：");
+    for (let i=0; i<actionDisks.disks.length; i++) {
+        var thisDisk = actionDisks.disks[i];
+        log("[", thisDisk.charaID, thisDisk.action, thisDisk.connectable, "]");
     }
 }
 
@@ -2000,6 +2058,12 @@ function prioritiseDisks(disks) {
         actionDisks.disks[posB].priority = actionDisks.disks[posA].priority;
         actionDisks.disks[posA].priority = tempPriority;
         replaceDiskAtThisPriority++;
+    }
+
+    log("当前选盘情况：");
+    for (let i=0; i<actionDisks.disks.length; i++) {
+        var thisDisk = getDiskByPriority(actionDisks.disks, ordinalWord[i]);
+        log("第", thisDisk.position+1, "号盘", thisDisk.action, "角色", thisDisk.charaId, thisDisk.connectable, thisDisk.connectTo);
     }
 }
 
