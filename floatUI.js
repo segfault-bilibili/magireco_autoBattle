@@ -1047,14 +1047,12 @@ function getMainMenuStatus() {
 //检测AP
 function detectAP() {
     log("开始检测ap");
-    let IDEqualsAP = [];
-    for (let i=0; i<5; i++) {
-        let IDEqualsAP = id("ap").find();
-        if (!IDEqualsAP.empty()) break;
-        log("没找到resource-id为\"ap\"的控件，1秒后再试...");
-        sleep(1000);
+    let IDEqualsAP = id("ap").find();
+    if (IDEqualsAP.empty()) {
+        log("没找到resource-id为\"ap\"的控件");
+    } else {
+        log("resource-id为\"ap\"的控件：", IDEqualsAP);
     }
-    if (!IDEqualsAP.empty()) log("找到resource-id为\"ap\"的控件：", IDEqualsAP);
 
     let knownApComCoords = {
         topLeft: {
@@ -1098,7 +1096,9 @@ function detectAP() {
             log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
         }
 
-        for (let thisApComLikes in [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]) {
+        let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
+        for (let arrindex in arr) {
+            thisApComLikes = arr[arrindex];
             apComLikes = [];
             let sanity = false;
             let apMin = Number.MAX_SAFE_INTEGER-1;
@@ -1125,7 +1125,8 @@ function detectAP() {
                     if (apNum < apMin) apMin = apNum;
                 } //end if
             }
-            log("在坐标范围内的控件", apComLikes, "apMin", apMin);
+            log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
+            log("apMin", apMin);
             if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
         }
     }
