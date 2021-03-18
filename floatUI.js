@@ -2062,7 +2062,7 @@ function prioritiseDisks(disks) {
     log("当前选盘情况：");
     for (let i=0; i<actionDisks.disks.length; i++) {
         var thisDisk = getDiskByPriority(actionDisks.disks, ordinalWord[i]);
-        log("第", thisDisk.position+1, "号盘", thisDisk.action, "角色", thisDisk.charaId, thisDisk.connectable, thisDisk.connectTo);
+        log("第", thisDisk.position+1, "号盘", thisDisk.action, "角色", thisDisk.charaID, thisDisk.connectable, thisDisk.connectTo);
     }
 }
 
