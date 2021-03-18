@@ -1812,6 +1812,13 @@ var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
 var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
 var diskActions = ["accel", "blast", "charge"];
 
+function logDiskInfo(disk) {
+    let connectableStr = "不可连携";
+    if (disk.connectable) connectableStr = "【连携】";
+    log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, connectableStr, "要连携到角色", disk.connectTo);
+
+}
+
 //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
 function getDiskCoords(diskPos, part, corner) {
     var convertedCoords = {
@@ -1979,8 +1986,7 @@ function scanDisks() {
 
     log("行动盘扫描结果：");
     for (let i=0; i<actionDisks.disks.length; i++) {
-        var thisDisk = actionDisks.disks[i];
-        log("[", thisDisk.charaID, thisDisk.action, thisDisk.connectable, "]");
+        logDiskInfo(actionDisks.disks[i]);
     }
 }
 
@@ -1994,7 +2000,7 @@ function getFirstConnectableDisk(disks) {
 
 //找出某一角色的盘
 function findDisksByCharaId(disks, charaID) {
-    result = [];
+    let result = [];
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
         if (disk.charaID == charaID) result.push(disk);
@@ -2004,7 +2010,7 @@ function findDisksByCharaId(disks, charaID) {
 
 //找出指定（A/B/C）的盘
 function findSameActionDisks(disks, action) {
-    result = [];
+    let result = [];
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
         if (disk.action == action) result.push(disk);
@@ -2014,7 +2020,7 @@ function findSameActionDisks(disks, action) {
 
 //找出出现盘数最多角色的盘
 function findSameCharaDisks(disks) {
-    result = [];
+    let result = [];
     diskCount = [0, 0, 0, 0, 0];
     //每个盘都属于哪个角色
     for (let i=0; i<disks.length; i++) {
@@ -2025,11 +2031,11 @@ function findSameCharaDisks(disks) {
 
     //找到出现盘数最多的角色
     var max = 0;
-    var mostDisksCharaId = 0;
+    var mostDisksCharaID = 0;
     for (let i=0; i<diskCount.length; i++) {
         if (diskCount[i] > max) {
             max = diskCount[i];
-            mostDisksCharaId = i;
+            mostDisksCharaID = i;
         }
     }
 
@@ -2047,13 +2053,13 @@ function getDiskByPriority(disks, priority) {
 
 //选盘，实质上是把选到的盘在actionDisks.disks数组里排到前面
 function prioritiseDisks(disks) {
-    var replaceDiskAtThisPriority = actionDisks.clickedDisksCount;
+    let replaceDiskAtThisPriority = actionDisks.clickedDisksCount;
     for (let i=0; i<disks.length; i++) {
-        var targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[replaceDiskAtThisPriority]);
-        var diskToPrioritise = disks[i];
-        var posA = targetDisk.position;
-        var posB = diskToPrioritise.position;
-        var tempPriority = actionDisks.disks[posB].priority;
+        let targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[replaceDiskAtThisPriority]);
+        let diskToPrioritise = disks[i];
+        let posA = targetDisk.position;
+        let posB = diskToPrioritise.position;
+        let tempPriority = actionDisks.disks[posB].priority;
         actionDisks.disks[posB].priority = actionDisks.disks[posA].priority;
         actionDisks.disks[posA].priority = tempPriority;
         replaceDiskAtThisPriority++;
@@ -2061,8 +2067,7 @@ function prioritiseDisks(disks) {
 
     log("当前选盘情况：");
     for (let i=0; i<actionDisks.disks.length; i++) {
-        var thisDisk = getDiskByPriority(actionDisks.disks, ordinalWord[i]);
-        log("第", thisDisk.position+1, "号盘", thisDisk.action, "角色", thisDisk.charaID, thisDisk.connectable, thisDisk.connectTo);
+        logDiskInfo(actionDisks.disks[i]);
     }
 }
 
