@@ -1,5 +1,5 @@
 {
-    "name": "auto segfaultmod魔改版",
+    "name": "auto segfault魔改版",
     "main": "main.js",
     "ignore": [
         "build"
