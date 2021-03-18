@@ -2028,7 +2028,7 @@ function getFirstConnectableDisk(disks) {
 }
 
 //找出某一角色的盘
-function findDisksByCharaId(disks, charaID) {
+function findDisksByCharaID(disks, charaID) {
     let result = [];
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
@@ -2068,7 +2068,7 @@ function findSameCharaDisks(disks) {
         }
     }
 
-    result = findDisksByCharaId(disks, mostDisksCharaId);
+    result = findDisksByCharaID(disks, mostDisksCharaID);
     return result;
 }
 
@@ -2398,9 +2398,9 @@ function mirrorsAutoBattleMain() {
             prioritiseDisks([connectableDisk]); //将当前连携盘从选盘中排除
             connectDisk(connectableDisk);
             //判断接连携的角色是谁
-            var connectAcceptorCharaId = getConnectAcceptorCharaID(connectableDisk);
+            var connectAcceptorCharaID = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
-            var connectAcceptorDisks = findDisksByCharaId(actionDisks, connectAcceptorCharaId);
+            var connectAcceptorDisks = findDisksByCharaID(actionDisks, connectAcceptorCharaID);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
