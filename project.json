@@ -1,10 +1,10 @@
 {
-    "name": "auto",
+    "name": "auto segfaultmod魔改版",
     "main": "main.js",
     "ignore": [
         "build"
     ],
-    "packageName": "top.momoe.auto",
+    "packageName": "top.momoe.auto.segfaultmod",
     "versionName": "2.4.0",
     "versionInfo": "",
     "versionCode": 1
