@@ -1062,7 +1062,7 @@ function detectAP() {
         },
         bottomRight: {
             x: 1210,
-            y: 100,
+            y: 120,
             pos: "top"
         }
     };
