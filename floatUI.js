@@ -1122,8 +1122,8 @@ function detectAP() {
                         if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
         
                         let apNum = Number.MAX_SAFE_INTEGER;
-                        let ap = apStr.match(/\d+/)[0];
-                        if (ap != null) apNum = parseInt(ap);
+                        let ap = apStr.match(/\d+/);
+                        if (ap != null) apNum = parseInt(ap[0]);
                         if (apNum < apMin) apMin = apNum;
                     } //end if
                 }
