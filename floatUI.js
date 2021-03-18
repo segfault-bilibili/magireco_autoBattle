@@ -1032,75 +1032,96 @@ function getMainMenuStatus() {
         log("找不到id为menu的控件");
         result.exist = false;
         result.open = false;
-        resuil.covered = true;
+        result.covered = true;
     }
     return result;
 }
 
 //检测AP
 function detectAP() {
-    log("开始检测ap")
-    let apComlikes = textMatches(/^\d+\/\d+$/).find()
-    let apCom;
-    let useDesc = false;
-    if (!apComlikes.empty()) {
-        log(apComlikes)
-        apCom = apComlikes[0]
-        log(apCom.bounds())
-        for (let i = 1; i < apComlikes.length; i++) {
-            log(apComlikes[i].bounds())
-            if (apCom.bounds().top > apComlikes[i].bounds().top) {
-                apCom = apComlikes[i]
-            }
-        }
-    } else {
-        log("尝试使用另一个ap正则");
-        apComlikes = textMatches(/^\d+$/).find();
-        if (apComlikes.empty()) useDesc = true;
-        if (useDesc) {
-            log("尝试匹配desc");
-            apComlikes = descMatches(/^\d+$/).find();
-        }
-        log("apComlikes", apComlikes);
-        var knownApComCoords = {
-            topLeft: {
-                x: 880,
-                y: 0,
-                pos: "top"
-            },
-            bottomRight: {
-                x: 1210,
-                y: 100,
-                pos: "top"
-            }
-        };
-        var convertedApComCoords = {
-            topLeft: convertCoords(knownApComCoords.topLeft),
-            bottomRight: convertCoords(knownApComCoords.bottomRight)
-        };
-        var apComNums = [];
-        for (let i=0; i<apComlikes.length; i++) {
-            var apComlikesTop = apComlikes[i].bounds().top;
-            var apComlikesLeft = apComlikes[i].bounds().left;
-            var apComlikesBottom = apComlikes[i].bounds().bottom;
-            var apComlikesRight = apComlikes[i].bounds().right;
-            if (apComlikesTop >= convertedApComCoords.topLeft.y && apComlikesLeft >= convertedApComCoords.topLeft.x &&
-            apComlikesBottom <= convertedApComCoords.bottomRight.y && apComlikesRight <= convertedApComCoords.bottomRight.x) {
-                apComNums.push(apComlikes[i]);
-                break;
-            }
-        }
-        log("apComNums", apComNums);
-        apCom = apComNums[0];
+    log("开始检测ap");
+    let IDEqualsAP = [];
+    for (let i=0; i<5; i++) {
+        let IDEqualsAP = id("ap").find();
+        if (!IDEqualsAP.empty()) break;
+        log("没找到resource-id为\"ap\"的控件，1秒后再试...");
+        sleep(1000);
     }
-    sleep(1000)
-    let aps = apCom.text();
-    if (useDesc) {
-        aps = apCom.desc();
+    if (!IDEqualsAP.empty()) log("找到resource-id为\"ap\"的控件：", IDEqualsAP);
+
+    let knownApComCoords = {
+        topLeft: {
+            x: 880,
+            y: 0,
+            pos: "top"
+        },
+        bottomRight: {
+            x: 1210,
+            y: 100,
+            pos: "top"
+        }
+    };
+    let convertedApComCoords = {
+        topLeft: convertCoords(knownApComCoords.topLeft),
+        bottomRight: convertCoords(knownApComCoords.bottomRight)
+    };
+    let apComLikes = [];
+
+    let apComLikesRegExp = [];
+    let apComLikesAltRegExp = [];
+    let apCom = null;
+    let useDesc = {no: false, yes: true};
+    for (let whether in useDesc) {
+        log("useDesc:", whether);
+        if (useDesc[whether]) {
+            apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
+            apComLikesAltRegExp = descMatches(/^\d+$/).find();
+        } else {
+            apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
+            apComLikesAltRegExp = textMatches(/^\d+$/).find();
+        }
+        if (apComLikesRegExp.empty()) {
+            log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
+        } else {
+            log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
+        }
+        if (apComLikesAltRegExp.empty()) {
+            log("备用正则/^\\d+$/未匹配到AP控件");
+        } else {
+            log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
+        }
+
+        for (let thisApComLikes in [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]) {
+            apComLikes = [];
+            let sanity = false;
+            let apMin = Number.MAX_SAFE_INTEGER-1;
+            for (let i=0; i<thisApComLikes.length; i++) {
+                let apComLikeTop = thisApComLikes[i].bounds().top;
+                let apComLikeLeft = thisApComLikes[i].bounds().left;
+                let apComLikeBottom = thisApComLikes[i].bounds().bottom;
+                let apComLikeRight = thisApComLikes[i].bounds().right;
+                if (apComLikeTop >= convertedApComCoords.topLeft.y && apComLikeLeft >= convertedApComCoords.topLeft.x &&
+                apComLikeBottom <= convertedApComCoords.bottomRight.y && apComLikeRight <= convertedApComCoords.bottomRight.x) {
+                    apComLikes.push(thisApComLikes[i]);
+                    let apCom = thisApComLikes[i];
+                    let apStr = "";
+                    if (useDesc[whether]) {
+                        apStr = apCom.desc();
+                    } else {
+                        apStr = apCom.text();
+                    }
+                    if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
+
+                    let apNum = Number.MAX_SAFE_INTEGER;
+                    let ap = apStr.match(/\d+/)[0];
+                    if (ap != null) apNum = parseInt(ap);
+                    if (apNum < apMin) apMin = apNum;
+                } //end if
+            }
+            log("在坐标范围内的控件", apComLikes, "apMin", apMin);
+            if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
+        }
     }
-    log("ap:", aps)
-    // aps  55/122  获得字符串中第一串数字
-    return parseInt(aps.match(/\d+/)[0])
 }
 
 function autoMain() {
