@@ -37,6 +37,9 @@ var scrCapLock = threads.lock();
 var canCaptureScreen = false;
 var screenCapThread = null;
 function startScreenCapture() {
+    $settings.setEnabled("stop_all_on_volume_up", false);
+    $settings.setEnabled("foreground_service", false);
+
     var isGameFg = false;
     for (let i = 1; i <= 5; i++) {
         if (packageName("com.aniplex.magireco").findOnce() ||
