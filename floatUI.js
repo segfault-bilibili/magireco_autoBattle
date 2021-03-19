@@ -37,9 +37,6 @@ var scrCapLock = threads.lock();
 var canCaptureScreen = false;
 var screenCapThread = null;
 function startScreenCapture() {
-    $settings.setEnabled("stop_all_on_volume_up", false);
-    $settings.setEnabled("foreground_service", false);
-
     var isGameFg = false;
     for (let i = 1; i <= 5; i++) {
         if (packageName("com.aniplex.magireco").findOnce() ||
@@ -79,6 +76,8 @@ function startScreenCapture() {
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
+                $settings.setEnabled("stop_all_on_volume_up", false);
+                $settings.setEnabled("foreground_service", false);
                 sleep(1000);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
                 sleep(3000);
