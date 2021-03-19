@@ -2484,7 +2484,7 @@ function mirrorsAutoBattleMain() {
             //判断接连携的角色是谁
             var connectAcceptorCharaID = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
-            var connectAcceptorDisks = findDisksByCharaID(actionDisks, connectAcceptorCharaID);
+            var connectAcceptorDisks = findDisksByCharaID(actionDisks.disks, connectAcceptorCharaID);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
