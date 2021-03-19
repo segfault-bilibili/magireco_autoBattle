@@ -1083,10 +1083,10 @@ function detectAP() {
             log("useDesc:", whether);
             if (useDesc[whether]) {
                 apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
-                apComLikesAltRegExp = descMatches(/^\d+$/).find();
+                apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
             } else {
                 apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
-                apComLikesAltRegExp = textMatches(/^\d+$/).find();
+                apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
             }
             if (apComLikesRegExp.empty()) {
                 log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
