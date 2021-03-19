@@ -35,15 +35,28 @@ importClass(android.widget.TextView)
 //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
 var scrCapLock = threads.lock();
 var canCaptureScreen = false;
+var currentLang = "chs";
 var screenCapThread = null;
 function startScreenCapture() {
-    var isGameFg = false;
+    let isGameFg = false;
     for (let i = 1; i <= 5; i++) {
-        if (packageName("com.aniplex.magireco").findOnce() ||
-          packageName("com.bilibili.madoka.bilibili").findOnce() ||
-          packageName("com.komoe.madokagp").findOnce()) {
-            log("游戏在前台");
+        if (packageName("com.aniplex.magireco").findOnce()) {
             isGameFg = true;
+            log("检测到日服");
+            currentLang = "jp";
+        }
+        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
+            isGameFg = true;
+            log("检测到国服");
+            currentLang = "chs";
+        }
+        if (packageName("com.komoe.madokagp").findOnce()) {
+            isGameFg = true;
+            log("检测到台服");
+            currentLang = "cht";
+        }
+        if (isGameFg) {
+            log("游戏在前台");
             break;
         } else {
             toastLog("请务必先把魔纪切换到前台");
@@ -107,7 +120,7 @@ function waitUntilScreenCaptureReady() {
         scrCapLock.lock();
         if (!canCaptureScreen) {
             scrCapLock.unlock();
-            //截图权限申请失败时会直接exit()
+            //截图权限申请失败时会在screenCapThread里直接exit()
             continue;
         } else {
             scrCapLock.unlock();
@@ -579,7 +592,6 @@ var limit = {
     isStable: false,
     justNPC: false,
     jjcisuse: false,
-    lang: 'chs',
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
@@ -1191,7 +1203,7 @@ function autoMain() {
                 apDrugNums = descMatches(/^\d+個$/).find()
             }
 
-            if (limit.lang == "chs") {
+            if (currentLang == "chs") {
                 apDrugNums = textMatches(/^\d+个$/).find()
                 if (apDrugNums.empty()) {
                     apDrugNums = descMatches(/^\d+个$/).find()
@@ -1399,7 +1411,7 @@ function autoMainver2() {
             if (apDrugNums.empty()) {
                 apDrugNums = descMatches(/^\d+個$/).find()
             }
-            if (limit.lang == "chs") {
+            if (currentLang == "chs") {
                 apDrugNums = textMatches(/^\d+个$/).find()
                 if (apDrugNums.empty()) {
                     apDrugNums = descMatches(/^\d+个$/).find()
@@ -2584,7 +2596,6 @@ function getDrugNum(text) {
 floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
-    currentLang = limit.lang;
 }
 
 module.exports = floatUI;
