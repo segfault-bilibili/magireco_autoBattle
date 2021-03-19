@@ -573,7 +573,6 @@ var limit = {
     limitAP: '20',
     shuix: '',
     shuiy: '',
-    helpy: '',
     drug1: false,
     drug2: false,
     drug3: false,
