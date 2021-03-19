@@ -291,7 +291,11 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
-        toastLog("镜界周回启动")
+        if (limit.mirrorsUseScreenCapture) {
+            toastLog("镜界周回启动 - 复杂策略")
+        } else {
+            toastLog("镜界周回启动 - 简单策略")
+        }
         if (task) {
             task.interrupt()
         }
@@ -2610,11 +2614,11 @@ function jingMain() {
         log("进入战斗")
         if (limit.mirrorsUseScreenCapture) {
             //利用截屏识图进行稍复杂的自动战斗（比如连携）
-            log("镜层自动战斗开始：使用截屏识图");
+            log("镜层周回 - 自动战斗开始：使用截屏识图");
             mirrorsAutoBattleMain();
         } else {
             //简单镜层自动战斗
-            log("镜层自动战斗开始：简单自动战斗");
+            log("镜层周回 - 自动战斗开始：简单自动战斗");
             mirrorsSimpleAutoBattleMain();
         }
     }
