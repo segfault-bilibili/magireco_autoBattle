@@ -367,11 +367,16 @@ floatUI.main = function () {
     })
 
     win.id_5_click.on("click", () => {
-        toastLog("借助截屏识图完成本次镜界自动战斗")
         if (task) {
             task.interrupt()
         }
-        task = threads.start(mirrorsAutoBattleMain)
+        if (mirrorsUseScreenCapture) {
+            toastLog("自动完成本次镜界战斗 - 复杂策略")
+            task = threads.start(mirrorsAutoBattleMain);
+        } else {
+            toastLog("自动完成本次镜界战斗 - 简单策略")
+            task = threads.start(mirrorsSimpleAutoBattleMain);
+        }
         img_down()
     })
 
