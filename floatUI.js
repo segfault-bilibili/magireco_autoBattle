@@ -591,7 +591,8 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
-    jjcisuse: false,
+    BPAutoRefill: false,
+    mirrorsUseScreenCapture: false,
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
@@ -2467,10 +2468,33 @@ for (let imgName in knownImgs) {
 }
 
 
+function mirrorsSimpleAutoBattleMain() {
+    //简单镜层自动战斗
+    while (!id("matchingWrap").findOnce()) {
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan1)
+            sleep(1000)
+        }
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan2)
+            sleep(1000)
+        }
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan3)
+            sleep(1000)
+        }
+        if (id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.levelup)
+        }
+        sleep(3000)
+    }
+}
+
 function mirrorsAutoBattleMain() {
     startScreenCapture();
     waitUntilScreenCaptureReady();
 
+    //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
     turn = 0;
     while(true) {
@@ -2537,7 +2561,7 @@ function jingMain() {
             compatClick(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.jjcisuse) {
+                if (limit.BPAutoRefill) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -2552,33 +2576,22 @@ function jingMain() {
                     }
                 } else {
                     screenutilClick(clickSets.bpclose)
-                    log("jjc结束")
+                    log("镜层周回结束")
                     return;
                 }
             }
             sleep(1000)
         }
         log("进入战斗")
-        mirrorsAutoBattleMain();
-        //简单自动战斗
-        //while (!id("matchingWrap").findOnce()) {
-        //    if (!id("ArenaResult").findOnce()) {
-        //        screenutilClick(clickSets.battlePan1)
-        //        sleep(1000)
-        //    }
-        //    if (!id("ArenaResult").findOnce()) {
-        //        screenutilClick(clickSets.battlePan2)
-        //        sleep(1000)
-        //    }
-        //    if (!id("ArenaResult").findOnce()) {
-        //        screenutilClick(clickSets.battlePan3)
-        //        sleep(1000)
-        //    }
-        //    if (id("ArenaResult").findOnce()) {
-        //        screenutilClick(clickSets.levelup)
-        //    }
-        //    sleep(3000)
-        //}
+        if (limit.mirrorsUseScreenCapture) {
+            //利用截屏识图进行稍复杂的自动战斗（比如连携）
+            log("镜层自动战斗开始：使用截屏识图");
+            mirrorsAutoBattleMain();
+        } else {
+            //简单镜层自动战斗
+            log("镜层自动战斗开始：简单自动战斗");
+            mirrorsSimpleAutoBattleMain();
+        }
     }
 
 }
@@ -2596,6 +2609,11 @@ function getDrugNum(text) {
 floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
+    if (limit.mirrorsUseScreenCapture) {
+        log("镜层自动战斗使用截屏识图");
+    } else {
+        log("镜层使用简单自动战斗");
+    }
 }
 
 module.exports = floatUI;
