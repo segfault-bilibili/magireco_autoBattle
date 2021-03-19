@@ -1564,11 +1564,14 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------skip--------------------------
-        while (!id("ap").findOnce()) {
+        sleep(2000);
+        //while (!id("ap").findOnce()) {
+        if (!id("ap").findOnce()) { //暂时只点一次
             if (!isSkipButtonCovered()) screenutilClick(clickSets.skip);
-            sleep(2000);
+            sleep(3000);
         }
         while (id("ap").findOnce()) {
+            break //暂时不识图
             var mainMenuStatus = getMainMenuStatus();
             if (mainMenuStatus.exist && (!mainMenuStatus.covered)) {
                 if (mainMenuStatus.open) {
