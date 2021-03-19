@@ -901,7 +901,8 @@ function pickSupportWithTheMostPt()
     ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
     log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
     log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
-    let ptCom = textMatches(/^\+{0,1}\d+$/).find()
+    let ptCom = textMatches(/^\+{0,1}\d+$/).find();
+    if (ptCom.empty()) ptCom = descMatches(/^\+{0,1}\d+$/).find();
     //可见的助战列表
     let ptComVisible = [];
     let ptComCanClick = [];
@@ -1171,9 +1172,15 @@ function autoMain() {
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+個$/).find()
+            if (apDrugNums.empty()) {
+                apDrugNums = descMatches(/^\d+個$/).find()
+            }
 
             if (limit.lang == "chs") {
                 apDrugNums = textMatches(/^\d+个$/).find()
+                if (apDrugNums.empty()) {
+                    apDrugNums = descMatches(/^\d+个$/).find()
+                }
             }
             //获得回复药水数量
             let readDesc = false;
@@ -1374,8 +1381,14 @@ function autoMainver2() {
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+個$/).find()
+            if (apDrugNums.empty()) {
+                apDrugNums = descMatches(/^\d+個$/).find()
+            }
             if (limit.lang == "chs") {
                 apDrugNums = textMatches(/^\d+个$/).find()
+                if (apDrugNums.empty()) {
+                    apDrugNums = descMatches(/^\d+个$/).find()
+                }
             }
             //获得回复药水数量
             let readDesc = false;
