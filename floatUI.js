@@ -87,12 +87,15 @@ function startScreenCapture() {
 
     screenCapThread = threads.start(function() {
         let success = false;
+        $settings.setEnabled("stop_all_on_volume_up", false);
+        $settings.setEnabled("foreground_service", false);
+        sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
                 $settings.setEnabled("stop_all_on_volume_up", false);
                 $settings.setEnabled("foreground_service", false);
-                sleep(1000);
+                sleep(500);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
                 sleep(3000);
                 toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
@@ -366,7 +369,7 @@ floatUI.main = function () {
     })
 
     win.id_5_click.on("click", () => {
-        toastLog("一次镜界自动战斗")
+        toastLog("借助截屏识图完成本次镜界自动战斗")
         if (task) {
             task.interrupt()
         }
