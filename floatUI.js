@@ -863,7 +863,24 @@ function screenutilClick(d) {
   var converted = convertCoords(d);
   log("按换算后的坐标点击屏幕");
   //用换算后的实际坐标点击屏幕
-  click(converted.x, converted.y);
+  compatClick(converted.x, converted.y);
+}
+
+
+//有root权限的情况下解决Android 7.0以下不能按坐标点击的问题
+function compatClick() {
+    if (arguments.length != 2 || device.sdkInt >= 24) {
+        //Android 7.0及以上，以及非坐标点击
+        click.apply(this, arguments);
+    } else if (arguments.length == 2) {
+        //Android 7.0以下，需要root权限
+        let coords = " " + arguments[0] + " " + arguments[1];
+        coords = coords.match(/^ \d+ \d+$/)[0];
+        let shellcmd = "input tap" + coords;
+        let root = true;
+        log("点击屏幕 root shell command: \""+shellcmd+"\"");
+        shell(shellcmd, root);
+    }
 }
 
 //选择Pt最高的助战
@@ -1281,7 +1298,7 @@ function autoMain() {
         while (id("friendWrap").findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
-            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
             sleep(2000)
         }
 
@@ -1485,7 +1502,7 @@ function autoMainver2() {
         log(limit.shuix, limit.shuiy)
         while ((!text("确定").findOnce())&&(!desc("确定").findOnce())) {
             sleep(1500)
-            click(parseInt(limit.shuix), parseInt(limit.shuiy))
+            compatClick(parseInt(limit.shuix), parseInt(limit.shuiy))
             sleep(1500)
         }
 
@@ -1502,7 +1519,7 @@ function autoMainver2() {
         while (id("friendWrap").findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
-            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
             sleep(2000)
         }
 
@@ -2201,7 +2218,7 @@ function connectDisk(fromDisk) {
 function clickDisk(disk) {
     log("点击第", disk.position+1, "号盘");
     var point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
-    click(point.x, point.y);
+    compatClick(point.x, point.y);
     sleep(1000);
     log("点击动作完成");
     actionDisks.clickedDisksCount++;
@@ -2503,13 +2520,13 @@ function jingMain() {
         let matchWrap = id("matchingWrap").findOne().bounds()
         while (!id("battleStartBtn").findOnce()) {
             sleep(1000)
-            click(matchWrap.centerX(), matchWrap.bottom - 50)
+            compatClick(matchWrap.centerX(), matchWrap.bottom - 50)
             sleep(2000)
         }
         let btn = id("battleStartBtn").findOne().bounds()
         while (id("battleStartBtn").findOnce()) {
             sleep(1000)
-            click(btn.centerX(), btn.centerY())
+            compatClick(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
                 if (limit.jjcisuse) {
