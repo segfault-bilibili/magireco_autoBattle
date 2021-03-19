@@ -2421,6 +2421,7 @@ function didWeLose(screenshot) {
     return didWeWinOrLose(screenshot, "mirrorsLose");
 }
 
+var failedScreenShots = [null, null, null, null, null]; //保存图片，调查无法判定镜层战斗输赢的问题
 //判断最终输赢
 function clickMirrorsBattleResult() {
     var screenCenter = {
@@ -2428,9 +2429,12 @@ function clickMirrorsBattleResult() {
         y:   540,
         pos: "center"
     };
+    let failedCount = 0; //调查无法判定镜层战斗输赢的问题
     while (id("ArenaResult").findOnce()) {
         log("匹配到镜层战斗结算控件");
-        var screenshot = captureScreen();
+        let screenshot = captureScreen();
+        //调查无法判定镜层战斗输赢的问题
+        //failedScreenShots[failedCount] = images.clip(screenshot, 0, 0, scr.res.width, scr.res.height); //截图会被回收，导致保存失败；这样可以避免回收
         var win = false;
         if (didWeWin(screenshot)) {
             win = true;
@@ -2442,6 +2446,8 @@ function clickMirrorsBattleResult() {
             //结算页面有闪光，会干扰判断
             log("没在屏幕上识别到镜界胜利或败北特征");
             //有时候点击结算页面后会无法正确判断胜利或失败
+            failedCount++;
+            failedCount = failedCount % 5;
         }
         log("即将点击屏幕以退出结算界面...");
         screenutilClick(screenCenter);
@@ -2546,6 +2552,15 @@ function mirrorsAutoBattleMain() {
     //战斗结算
     //点掉结算界面
     clickMirrorsBattleResult();
+    //调查无法判定镜层战斗输赢的问题
+    //for (i=0; i<failedScreenShots.length; i++) {
+    //    if (failedScreenShots[i] != null) {
+    //        let filename = "/sdcard/1/failed_"+i+".png";
+    //        log("saving image... "+filename);
+    //        images.save(failedScreenShots[i], filename);
+    //        log("done. saved: "+filename);
+    //    }
+    //}
 }
 
 
