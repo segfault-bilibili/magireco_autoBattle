@@ -1868,57 +1868,55 @@ var knownFirstDiskCoords = {
 };
 
 //行动盘信息
-var actionDisks = {
-    disks: [
-        {
-            position:    0,
-            priority:    "first",
-            action:      "accel",
-            charaImg:    null,
-            charaID:     0,
-            connectable: false,
-            connectTo:   -1
-        },
-        {
-            position:    1,
-            priority:    "second",
-            action:      "accel",
-            charaImg:    null,
-            charaID:     1,
-            connectable: false,
-            connectTo:   -1
-        },
-        {
-            position:    2,
-            priority:    "third",
-            action:      "accel",
-            img:         null,
-            charaImg:    null,
-            charaID:     2,
-            connectable: false,
-            connectTo:   -1
-        },
-        {
-            position:    3,
-            priority:    "fourth",
-            action:      "accel",
-            charaImg:    null,
-            charaID:     3,
-            connectable: false,
-            connectTo:   -1
-        },
-        {
-            position:    4,
-            priority:    "fifth",
-            action:      "accel",
-            charaImg:    null,
-            charaID:     4,
-            connectable: false,
-            connectTo:   -1
-        }
-    ],
-    clickedDisksCount: 0
-};
+var allActionDisks = [
+    {
+        position:    0,
+        priority:    "first",
+        action:      "accel",
+        charaImg:    null,
+        charaID:     0,
+        connectable: false,
+        connectTo:   -1
+    },
+    {
+        position:    1,
+        priority:    "second",
+        action:      "accel",
+        charaImg:    null,
+        charaID:     1,
+        connectable: false,
+        connectTo:   -1
+    },
+    {
+        position:    2,
+        priority:    "third",
+        action:      "accel",
+        img:         null,
+        charaImg:    null,
+        charaID:     2,
+        connectable: false,
+        connectTo:   -1
+    },
+    {
+        position:    3,
+        priority:    "fourth",
+        action:      "accel",
+        charaImg:    null,
+        charaID:     3,
+        connectable: false,
+        connectTo:   -1
+    },
+    {
+        position:    4,
+        priority:    "fifth",
+        action:      "accel",
+        charaImg:    null,
+        charaID:     4,
+        connectable: false,
+        connectTo:   -1
+    }
+];
+var clickedDisksCount = 0;
 
 var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
 var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
@@ -2004,7 +2002,7 @@ function recognizeDiskAction(actionImg) {
 function getDiskAction(screenshot, diskPos) {
     var actionImg = getDiskImg(screenshot, diskPos, "action");
     log("识别第", diskPos+1, "盘的A/B/C类型...");
-    return actionDisks.disks[diskPos].action = recognizeDiskAction(actionImg);
+    return allActionDisks[diskPos].action = recognizeDiskAction(actionImg);
 }
 
 //截取盘上的角色头像
@@ -2049,8 +2047,8 @@ function isConnectableDiskDown(screenshot, diskPos) {
 
 //判断两个盘是否是同一角色
 function areDisksSimilar(screenshot, diskAPos, diskBPos) {
-    var diskA = actionDisks.disks[diskAPos];
-    var diskB = actionDisks.disks[diskBPos];
+    var diskA = allActionDisks[diskAPos];
+    var diskB = allActionDisks[diskBPos];
     var imgA = diskA.charaImg;
     var imgB = diskB.charaImg;
     if (imgA == null) imgA = getDiskImg(screenshot, diskAPos, "charaImg");
@@ -2067,29 +2065,29 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
 //扫描行动盘信息
 function scanDisks() {
     //重新赋值，覆盖上一轮选盘残留的数值
-    for (let i=0; i<actionDisks.disks.length; i++) {
-        actionDisks.disks[i].priority = ordinalWord[i];
-        actionDisks.disks[i].action = "accel";
-        actionDisks.disks[i].charaImg = null;
-        actionDisks.disks[i].charaID = i;
-        actionDisks.disks[i].connectable = false;
-        actionDisks.disks[i].connectTo = -1;
+    for (let i=0; i<allActionDisks.length; i++) {
+        allActionDisks[i].priority = ordinalWord[i];
+        allActionDisks[i].action = "accel";
+        allActionDisks[i].charaImg = null;
+        allActionDisks[i].charaID = i;
+        allActionDisks[i].connectable = false;
+        allActionDisks[i].connectTo = -1;
     }
-    actionDisks.clickedDisksCount = 0;
+    clickedDisksCount = 0;
 
     //截屏，对盘进行识别
     var screenshot = captureScreen();
-    for (let i=0; i<actionDisks.disks.length; i++) {
-        var disk = actionDisks.disks[i];
+    for (let i=0; i<allActionDisks.length; i++) {
+        var disk = allActionDisks[i];
         disk.action = getDiskAction(screenshot, i);
         disk.charaImg = getDiskCharaImg(screenshot, i);
         disk.connectable = isDiskConnectable(screenshot, i);
     }
     //分辨不同的角色，用charaID标记
-    for (let i=0; i<actionDisks.disks.length-1; i++) {
-        var diskI = actionDisks.disks[i];
-        for (let j=i+1; j<actionDisks.disks.length; j++) {
-            var diskJ = actionDisks.disks[j];
+    for (let i=0; i<allActionDisks.length-1; i++) {
+        var diskI = allActionDisks[i];
+        for (let j=i+1; j<allActionDisks.length; j++) {
+            var diskJ = allActionDisks[j];
             if (areDisksSimilar(screenshot, i, j)) {
                 diskJ.charaID = diskI.charaID;
             }
@@ -2097,8 +2095,8 @@ function scanDisks() {
     }
 
     log("行动盘扫描结果：");
-    for (let i=0; i<actionDisks.disks.length; i++) {
-        logDiskInfo(actionDisks.disks[i]);
+    for (let i=0; i<allActionDisks.length; i++) {
+        logDiskInfo(allActionDisks[i]);
     }
 }
 
@@ -2163,23 +2161,23 @@ function getDiskByPriority(disks, priority) {
     }
 }
 
-//选盘，实质上是把选到的盘在actionDisks.disks数组里排到前面
+//选盘，实质上是把选到的盘在allActionDisks数组里排到前面
 function prioritiseDisks(disks) {
-    let replaceDiskAtThisPriority = actionDisks.clickedDisksCount;
+    let replaceDiskAtThisPriority = clickedDisksCount;
     for (let i=0; i<disks.length; i++) {
-        let targetDisk = getDiskByPriority(actionDisks.disks, ordinalWord[replaceDiskAtThisPriority]);
+        let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
         let diskToPrioritise = disks[i];
         let posA = targetDisk.position;
         let posB = diskToPrioritise.position;
-        let tempPriority = actionDisks.disks[posB].priority;
-        actionDisks.disks[posB].priority = actionDisks.disks[posA].priority;
-        actionDisks.disks[posA].priority = tempPriority;
+        let tempPriority = allActionDisks[posB].priority;
+        allActionDisks[posB].priority = allActionDisks[posA].priority;
+        allActionDisks[posA].priority = tempPriority;
         replaceDiskAtThisPriority++;
     }
 
     log("当前选盘情况：");
-    for (let i=0; i<actionDisks.disks.length; i++) {
-        logDiskInfo(actionDisks.disks[i]);
+    for (let i=0; i<allActionDisks.length; i++) {
+        logDiskInfo(allActionDisks[i]);
     }
 }
 
@@ -2199,7 +2197,7 @@ function connectDisk(fromDisk) {
                 sleep(1000);
                 if (isConnectableDiskDown(captureScreen(), fromDisk.position)) {
                     log("连携动作完成");
-                    actionDisks.clickedDisksCount++;
+                    clickedDisksCount++;
                     isConnectDone = true;
                     break;
                 } else {
@@ -2219,7 +2217,7 @@ function clickDisk(disk) {
     compatClick(point.x, point.y);
     sleep(1000);
     log("点击动作完成");
-    actionDisks.clickedDisksCount++;
+    clickedDisksCount++;
 }
 
 
@@ -2273,7 +2271,7 @@ function getConnectAcceptorCharaID(fromDisk) {
 
     var max = 0;
     var maxSimilarity = -1.0;
-    for (let diskPos=0; diskPos<actionDisks.disks.length; diskPos++) {
+    for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
         var imgB = getDiskImg(screenshot, diskPos, "charaImg");
         var area = getFirstSelectedConnectedDiskArea();
         var imgBshrunk = images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]);
@@ -2284,17 +2282,17 @@ function getConnectAcceptorCharaID(fromDisk) {
             max = diskPos;
         }
     }
-    log("比对结束，与第", max+1, "号盘最相似，charaID=", actionDisks.disks[max].charaID, "MSSIM=", maxSimilarity);
-    if (actionDisks.disks[max].charaID == fromDisk.charaID) {
+    log("比对结束，与第", max+1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
+    if (allActionDisks[max].charaID == fromDisk.charaID) {
         log("识图比对结果有误，和连携发出角色相同");
-        for (let diskPos = 0; diskPos < actionDisks.disks.length; diskPos++) {
-            if (actionDisks.disks[diskPos].charaID != fromDisk.charaID) {
-                log("为避免问题，返回另一位不同的角色 charaID=", actionDisks.disk[diskPos].charaID);
-                return actionDisks.disk[diskPos].charaID;
+        for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
+            if (allActionDisks[diskPos].charaID != fromDisk.charaID) {
+                log("为避免问题，返回另一位不同的角色 charaID=", allActionDisks[diskPos].charaID);
+                return allActionDisks[diskPos].charaID;
             }
         }
     }
-    return actionDisks.disks[max].charaID;
+    return allActionDisks[max].charaID;
 }
 
 
@@ -2474,7 +2472,7 @@ function mirrorsAutoBattleMain() {
 
         //在所有盘中找第一个能连携的盘
         var connectableDisk = null;
-        connectableDisk = getFirstConnectableDisk(actionDisks.disks);
+        connectableDisk = getFirstConnectableDisk(allActionDisks);
 
         if (connectableDisk != null) {
             //如果有连携，第一个盘上连携
@@ -2483,7 +2481,7 @@ function mirrorsAutoBattleMain() {
             //判断接连携的角色是谁
             var connectAcceptorCharaID = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
-            var connectAcceptorDisks = findDisksByCharaID(actionDisks.disks, connectAcceptorCharaID);
+            var connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectAcceptorCharaID);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
@@ -2491,7 +2489,7 @@ function mirrorsAutoBattleMain() {
         } else {
             //没有连携
             //先找Puella Combo
-            var sameCharaDisks = findSameCharaDisks(actionDisks.disks);
+            var sameCharaDisks = findSameCharaDisks(allActionDisks);
             prioritiseDisks(sameCharaDisks);
             //Pcombo内尽量Blast Combo
             var blastDisks = findSameActionDisks(sameCharaDisks, "blast");
@@ -2499,8 +2497,8 @@ function mirrorsAutoBattleMain() {
         }
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-        for (let i=actionDisks.clickedDisksCount; i<3; i++) {
-            clickDisk(getDiskByPriority(actionDisks.disks, ordinalWord[i]));
+        for (let i=clickedDisksCount; i<3; i++) {
+            clickDisk(getDiskByPriority(allActionDisks, ordinalWord[i]));
         }
     }
 
