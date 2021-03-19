@@ -88,13 +88,11 @@ function startScreenCapture() {
     screenCapThread = threads.start(function() {
         let success = false;
         $settings.setEnabled("stop_all_on_volume_up", false);
-        $settings.setEnabled("foreground_service", false);
+        $settings.setEnabled("foreground_service", true);
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
-                $settings.setEnabled("stop_all_on_volume_up", false);
-                $settings.setEnabled("foreground_service", false);
                 sleep(500);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
                 sleep(3000);
@@ -1599,7 +1597,7 @@ function autoMainver2() {
         //--------------skip--------------------------
         sleep(2000);
         while (!id("ap").findOnce()) {
-            if (!isSkipButtonCovered()) screenutilClick(clickSets.skip);
+            if ((!limit.skipStoryUseScreenCapture)||(!isSkipButtonCovered())) screenutilClick(clickSets.skip);
             sleep(3000);
             if (!limit.skipStoryUseScreenCapture) break; //如果不用识图来跳过剧情、防止点到MENU，那就只点击一次SKIP按钮
         }
