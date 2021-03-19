@@ -54,6 +54,11 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    <linear>
+                        <checkbox id="skipStoryUseScreenCapture" text="点SKIP跳过剧情时，借助截屏识图防止误点MENU（可能不稳定）" layout_weight="1" />
+                    </linear>
+                </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear padding="0 0 0 0" bg="#ffffff">
                         <radiogroup id="mirrorsAutoBattleStrategy">
                             <text layout_weight="1" size="19" color="#222222" text="镜界自动战斗策略：" />
@@ -121,7 +126,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = ["limitAP", "shuix", "shuiy"]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "BPAutoRefill"]
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "skipStoryUseScreenCapture", "BPAutoRefill"]
 var paramsMap = {}
 
 

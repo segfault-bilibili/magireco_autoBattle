@@ -591,6 +591,7 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
+    skipStoryUseScreenCapture: false,
     BPAutoRefill: false,
     mirrorsUseScreenCapture: false,
     version: '2.2.0',
@@ -1593,13 +1594,15 @@ function autoMainver2() {
         }
         //--------------skip--------------------------
         sleep(2000);
-        //while (!id("ap").findOnce()) {
-        if (!id("ap").findOnce()) { //暂时只点一次
+        while (!id("ap").findOnce()) {
             if (!isSkipButtonCovered()) screenutilClick(clickSets.skip);
             sleep(3000);
+            if (!limit.skipStoryUseScreenCapture) break; //如果不用识图来跳过剧情、防止点到MENU，那就只点击一次SKIP按钮
         }
         while (id("ap").findOnce()) {
-            break //暂时不识图
+            if (!limit.skipStoryUseScreenCapture) {
+                break; //不用识图来防止点到MENU
+            }
             var mainMenuStatus = getMainMenuStatus();
             if (mainMenuStatus.exist && (!mainMenuStatus.covered)) {
                 if (mainMenuStatus.open) {
