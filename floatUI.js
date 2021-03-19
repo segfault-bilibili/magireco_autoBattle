@@ -71,6 +71,7 @@ function startScreenCapture() {
 
     scrCapLock.lock();
     if (canCaptureScreen) {
+        log("已经获取到截图权限了");
         return;
     }
     scrCapLock.unlock();
@@ -85,7 +86,7 @@ function startScreenCapture() {
     if (isThreadAlive) return;
 
     screenCapThread = threads.start(function() {
-        var success = false;
+        let success = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
@@ -1173,7 +1174,7 @@ function detectAP() {
 }//end function
 
 function autoMain() {
-    startScreenCapture();
+    startScreenCapture(); //注意，函数里还有游戏区服的识别
     waitUntilScreenCaptureReady();
 
     let druglimit = {
@@ -1382,7 +1383,7 @@ function autoMain() {
 }
 
 function autoMainver2() {
-    startScreenCapture();
+    startScreenCapture(); //注意，函数里还有游戏区服的识别
     waitUntilScreenCaptureReady();
 
     let druglimit = {
@@ -2494,7 +2495,7 @@ function mirrorsSimpleAutoBattleMain() {
 }
 
 function mirrorsAutoBattleMain() {
-    startScreenCapture();
+    startScreenCapture(); //注意，函数里还有游戏区服的识别
     waitUntilScreenCaptureReady();
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
