@@ -370,7 +370,7 @@ floatUI.main = function () {
         if (task) {
             task.interrupt()
         }
-        if (mirrorsUseScreenCapture) {
+        if (limit.mirrorsUseScreenCapture) {
             toastLog("自动完成本次镜界战斗 - 复杂策略")
             task = threads.start(mirrorsAutoBattleMain);
         } else {
