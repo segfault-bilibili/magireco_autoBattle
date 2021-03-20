@@ -1000,16 +1000,8 @@ function detectAP() {
         }
         
         let knownApComCoords = {
-            topLeft: {
-                x: 880,
-                y: 0,
-                pos: "top"
-            },
-            bottomRight: {
-                x: 1210,
-                y: 120,
-                pos: "top"
-            }
+            topLeft: {x: 880, y: 0, pos: "top"},
+            bottomRight: {x: 1210, y: 120, pos: "top"}
         };
         let convertedApComCoords = {
             topLeft: convertCoords(knownApComCoords.topLeft),
@@ -1205,28 +1197,12 @@ function pickSupportWithTheMostPt()
     // 15为npc助战  0~14为玩家助战
     // Pt数值控件显示范围
     let knownPtArea = {
-      topLeft: {
-        x:   1680,
-        y:   280,
-        pos: "top"
-      },
-      bottomRight: {
-        x:   1870,
-        y:   1079,
-        pos: "bottom"
-      }
+      topLeft: {x: 1680, y: 280, pos: "top"},
+      bottomRight: {x: 1870, y: 1079, pos: "bottom"}
     };
     let ptArea = {
-      topLeft: {
-        x:   0,
-        y:   0,
-        pos: "top"
-      },
-      bottomRight: {
-        x:   0,
-        y:   0,
-        pos: "bottom"
-      }
+      topLeft: {x: 0, y: 0, pos: "top"},
+      bottomRight: {x: 0, y: 0, pos: "bottom"}
     };
     ptArea.topLeft = convertCoords(knownPtArea.topLeft);
     ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
