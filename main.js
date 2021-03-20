@@ -213,7 +213,6 @@ ui.start.click(() => {
         parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
     }
 
-
     parmasMap["drug1num"] = ui["drug1num"].getText() + ""
     parmasMap["drug2num"] = ui["drug2num"].getText() + ""
     parmasMap["drug3num"] = ui["drug3num"].getText() + ""
