@@ -28,6 +28,11 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+//检查shell权限
+//function checkUID() {
+    
+//}
+
 //申请截屏权限
 //可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
 //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
@@ -130,6 +135,14 @@ function waitUntilScreenCaptureReady() {
         }
         sleep(500);
     }
+}
+
+//用shizuku或root权限截屏
+function compatCaptureScreen() {
+//    if (limit.useScreencapShellCmd) {
+//    } else {
+        return captureScreen.apply(this, arguments);
+//    }
 }
 
 floatUI.main = function () {
@@ -1033,7 +1046,7 @@ var knownPx = {
 
 function isSkipButtonCovered() {
     var threshold = 20;
-    screenshot = captureScreen();
+    screenshot = compatCaptureScreen();
     var buttons = [];
 
     buttons.push(knownPx.logButton, knownPx.storyAutoButton, knownPx.skipButton);
@@ -1059,7 +1072,7 @@ function getMainMenuStatus() {
     var threshold = 20;
     if (id("menu")) {
         result.exist = true;
-        screenshot = captureScreen();
+        screenshot = compatCaptureScreen();
         var converted = convertCoords(knownPx.mainMenuOpen.coords);
         if (images.detectsColor(screenshot, knownPx.mainMenuOpen.color, converted.x, converted.y, threshold, "diff")) {
             log("主菜单处于打开状态");
@@ -1306,7 +1319,6 @@ function autoMain() {
     }
     while (true) {
         //开始
-        //---------嗑药模块------------------
         //检测AP
         let apNow = detectAP();
 
@@ -1737,7 +1749,7 @@ function isStandPointOccupied(screenshot, row, column) {
 //扫描我方战场信息
 function scanOurBattleField()
 {
-    var screenshot = captureScreen();
+    var screenshot = compatCaptureScreen();
     for(let i=0; i<3; i++) {
         for(let j=0; j<3; j++) {
             ourBattleField[rows[i]][columns[j]].occupied = isStandPointOccupied(screenshot, i, j);
@@ -2000,7 +2012,7 @@ function scanDisks() {
     clickedDisksCount = 0;
 
     //截屏，对盘进行识别
-    var screenshot = captureScreen();
+    var screenshot = compatCaptureScreen();
     for (let i=0; i<allActionDisks.length; i++) {
         var disk = allActionDisks[i];
         disk.action = getDiskAction(screenshot, i);
@@ -2119,7 +2131,7 @@ function connectDisk(fromDisk) {
                 //连携划动
                 swipe(src.x, src.y, dst.x, dst.y, 1000);
                 sleep(1000);
-                if (isConnectableDiskDown(captureScreen(), fromDisk.position)) {
+                if (isConnectableDiskDown(compatCaptureScreen(), fromDisk.position)) {
                     log("连携动作完成");
                     clickedDisksCount++;
                     isConnectDone = true;
@@ -2190,7 +2202,7 @@ function getFirstSelectedConnectedDiskImg(screenshot) {
 
 //返回接到连携的角色
 function getConnectAcceptorCharaID(fromDisk) {
-    var screenshot = captureScreen();
+    var screenshot = compatCaptureScreen();
     var imgA = getFirstSelectedConnectedDiskImg(screenshot);
 
     var max = 0;
@@ -2228,7 +2240,7 @@ function waitForOurTurn() {
     var cycles = 0;
     while(true) {
         cycles++;
-        var screenshot = captureScreen();
+        var screenshot = compatCaptureScreen();
         if (id("ArenaResult").findOnce()) {
         //不再通过识图判断战斗是否结束
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
@@ -2338,7 +2350,7 @@ function clickMirrorsBattleResult() {
     let failedCount = 0; //调查无法判定镜层战斗输赢的问题
     while (id("ArenaResult").findOnce()) {
         log("匹配到镜层战斗结算控件");
-        let screenshot = captureScreen();
+        let screenshot = compatCaptureScreen();
         //调查无法判定镜层战斗输赢的问题
         //failedScreenShots[failedCount] = images.clip(screenshot, 0, 0, scr.res.width, scr.res.height); //截图会被回收，导致保存失败；这样可以避免回收
         var win = false;
