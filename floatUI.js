@@ -1191,8 +1191,7 @@ function refillAP() {
 } //end function
 
 //选择Pt最高的助战
-function pickSupportWithTheMostPt()
-{
+function pickSupportWithTheMostPt() {
     log("选择助战")
     // -----------选援助----------------
     // 15为npc助战  0~14为玩家助战
