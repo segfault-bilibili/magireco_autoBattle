@@ -1075,6 +1075,7 @@ function detectAP() {
             exit();
         }
     } //end while
+    throw "detectAPFailed" //should never reach here
 }//end function
 
 function refillAP() {
