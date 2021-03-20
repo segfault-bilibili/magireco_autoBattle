@@ -919,86 +919,6 @@ function compatClick() {
     }
 }
 
-//选择Pt最高的助战
-function pickSupportWithTheMostPt()
-{
-    log("选择助战")
-    // -----------选援助----------------
-    // 15为npc助战  0~14为玩家助战
-    // Pt数值控件显示范围
-    let knownPtArea = {
-      topLeft: {
-        x:   1680,
-        y:   280,
-        pos: "top"
-      },
-      bottomRight: {
-        x:   1870,
-        y:   1079,
-        pos: "bottom"
-      }
-    };
-    let ptArea = {
-      topLeft: {
-        x:   0,
-        y:   0,
-        pos: "top"
-      },
-      bottomRight: {
-        x:   0,
-        y:   0,
-        pos: "bottom"
-      }
-    };
-    ptArea.topLeft = convertCoords(knownPtArea.topLeft);
-    ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
-    log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
-    log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
-    let ptCom = textMatches(/^\+{0,1}\d+$/).find();
-    if (ptCom.empty()) ptCom = descMatches(/^\+{0,1}\d+$/).find();
-    //可见的助战列表
-    let ptComVisible = [];
-    let ptComCanClick = [];
-    var highestPt = 0;
-    for (let i = 0; i < ptCom.length; i++) {
-        //在可见范围内
-        if (ptCom[i].bounds().centerX() > ptArea.topLeft.x && ptCom[i].bounds().centerX() < ptArea.bottomRight.x &&
-            ptCom[i].bounds().centerY() > ptArea.topLeft.y && ptCom[i].bounds().centerY() < ptArea.bottomRight.y) {
-            //找到最大pt值
-            if (highestPt < getPt(ptCom[i])) highestPt = getPt(ptCom[i]);
-            ptComVisible.push(ptCom[i])
-            log(ptCom[i].bounds())
-        }
-    }
-    log("可见助战列表", ptComVisible);
-    log("从可见助战列表中筛选最高Pt的助战，并按照显示位置排序");
-    for (let i = 0; i < ptComVisible.length; i++) {
-        if (getPt(ptComVisible[i]) == highestPt) {
-            ptComCanClick.push(ptComVisible[i]);
-        }
-    }
-    //根据助战Y坐标排序，最上面的NPC排到前面 （这个排序算法很烂，不过元素少，无所谓）
-    for (let i = 0; i < ptComCanClick.length - 1; i++) {
-        for (let j = i + 1; j < ptComCanClick.length; j++) {
-            if (ptComCanClick[j].bounds().centerY() < ptComCanClick[i].bounds().centerY()) {
-                let tempPtCom = ptComCanClick[i];
-                ptComCanClick[i] = ptComCanClick[j];
-                ptComCanClick[j] = tempPtCom;
-            }
-        }
-    }
-    log("候选助战列表", ptComCanClick);
-    // 是单纯选npc还是，优先助战
-    if (limit.justNPC) {
-        log("justNPC==true");
-        finalPt = ptComCanClick[0];
-    } else {
-        finalPt = ptComCanClick[ptComCanClick.length - 1];
-    }
-    log("选择", finalPt)
-    return finalPt;
-}
-
 //截屏取色
 //已知坐标和像素颜色
 var knownPx = {
@@ -1307,6 +1227,86 @@ function refillAP() {
         sleep(2000)
     }
 } //end function
+
+//选择Pt最高的助战
+function pickSupportWithTheMostPt()
+{
+    log("选择助战")
+    // -----------选援助----------------
+    // 15为npc助战  0~14为玩家助战
+    // Pt数值控件显示范围
+    let knownPtArea = {
+      topLeft: {
+        x:   1680,
+        y:   280,
+        pos: "top"
+      },
+      bottomRight: {
+        x:   1870,
+        y:   1079,
+        pos: "bottom"
+      }
+    };
+    let ptArea = {
+      topLeft: {
+        x:   0,
+        y:   0,
+        pos: "top"
+      },
+      bottomRight: {
+        x:   0,
+        y:   0,
+        pos: "bottom"
+      }
+    };
+    ptArea.topLeft = convertCoords(knownPtArea.topLeft);
+    ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
+    log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
+    log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
+    let ptCom = textMatches(/^\+{0,1}\d+$/).find();
+    if (ptCom.empty()) ptCom = descMatches(/^\+{0,1}\d+$/).find();
+    //可见的助战列表
+    let ptComVisible = [];
+    let ptComCanClick = [];
+    var highestPt = 0;
+    for (let i = 0; i < ptCom.length; i++) {
+        //在可见范围内
+        if (ptCom[i].bounds().centerX() > ptArea.topLeft.x && ptCom[i].bounds().centerX() < ptArea.bottomRight.x &&
+            ptCom[i].bounds().centerY() > ptArea.topLeft.y && ptCom[i].bounds().centerY() < ptArea.bottomRight.y) {
+            //找到最大pt值
+            if (highestPt < getPt(ptCom[i])) highestPt = getPt(ptCom[i]);
+            ptComVisible.push(ptCom[i])
+            log(ptCom[i].bounds())
+        }
+    }
+    log("可见助战列表", ptComVisible);
+    log("从可见助战列表中筛选最高Pt的助战，并按照显示位置排序");
+    for (let i = 0; i < ptComVisible.length; i++) {
+        if (getPt(ptComVisible[i]) == highestPt) {
+            ptComCanClick.push(ptComVisible[i]);
+        }
+    }
+    //根据助战Y坐标排序，最上面的NPC排到前面 （这个排序算法很烂，不过元素少，无所谓）
+    for (let i = 0; i < ptComCanClick.length - 1; i++) {
+        for (let j = i + 1; j < ptComCanClick.length; j++) {
+            if (ptComCanClick[j].bounds().centerY() < ptComCanClick[i].bounds().centerY()) {
+                let tempPtCom = ptComCanClick[i];
+                ptComCanClick[i] = ptComCanClick[j];
+                ptComCanClick[j] = tempPtCom;
+            }
+        }
+    }
+    log("候选助战列表", ptComCanClick);
+    // 是单纯选npc还是，优先助战
+    if (limit.justNPC) {
+        log("justNPC==true");
+        finalPt = ptComCanClick[0];
+    } else {
+        finalPt = ptComCanClick[ptComCanClick.length - 1];
+    }
+    log("选择", finalPt)
+    return finalPt;
+}
 
 function autoMain() {
     startScreenCapture(); //注意，函数里还有游戏区服的识别
