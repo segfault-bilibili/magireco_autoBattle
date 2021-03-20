@@ -1056,13 +1056,13 @@ function autoMain() {
         sleep(3000)
         while (!id("retryWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
-            if (text(keywords.follow[currentLang]).findOnce()) {
-                while (text(keywords.follow[currentLang]).findOnce()) {
+            if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+                while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.yesfocus)
                     sleep(3000)
                 }
-                while (text(keywords.appendFollow[currentLang]).findOnce()) {
+                while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.focusclose)
                     sleep(3000)
@@ -1118,13 +1118,13 @@ function autoMainver2() {
         }
         //----------------------------------
         log(limit.shuix, limit.shuiy)
-        while (!text("确定").findOnce()) {
+        while ((!text("确定").findOnce())&&(!desc("确定").findOnce())) {
             sleep(1500)
-            click(parseInt(limit.shuix), parseInt(limit.shuiy))
+            compatClick(parseInt(limit.shuix), parseInt(limit.shuiy))
             sleep(1500)
         }
 
-        while (text("确定").findOnce()) {
+        while (text("确定").findOnce()||desc("确定").findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.huodongok)
             sleep(1500)
@@ -1144,9 +1144,11 @@ function autoMainver2() {
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        text(keywords.start[currentLang]).findOne()
+        while ((!text(keywords.start[currentLang]).findOnce())&&(!desc(keywords.start[currentLang]).findOnce())){
+            sleep(1000);
+        }
         log("进入开始")
-        while (text(keywords.start[currentLang]).findOnce()) {
+        while (text(keywords.start[currentLang]).findOnce()||desc(keywords.start[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.start)
             sleep(3000)
@@ -1168,13 +1170,13 @@ function autoMainver2() {
 
         while (id("ResultWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
-            if (text(keywords.follow[currentLang]).findOnce()) {
-                while (text(keywords.follow[currentLang]).findOnce()) {
+            if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+                while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.yesfocus)
                     sleep(3000)
                 }
-                while (text(keywords.appendFollow[currentLang]).findOnce()) {
+                while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.focusclose)
                     sleep(3000)
@@ -1267,14 +1269,17 @@ function jingMain() {
 }
 
 function BeginFunction() {
-    text(currentLang[2]).findOne()
+    //国台服不同
+    while ((!text(keywords.start[currentLang]).findOnce())&&(!desc(keywords.start[currentLang]).findOnce())) {
+        sleep(1000);
+    }
     log("进入开始")
-    while (text(currentLang[2]).findOnce()) {
+    while (text(keywords.start[currentLang]).findOnce()||desc(keywords.start[currentLang]).findOnce()) {
         sleep(1000)
-        log("开始点击")
         screenutilClick(clickSets.start)
         sleep(3000)
     }
+    log("进入战斗")
     //稳定模式点击
     if (limit.isStable) {
         while (!id("ResultWrap").findOnce()) {
