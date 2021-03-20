@@ -28,6 +28,48 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+//提醒用户先把游戏切到前台，否则结束脚本运行
+//切到前台后，检测区服
+var currentLang = "chs";
+function waitForGameForeground() {
+    let isGameFg = false;
+    for (let i = 1; i <= 5; i++) {
+        if (packageName("com.aniplex.magireco").findOnce()) {
+            isGameFg = true;
+            log("检测到日服");
+            currentLang = "jp";
+        }
+        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
+            isGameFg = true;
+            log("检测到国服");
+            currentLang = "chs";
+        }
+        if (packageName("com.komoe.madokagp").findOnce()) {
+            isGameFg = true;
+            log("检测到台服");
+            currentLang = "cht";
+        }
+        if (isGameFg) {
+            log("游戏在前台");
+            let gameBounds = className("android.widget.FrameLayout").depth(4).findOne().bounds()
+            log("游戏画面位置：" + gameBounds)
+            let gameWidth = gameBounds.right - gameBounds.left;
+            let gameHeight = gameBounds.bottom - gameBounds.top;
+            let cutoutOffsetX = gameBounds.left;
+            let cutoutOffsetY = gameBounds.top;
+            initCoordsConversion(gameWidth, gameHeight, cutoutOffsetX, cutoutOffsetY);
+            break;
+        } else {
+            toastLog("请务必先把魔纪切换到前台");
+        }
+        sleep(2000);
+    }
+    if (!isGameFg) {
+        toastLog("游戏没有切到前台，退出");
+        exit();
+    }
+}
+
 floatUI.main = function () {
     // 没有悬浮窗权限，提示用户并跳转请求
     let task = null;
@@ -870,8 +912,9 @@ function pickSupportWithTheMostPt() {
 }
 
 function autoMain() {
-    waitForGameForeground();
-    // 初始化嗑药数量
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+
     let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
@@ -941,7 +984,9 @@ function autoMain() {
 }
 
 function autoMainver2() {
-    waitForGameForeground();
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+
     let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
@@ -1042,7 +1087,9 @@ function autoMainver2() {
     }
 }
 function jingMain() {
-    waitForGameForeground();
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+
     while (true) {
         let matchWrap = id("matchingWrap").findOne().bounds()
         while (!id("battleStartBtn").findOnce()) {
@@ -1117,45 +1164,6 @@ function BeginFunction() {
             screenutilClick(clickSets.reconection)
             sleep(2000)
         }
-    }
-}
-function waitForGameForeground() {
-    let isGameFg = false;
-    for (let i = 1; i <= 5; i++) {
-        if (packageName("com.aniplex.magireco").findOnce()) {
-            isGameFg = true;
-            log("检测到日服");
-            langNow = "jp";
-        }
-        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
-            isGameFg = true;
-            log("检测到国服");
-            langNow = "zh";
-        }
-        if (packageName("com.komoe.madokagp").findOnce()) {
-            isGameFg = true;
-            log("检测到台服");
-            langNow = "tai";
-        }
-        currentLang = language[langNow];
-        if (isGameFg) {
-            log("游戏在前台");
-            let gameBounds = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-            log("游戏画面位置：" + gameBounds)
-            let gameWidth = gameBounds.right - gameBounds.left;
-            let gameHeight = gameBounds.bottom - gameBounds.top;
-            let cutoutOffsetX = gameBounds.left;
-            let cutoutOffsetY = gameBounds.top;
-            initCoordsConversion(gameWidth, gameHeight, cutoutOffsetX, cutoutOffsetY);
-            break;
-        } else {
-            toastLog("请务必先把魔纪切换到前台");
-        }
-        sleep(2000);
-    }
-    if (!isGameFg) {
-        toastLog("游戏没有切到前台，退出");
-        exit();
     }
 }
 
