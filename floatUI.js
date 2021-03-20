@@ -35,6 +35,7 @@ importClass(android.widget.TextView)
 
 //提醒用户先把游戏切到前台，否则结束脚本运行
 //切到前台后，检测区服
+var currentLang = "chs";
 function waitForGameForeground() {
     let isGameFg = false;
     for (let i = 1; i <= 5; i++) {
@@ -74,7 +75,6 @@ function waitForGameForeground() {
 //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
 var scrCapLock = threads.lock();
 var canCaptureScreen = false;
-var currentLang = "chs";
 var screenCapThread = null;
 function startScreenCapture() {
     scrCapLock.lock();
