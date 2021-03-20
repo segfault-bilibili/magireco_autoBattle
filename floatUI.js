@@ -33,16 +33,9 @@ importClass(android.widget.TextView)
     
 //}
 
-//申请截屏权限
-//可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
-//VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
-//应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
-//猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
-var scrCapLock = threads.lock();
-var canCaptureScreen = false;
-var currentLang = "chs";
-var screenCapThread = null;
-function startScreenCapture() {
+//提醒用户先把游戏切到前台，否则结束脚本运行
+//切到前台后，检测区服
+function waitForGameForeground() {
     let isGameFg = false;
     for (let i = 1; i <= 5; i++) {
         if (packageName("com.aniplex.magireco").findOnce()) {
@@ -68,12 +61,22 @@ function startScreenCapture() {
         }
         sleep(2000);
     }
-
     if (!isGameFg) {
         toastLog("游戏没有切到前台，退出");
         exit();
     }
+}
 
+//申请截屏权限
+//可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
+//VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
+//应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
+//猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
+var scrCapLock = threads.lock();
+var canCaptureScreen = false;
+var currentLang = "chs";
+var screenCapThread = null;
+function startScreenCapture() {
     scrCapLock.lock();
     if (canCaptureScreen) {
         log("已经获取到截图权限了");
@@ -1275,8 +1278,8 @@ function pickSupportWithTheMostPt()
 }
 
 function autoMain() {
-    startScreenCapture(); //注意，函数里还有游戏区服的识别
-    waitUntilScreenCaptureReady();
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -1375,8 +1378,12 @@ function autoMain() {
 }
 
 function autoMainver2() {
-    startScreenCapture(); //注意，函数里还有游戏区服的识别
-    waitUntilScreenCaptureReady();
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (limit.skipStoryUseScreenCapture) {
+        startScreenCapture();
+        waitUntilScreenCaptureReady();
+    }
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -2364,6 +2371,9 @@ for (let imgName in knownImgs) {
 
 
 function mirrorsSimpleAutoBattleMain() {
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
         if (!id("ArenaResult").findOnce()) {
@@ -2386,7 +2396,9 @@ function mirrorsSimpleAutoBattleMain() {
 }
 
 function mirrorsAutoBattleMain() {
-    startScreenCapture(); //注意，函数里还有游戏区服的识别
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    startScreenCapture();
     waitUntilScreenCaptureReady();
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
@@ -2449,8 +2461,12 @@ function mirrorsAutoBattleMain() {
 
 
 function jingMain() {
-    startScreenCapture();
-    waitUntilScreenCaptureReady();
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (limit.mirrorsUseScreenCapture) {
+        startScreenCapture();
+        waitUntilScreenCaptureReady();
+    }
 
     while (true) {
         let matchWrap = id("matchingWrap").findOne().bounds()
