@@ -56,7 +56,7 @@ function shellCmd_() {
         } else if (argc == 4) {
             useRoot = arguments[1];
             if (useRoot) {
-                log("useRoot is true, not using Shizuku this time");
+                if (logEnabled) log("useRoot is true, not using Shizuku this time");
                 useShizuku = false;
             } else {
                 useShizuku = arguments[2];
