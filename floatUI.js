@@ -359,7 +359,7 @@ function setupScreencapScript() {
     httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
     httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
     let shellcmd = "echo -ne \""+httpResponseHeader+"\";\n";
-    shellcmd    += "screencap | "+ dataDir +"/scrcap2bmp -a;\n"
+    shellcmd    += "screencap | "+ dataDir +"/bin/scrcap2bmp -a;\n"
     let script = shebang+shellcmd;
     files.write(screencapScriptPath, script);
     normalShellCmd("chmod 755 "+screencapScriptPath);
