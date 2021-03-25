@@ -212,23 +212,29 @@ function detectABI() {
 //在应用数据目录下安装busybox
 function setupBusybox() {
     //https://github.com/Magisk-Modules-Repo/busybox-ndk/commit/1f3f92c9375a92444d7201be7093424167fc4a28
+    if (files.isFile(dataDir+"/bin/busybox") && files.isFile(dataDir+"/bin/scrcap2bmp")) {
+        log("busybox和scrcap2bmp文件已存在，应该是之前已经安装好了");
+        return;
+    }
     detectABI();
     if (!files.isFile(dataDir+"/bin/busybox-"+shellABI+"-selinux")) {
         toastLog("找不到自带的busybox，请下载新版安装包");
         sleep(2000);
         exit();
     }
-    if (files.isFile(dataDir+"/bin/busybox") && files.isFile(dataDir+"/bin/scrcap2bmp")) {
-        log("busybox和scrcap2bmp文件已存在，应该是之前已经安装好了");
-        return;
+    if (!files.isFile(dataDir+"/bin/scrcap2bmp-"+shellABI)) {
+        toastLog("找不到自带的scrcap2bmp，请下载新版安装包");
+        sleep(2000);
+        exit();
     }
     //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
     normalShellCmd("chmod a+x "+dataDir);
     normalShellCmd("chmod a+x "+dataDir+"/bin");
     normalShellCmd("cp "+dataDir+"/bin/busybox-"+shellABI+"-selinux "+dataDir+"/bin/busybox");
     normalShellCmd("chmod 755 "+dataDir+"/bin/busybox");
+    normalShellCmd(dataDir+"/busybox --install -s "+dataDir+"/");
+    normalShellCmd("cp "+dataDir+"/bin/scrcap2bmp-"+shellABI+" "+dataDir+"/bin/scrcap2bmp");
     normalShellCmd("chmod 755 "+dataDir+"/bin/scrcap2bmp");
-    //normalShellCmd(dataDir+"/busybox --install -s "+dataDir+"/");
     busyboxSetupDone = true;
 }
 
@@ -403,8 +409,7 @@ function compatCaptureScreen() {
         let screenshot = null;
         while (screenshot == null) {
             try {
-                let response = http.get("http://127.0.0.1:"+localHttpListenPort+"/screencap.dump.bmp");
-                let screenshot = images.fromBytes(response.body.bytes());
+                screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp");
             } catch (e) {log(e)};
             sleep(200);
         }
