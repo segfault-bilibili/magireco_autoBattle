@@ -1940,13 +1940,13 @@ var knownFirstStandPointCoords = {
     },
     floor: {
         topLeft: {
-            x:   1025,
-            y:   529,
+            x:   1048,
+            y:   518,
             pos: "center"
         },
         bottomRight: {
-            x:   1114,
-            y:   567,
+            x:   1168,
+            y:   575,
             pos: "center"
         }
     },
