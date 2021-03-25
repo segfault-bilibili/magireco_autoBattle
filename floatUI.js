@@ -29,9 +29,209 @@ importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
 //检查shell权限
-//function checkUID() {
-    
-//}
+var shellPrivilegeCheckThread = null;
+var shellPrivilegeCheckLock = threads.lock();
+var shellHasPrivilege = false;
+var shellHasRootWithoutShizuku = false;
+var shellABI = "arm";
+var busyboxSetupDone = false;
+
+var dataDir = files.cwd();
+
+var shellPrivilegeCheckDone = false;
+
+function shellCmd_() {
+    let useRoot = false;
+    let useShizuku = false;
+    let argc = 0;
+    switch (arguments.length) {
+    case 2:
+    case 3:
+        argc = arguments.length;
+        if (argc == 2) {
+            useRoot = false;
+            useShizuku = arguments[1];
+        } else if (argc == 3) {
+            useRoot = arguments[1];
+            if (useRoot) {
+                log("useRoot is true, not using Shizuku this time");
+                useShizuku = false;
+            } else {
+                useShizuku = arguments[2];
+            }
+        }
+        if (useShizuku) {
+            $shell.setDefaultOptions({adb: true});
+        } else {
+            $shell.setDefaultOptions({adb: false});
+        }
+        let shellcmd = arguments[0];
+        log("shellCmd: \""+shellcmd+"\"", "useRoot:", useRoot, "useShizuku:", useShizuku);
+        let result = $shell(shellcmd, useRoot);
+        log("result", result);
+        return result;
+        break;
+    default:
+        throw "privilegedShellCmdIncorrectArgc"
+    }
+}
+function normalShellCmd() {
+    switch (arguments.length) {
+    case 1:
+        return shellCmd_(arguments[0], false);
+        break;
+    case 2:
+        return shellCmd_(arguments[0], arguments[1], false);
+        break;
+    default:
+        throw "normalShellCmdIncorrectArgc"
+    }
+}
+function privilegedShellCmd() {
+    switch (arguments.length) {
+    case 1:
+        return shellCmd_(arguments[0], true);
+        break;
+    case 2:
+        return shellCmd_(arguments[0], arguments[1], true);
+        break;
+    default:
+        throw "privilegedShellCmdIncorrectArgc"
+    }
+}
+function checkShellPrivilege() {
+    let isThreadAlive = false;
+    try {
+        isThreadAlive = shellPrivilegeCheckThread.isAlive();
+    } catch (err) {
+        isThreadAlive = false;
+    }
+    if (isThreadAlive) return;
+    shellPrivilegeCheckThread = threads.start(function() {
+        shellPrivilegeCheckLock.lock();
+        shellPrivilegeCheckDone = false;
+
+        if (shellHasPrivilege) {
+            log("已经获取到root或adb权限了");
+        } else {
+            //debug
+            //sleep(2000);
+            //toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
+            //sleep(2000);
+            //toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
+            //sleep(2000);
+            //toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
+            //sleep(2000);
+
+            let shellcmd = "id -u";
+            let result = null;
+            try {
+                result = privilegedShellCmd(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                log(e);
+            }
+            let euid = -1;
+            if (result.code == 0) {
+                euid = parseInt(result.result.match(/\d+/));
+                switch (euid) {
+                case 0:
+                    log("Shizuku有root权限");
+                    shellHasPrivilege = true;
+                    break;
+                case 2000:
+                    log("Shizuku有adb shell权限");
+                    shellHasPrivilege = true;
+                    break;
+                default:
+                    log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+                    shellHasPrivilege = false;
+                }
+            } else {
+                log("似乎没有安装Shizuku，或者没有在Shizuku中授权。尝试直接获取root权限");
+                let useRoot = true;
+                result = normalShellCmd(shellcmd, useRoot);
+                if (result.code == 0) euid = parseInt(result.result.match(/\d+/));
+                if (euid == 0) {
+                    log("直接获取root权限成功");
+                    shellHasRootWithoutShizuku = true;
+                    shellHasPrivilege = true;
+                } else {
+                    log("直接获取root权限失败");
+                    toastLog("请下载安装Shizuku，并按照说明启动它，\n然后在Shizuku中给本应用授权。");
+                    $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+                    sleep(1000);
+                    shellHasPrivilege = false;
+                }
+            }
+        }
+
+        if (shellHasPrivilege && (!busyboxSetupDone)) setupBusybox();
+
+        shellPrivilegeCheckDone = true;
+        shellPrivilegeCheckLock.unlock();
+    });
+    return shellHasPrivilege;
+}
+function waitUntilShellPrivilegeReady() {
+    while(true){
+        sleep(500);
+        shellPrivilegeCheckLock.lock();
+        if (shellPrivilegeCheckDone) {
+            if (shellHasPrivilege) {
+                shellPrivilegeCheckLock.unlock();
+                break;
+            } else {
+                shellPrivilegeCheckLock.unlock();
+                exit();
+                continue;
+            }
+        } else {
+            shellPrivilegeCheckLock.unlock();
+            continue;
+        }
+    }
+}
+//检测CPU ABI
+function detectABI() {
+    let shellcmd = "getprop ro.product.cpu.abi"
+    let result = normalShellCmd(shellcmd);
+    let ABIStr = "";
+    if (result.code == 0) ABIStr += result.result;
+    ABIStr = ABIStr.toLowerCase();
+    if (ABIStr.startsWith("arm64")) {
+        shellABI = "arm64";
+    } else if (ABIStr.startsWith("arm")) {
+        shellABI = "arm";
+    } else if (ABIStr.startsWith("x86_64")) {
+        shellABI = "x86_64";
+    } else if (ABIStr.startsWith("x86")) {
+        shellABI = "x86";
+    }
+    return shellABI;
+}
+//在应用数据目录下安装busybox
+function setupBusybox() {
+    //https://github.com/Magisk-Modules-Repo/busybox-ndk/commit/1f3f92c9375a92444d7201be7093424167fc4a28
+    detectABI();
+    if (!files.isFile(dataDir+"/bin/busybox-"+shellABI+"-selinux")) {
+        toastLog("找不到自带的busybox，请下载新版安装包");
+        sleep(2000);
+        exit();
+    }
+    if (files.isFile(dataDir+"/bin/busybox") && files.isFile(dataDir+"/bin/scrcap2bmp")) {
+        log("busybox和scrcap2bmp文件已存在，应该是之前已经安装好了");
+        return;
+    }
+    //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
+    normalShellCmd("chmod a+x "+dataDir);
+    normalShellCmd("chmod a+x "+dataDir+"/bin");
+    normalShellCmd("cp "+dataDir+"/bin/busybox-"+shellABI+"-selinux "+dataDir+"/bin/busybox");
+    normalShellCmd("chmod 755 "+dataDir+"/bin/busybox");
+    normalShellCmd("chmod 755 "+dataDir+"/bin/scrcap2bmp");
+    //normalShellCmd(dataDir+"/busybox --install -s "+dataDir+"/");
+    busyboxSetupDone = true;
+}
 
 //提醒用户先把游戏切到前台，否则结束脚本运行
 //切到前台后，检测区服
@@ -90,7 +290,6 @@ function startScreenCapture() {
     } catch(err) {
         isThreadAlive = false;
     }
-
     if (isThreadAlive) return;
 
     screenCapThread = threads.start(function() {
@@ -136,16 +335,87 @@ function waitUntilScreenCaptureReady() {
             scrCapLock.unlock();
             break;
         }
-        sleep(500);
     }
 }
 
-//用shizuku或root权限截屏
+
+//用shizuku adb/root权限，或者直接用root权限截屏
+var screencapShellCmdThread = null;
+var screencapLength = -1;
+var screencapShellCmdLock = threads.lock();
+var screencapScriptPath = dataDir+"/bin/screencap.sh";
+var localHttpListenPort = -1;
+function detectScreencapLength() {
+    if (screencapLength > 0) return screencapLength;
+    let useRoot = shellHasRootWithoutShizuku;
+    let result = privilegedShellCmd("screencap | "+dataDir+"/bin/scrcap2bmp -a | "+dataDir+"/bin/busybox wc -c", useRoot);
+    if (result.code == 0) return parseInt(result.result);
+    throw "detectScreencapLengthFailed"
+}
+var screencapScriptSetupDone = false;
+function setupScreencapScript() {
+    let shebang = "#!"+dataDir+"/bin/busybox ash\n";
+    let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
+    httpResponseHeader    += "Content-Type: application/octect-stream\\r\\n";
+    httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
+    httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
+    let shellcmd = "echo -ne \""+httpResponseHeader+"\";\n";
+    shellcmd    += "screencap | "+ dataDir +"/scrcap2bmp -a;\n"
+    let script = shebang+shellcmd;
+    files.write(screencapScriptPath, script);
+    normalShellCmd("chmod 755 "+screencapScriptPath);
+    if (!files.isFile(screencapScriptPath)) throw "setupScreencapScriptFail";
+    screencapScriptSetupDone = true;
+}
+function findListenPort() {
+    let busyboxPath = dataDir+"/bin/busybox";
+    let BBoxnetstat = busyboxPath+" netstat"
+    let BBoxawk = busyboxPath+" awk"
+    let shellcmd = BBoxnetstat+" -tln | "+BBoxawk+" '{print $4}'"
+    let result = normalShellCmd(shellcmd);
+    if (result.code == 0) {
+        let strArr = result.result.toString().split("\n");
+        for (let i=11023; i<12048; i++) {
+            let occupied = false;
+            for (let j=0; j<strArr.length; j++) {
+                let matched = strArr[j].match(/(?:)\d+$/);
+                let port = -1;
+                if (matched != null) port = matched[0];
+                if (i==parseInt(port)) {occupied = true; break;}
+            }
+            if (!occupied) {log("可用监听端口", i);return i;}
+        }
+    }
+    throw "cannotFindAvailablePort"
+}
 function compatCaptureScreen() {
-//    if (limit.useScreencapShellCmd) {
-//    } else {
+    if (limit.useScreencapShellCmd) {
+        //使用shell命令 screencap 截图
+        screencapShellCmdLock.lock();
+        if (!screencapScriptSetupDone) setupScreencapScript();
+        if (localHttpListenPort<0) localHttpListenPort = findListenPort();
+        try {screencapShellCmdThread.interrupt();} catch (e) {};
+        screencapShellCmdThread = threads.start(function() {
+            let shellcmd = screencapScriptPath+" | "+dataDir+"/bin/busybox nc -l -p "+localHttpListenPort+" -s 127.0.0.1";
+            let useRoot = shellHasRootWithoutShizuku;
+            let result = privilegedShellCmd(shellcmd, useRoot);
+        });
+        sleep(100);
+        let screenshot = null;
+        while (screenshot == null) {
+            try {
+                let response = http.get("http://127.0.0.1:"+localHttpListenPort+"/screencap.dump");
+                let screenshot = images.fromBytes(response.body.bytes());
+            } catch (e) {log(e)};
+            sleep(200);
+        }
+        screencapShellCmdThread.interrupt();
+        screencapShellCmdLock.unlock();
+        return screenshot;
+    } else {
+        //使用AutoJS默认提供的录屏API截图
         return captureScreen.apply(this, arguments);
-//    }
+    }
 }
 
 floatUI.main = function () {
@@ -205,11 +475,10 @@ floatUI.main = function () {
     )
     // win.setTouchable(false);//设置子菜单不接收触摸消息
 
-    let cwd_str = files.cwd();
     //悬浮按钮
     let win_1_xmlstr = "<frame id=\"logo\" w=\"44\" h=\"44\" alpha=\"0.4\" ><img w=\"44\" h=\"44\" src=\"#ffffff\" circle=\"true\" alpha=\"0.8\" />";
     win_1_xmlstr += "<img id=\"img_logo\" w=\"32\" h=\"32\" src=\"file://";
-    win_1_xmlstr += cwd_str;
+    win_1_xmlstr += dataDir;
     win_1_xmlstr += "/res/icon.png\" gravity=\"center\" layout_gravity=\"center\" />";
     win_1_xmlstr += "<img id=\"logo_click\" w=\"*\" h=\"*\" src=\"#ffffff\" alpha=\"0\" />";
     win_1_xmlstr += "</frame>";
@@ -220,7 +489,7 @@ floatUI.main = function () {
     let win_2_xmlstr = "<frame id=\"logo\" w=\"{{device.width}}px\" h=\"44\" alpha=\"0\" >";
     win_2_xmlstr += "<img w=\"44\" h=\"44\" src=\"#ffffff\" circle=\"true\" alpha=\"0.8\" />";
     win_2_xmlstr += "<img id=\"img_logo\" w=\"32\" h=\"32\" src=\"file://";
-    win_2_xmlstr += cwd_str;
+    win_2_xmlstr += dataDir;
     win_2_xmlstr += "/res/icon.png\" margin=\"6 6\" />";
     win_2_xmlstr += "</frame>";
     let win_2 = floaty.rawWindow(win_2_xmlstr);
@@ -606,6 +875,11 @@ var keywords = {
         chs: "关注追加",
         jp:   "フォロー追加",
         cht: "追加關注"
+    },
+    pickSupport: {
+        chs: "请选择支援角色",
+        jp:  "",
+        cht: ""
     }
 };
 var currentLang = "chs";
@@ -621,10 +895,13 @@ var limit = {
     skipStoryUseScreenCapture: false,
     BPAutoRefill: false,
     mirrorsUseScreenCapture: false,
+    useScreencapShellCmd: false,
+    useInputShellCmd: false,
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
-    drug3num: ''
+    drug3num: '',
+    bpdrugnum: ''
 }
 var clickSets = {
     ap: {
@@ -873,19 +1150,35 @@ function screenutilClick(d) {
 
 
 //有root权限的情况下解决Android 7.0以下不能按坐标点击的问题
-function compatClick() {
-    if (arguments.length != 2 || device.sdkInt >= 24) {
+function compatClickOrSwipe() {
+    if ((device.sdkInt < 24 || limit.useInputShellCmd) && (arguments.length == 2 || arguments.length == 5)) {
+        //Android 7.0以下（或者虽然是Android7.0及以上，但手动设置了使用shell命令模拟点击），坐标点击需要root权限
+        let coordsAndDuration = arguments[0] + " " + arguments[1]
+        if (arguments.length == 5) {
+            coordsAndDuration += " " + arguments[2] + " " + arguments[3] + " " + arguments[4];
+            coordsAndDuration = coordsAndDuration.match(/^\d+ \d+ \d+ \d+ \d+$/)[0];
+        } else {
+            coordsAndDuration = coordsAndDuration.match(/^\d+ \d+$/)[0];
+        }
+        let shellcmd = "input";
+        if (arguments.length == 5) {
+            shellcmd += " swipe";
+        } else {
+            shellcmd += " tap";
+        }
+        shellcmd += " " + coordsAndDuration;
+        let useRoot = shellHasRootWithoutShizuku;
+        return privilegedShellCmd(shellcmd, useRoot);
+    } else {
         //Android 7.0及以上，以及非坐标点击
-        click.apply(this, arguments);
-    } else if (arguments.length == 2) {
-        //Android 7.0以下，需要root权限
-        let coords = " " + arguments[0] + " " + arguments[1];
-        coords = coords.match(/^ \d+ \d+$/)[0];
-        let shellcmd = "input tap" + coords;
-        let root = true;
-        log("点击屏幕 root shell command: \""+shellcmd+"\"");
-        shell(shellcmd, root);
+        return click.apply(this, arguments);
     }
+}
+function compatClick() {
+    return compatClickOrSwipe.apply(this, arguments);
+}
+function compatSwipe() {
+    return compatClickOrSwipe.apply(this, arguments);
 }
 
 //截屏取色
@@ -943,10 +1236,12 @@ function isSkipButtonCovered() {
     for (let i = 0; i < buttons.length; i++) {
         var converted = convertCoords(buttons[i].coords);
         if (!images.detectsColor(screenshot, buttons[i].color, converted.x, converted.y, threshold, "diff")) {
+            screenshot.recycle();
             log("看不清SKIP按钮，可能被遮挡了");
             return true;
         }
     }
+    screenshot.recycle();
     log("可以看到SKIP按钮");
     return false;
 }
@@ -967,12 +1262,14 @@ function getMainMenuStatus() {
             log("主菜单处于打开状态");
             result.covered = false;
             result.open = true;
+            screenshot.recycle();
         } else {
             converted = convertCoords(knownPx.mainMenuClosed.coords);
             if (images.detectsColor(screenshot, knownPx.mainMenuClosed.color, converted.x, converted.y, threshold, "diff")) {
                 log("主菜单处于关闭状态");
                 result.covered = false;
                 result.open = false;
+                screenshot.recycle();
             } else {
                 log("看不清主菜单是否打开，可能被遮挡了");
                 result.covered = true;
@@ -1256,6 +1553,10 @@ function pickSupportWithTheMostPt() {
 function autoMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (limit.useInputShellCmd) {
+        checkShellPrivilege();
+        waitUntilShellPrivilegeReady();
+    }
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -1275,11 +1576,11 @@ function autoMain() {
             refillAP();
         }
 
-        while (!id("friendWrap").findOnce()) {
+        while ((!id("friendWrap").findOnce()) && (!text(keywords.pickSupport[currentLang]).findOnce()) && (!desc(keywords.pickSupport[currentLang]).findOnce())) {
             log("等待好友列表控件出现...");
             sleep(1000);
         }
-        while (id("friendWrap").findOnce()) {
+        while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
             compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
@@ -1302,7 +1603,7 @@ function autoMain() {
         //---------战斗------------------
         // 断线重连位置
         if (limit.isStable) {
-            while (!id("ResultWrap").findOnce()) {
+            while ((!id("ResultWrap").findOnce()) && (!id("charaWrap").findOnce())) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
                 screenutilClick(clickSets.reconection)
@@ -1310,10 +1611,11 @@ function autoMain() {
             }
         }
         //------------开始结算-------------------
-        id("ResultWrap").findOne()
-        sleep(3000)
+        while ((!id("ResultWrap").findOnce()) && (!id("charaWrap").findOnce())) {
+            sleep(1000);
+        }
 
-        while (!id("retryWrap").findOnce()) {
+        while ((!id("retryWrap").findOnce())&&(!id("hasTotalRiche").findOnce())) {
             //-----------如果有升级弹窗点击----------------------
             if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                 while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
@@ -1344,7 +1646,7 @@ function autoMain() {
             sleep(2000)
         }
         //--------------再战--------------------------
-        while (id("retryWrap").findOnce()) {
+        while (id("retryWrap").findOnce()||id("hasTotalRiche").findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.restart)
             sleep(2500)
@@ -1356,7 +1658,11 @@ function autoMain() {
 function autoMainver2() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.skipStoryUseScreenCapture) {
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
+        checkShellPrivilege();
+        waitUntilShellPrivilegeReady();
+    }
+    if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) {
         startScreenCapture();
         waitUntilScreenCaptureReady();
     }
@@ -1393,11 +1699,11 @@ function autoMainver2() {
             sleep(1500)
         }
 
-        while (!id("friendWrap").findOnce()) {
+        while ((!id("friendWrap").findOnce()) && (!text(keywords.pickSupport[currentLang]).findOnce()) && (!desc(keywords.pickSupport[currentLang]).findOnce())) {
             log("等待好友列表控件出现...");
             sleep(1000);
         }
-        while (id("friendWrap").findOnce()) {
+        while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
             compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
@@ -1420,7 +1726,7 @@ function autoMainver2() {
         //---------战斗------------------
         // 断线重连位置
         if (limit.isStable) {
-            while (!id("ResultWrap").findOnce()) {
+            while ((!id("ResultWrap").findOnce())&&(!id("charaWrap").findOnce())) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
                 screenutilClick(clickSets.reconection)
@@ -1428,10 +1734,11 @@ function autoMainver2() {
             }
         }
         //------------开始结算-------------------
-        id("ResultWrap").findOne()
-        sleep(3000)
+        while ((!id("ResultWrap").findOnce())&&(!id("charaWrap").findOnce())) {
+            sleep(1000);
+        }
 
-        while (id("ResultWrap").findOnce()) {
+        while (id("ResultWrap").findOnce()||id("charaWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
             if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                 while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
@@ -1698,13 +2005,14 @@ function isStandPointOccupied(screenshot, row, column) {
 //扫描我方战场信息
 function scanOurBattleField()
 {
-    var screenshot = compatCaptureScreen();
+    let screenshot = compatCaptureScreen();
     for(let i=0; i<3; i++) {
         for(let j=0; j<3; j++) {
             ourBattleField[rows[i]][columns[j]].occupied = isStandPointOccupied(screenshot, i, j);
             ourBattleField[rows[i]][columns[j]].charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
         }
     }
+    screenshot.recycle();
 }
 
 
@@ -1961,23 +2269,24 @@ function scanDisks() {
     clickedDisksCount = 0;
 
     //截屏，对盘进行识别
-    var screenshot = compatCaptureScreen();
+    let screenshot = compatCaptureScreen();
     for (let i=0; i<allActionDisks.length; i++) {
-        var disk = allActionDisks[i];
+        let disk = allActionDisks[i];
         disk.action = getDiskAction(screenshot, i);
         disk.charaImg = getDiskCharaImg(screenshot, i);
         disk.connectable = isDiskConnectable(screenshot, i);
     }
     //分辨不同的角色，用charaID标记
     for (let i=0; i<allActionDisks.length-1; i++) {
-        var diskI = allActionDisks[i];
+        let diskI = allActionDisks[i];
         for (let j=i+1; j<allActionDisks.length; j++) {
-            var diskJ = allActionDisks[j];
+            let diskJ = allActionDisks[j];
             if (areDisksSimilar(screenshot, i, j)) {
                 diskJ.charaID = diskI.charaID;
             }
         }
     }
+    screenshot.recycle();
 
     log("行动盘扫描结果：");
     for (let i=0; i<allActionDisks.length; i++) {
@@ -2078,14 +2387,17 @@ function connectDisk(fromDisk) {
                 var src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
                 var dst = getAreaCenter(getStandPointArea(row, column, "floor"));
                 //连携划动
-                swipe(src.x, src.y, dst.x, dst.y, 1000);
+                compatSwipe(src.x, src.y, dst.x, dst.y, 1000);
                 sleep(1000);
-                if (isConnectableDiskDown(compatCaptureScreen(), fromDisk.position)) {
+                let screenshot = compatCaptureScreen();
+                if (isConnectableDiskDown(screenshot, fromDisk.position)) {
+                    screenshot.recycle();
                     log("连携动作完成");
                     clickedDisksCount++;
                     isConnectDone = true;
                     break;
                 } else {
+                    screenshot.recycle();
                     log("连携动作失败，可能是因为连携到了自己身上");
                     //以后也许可以改成根据按下连携盘后地板是否发亮来排除自己
                 }
@@ -2151,7 +2463,7 @@ function getFirstSelectedConnectedDiskImg(screenshot) {
 
 //返回接到连携的角色
 function getConnectAcceptorCharaID(fromDisk) {
-    var screenshot = compatCaptureScreen();
+    let screenshot = compatCaptureScreen();
     var imgA = getFirstSelectedConnectedDiskImg(screenshot);
 
     var max = 0;
@@ -2167,6 +2479,7 @@ function getConnectAcceptorCharaID(fromDisk) {
             max = diskPos;
         }
     }
+    screenshot.recycle();
     log("比对结束，与第", max+1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
     if (allActionDisks[max].charaID == fromDisk.charaID) {
         log("识图比对结果有误，和连携发出角色相同");
@@ -2189,21 +2502,23 @@ function waitForOurTurn() {
     var cycles = 0;
     while(true) {
         cycles++;
-        var screenshot = compatCaptureScreen();
+        let screenshot = compatCaptureScreen();
         if (id("ArenaResult").findOnce()) {
         //不再通过识图判断战斗是否结束
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
             result = false;
+            screenshot.recycle();
             break;
         }
         var diskAppeared = true;
         var img = getDiskImg(screenshot, 0, "action");
+        screenshot.recycle();
         if (img != null) {
             log("已截取第一个盘的动作图片");
-         } else {
+        } else {
             log("截取第一个盘的动作图片时出现问题");
-         }
+        }
         try {
             recognizeDiskAction(img, 2.1);
         } catch(e) {
@@ -2316,6 +2631,7 @@ function clickMirrorsBattleResult() {
             failedCount++;
             failedCount = failedCount % 5;
         }
+        screenshot.recycle();
         log("即将点击屏幕以退出结算界面...");
         screenutilClick(screenCenter);
         sleep(1000);
@@ -2349,6 +2665,10 @@ for (let imgName in knownImgs) {
 function mirrorsSimpleAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (limit.useInputShellCmd) {
+        checkShellPrivilege();
+        waitUntilShellPrivilegeReady();
+    }
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
@@ -2374,8 +2694,14 @@ function mirrorsSimpleAutoBattleMain() {
 function mirrorsAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    startScreenCapture();
-    waitUntilScreenCaptureReady();
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
+        checkShellPrivilege();
+        waitUntilShellPrivilegeReady();
+    }
+    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) {
+        startScreenCapture();
+        waitUntilScreenCaptureReady();
+    }
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
@@ -2439,10 +2765,16 @@ function mirrorsAutoBattleMain() {
 function jingMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.mirrorsUseScreenCapture) {
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
+        checkShellPrivilege();
+        waitUntilShellPrivilegeReady();
+    }
+    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) {
         startScreenCapture();
         waitUntilScreenCaptureReady();
     }
+
+    let usedBPDrugNum = 0;
 
     while (true) {
         let matchWrap = id("matchingWrap").findOne().bounds()
@@ -2457,7 +2789,7 @@ function jingMain() {
             compatClick(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.BPAutoRefill) {
+                if (limit.BPAutoRefill && usedBPDrugNum < limit.bpdrugnum) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -2488,6 +2820,7 @@ function jingMain() {
             log("镜层周回 - 自动战斗开始：简单自动战斗");
             mirrorsSimpleAutoBattleMain();
         }
+        usedBPDrugNum++;
     }
 
 }
@@ -2509,6 +2842,16 @@ floatUI.adjust = function (config) {
         log("镜层自动战斗使用截屏识图");
     } else {
         log("镜层使用简单自动战斗");
+    }
+    if (limit.useScreencapShellCmd) {
+        log("使用shell命令 \"screencap\" 截图");
+    } else {
+        log("使用录屏API截图");
+    }
+    if (limit.useInputShellCmd) {
+        log("使用shell命令 \"input\" 模拟点击");
+    } else {
+        log("使用无障碍服务模拟点击");
     }
 }
 

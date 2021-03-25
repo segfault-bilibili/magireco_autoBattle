@@ -23,22 +23,31 @@ ui.layout(
                     </linear>
                     <View h="5" />
                     <linear>
-                        <text text="恢复药使用选择：" />
+                        <text text="副本周回 AP回复药使用选择：" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="drug1" text="ap恢复药50" layout_weight="1" />
+                        <checkbox id="drug1" text="AP回复药50（绿药）" layout_weight="1" />
                         <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="drug2" text="ap恢复药全" layout_weight="1" />
+                        <checkbox id="drug2" text="AP回复药（红药）" layout_weight="1" />
                         <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="drug3" text="魔法石" layout_weight="1" />
                         <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                    </linear>
+                    <View h="5" />
+                    <linear>
+                        <text text="镜界周回 BP回复药使用选择：" />
+                    </linear>
+                    <View h="5" />
+                    <linear>
+                        <checkbox id="BPAutoRefill" text="BP回复药（蓝药）" layout_weight="1" />
+                        <input maxLength="3" id="bpdrugnum" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
@@ -68,8 +77,22 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
-                    <linear>
-                        <checkbox id="BPAutoRefill" text="镜界是否嗑药" layout_weight="1" />
+                    <linear padding="0 0 0 0" bg="#ffffff">
+                        <radiogroup id="screenCaptureMethod">
+                            <text layout_weight="1" size="19" color="#222222" text="截屏方法：" />
+                            <radio id="screenCaptureMethod1" text="Android录屏API（可能因为杀后台等原因不稳定）" checked="true" />
+                            <radio id="screenCaptureMethod2" text="shell命令 screencap（需要root或adb权限）" />
+                        </radiogroup>
+                    </linear>
+                </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    <linear padding="0 0 0 0" bg="#ffffff">
+                        <radiogroup id="clickMethod">
+                            <text layout_weight="1" size="19" color="#222222" text="模拟屏幕点击/拖动方法：" />
+                            <radio id="clickMethod1" text="无障碍服务 （低于Android 7，不可用）"  color="#808080" clickable="false" focused="false" focusable="false" checked="false" visibility="gone"/>
+                            <radio id="clickMethod2" text="无障碍服务 （只有Android 7或更高可用）" checked="true" />
+                            <radio id="clickMethod3" text="shell命令 input tap|swipe（需要root或adb权限）" />
+                        </radiogroup>
                     </linear>
                 </vertical>
 
@@ -126,7 +149,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = ["limitAP", "shuix", "shuiy"]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "skipStoryUseScreenCapture", "BPAutoRefill"]
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "BPAutoRefill"]
 var paramsMap = {}
 
 
@@ -155,11 +178,56 @@ for (let i = 0; i < paramsList.length; i++) {
     if (value != null) {
         ui.run(function () {
             ui[key].setText(value)
-        })
+        });
+    } else {
+        ui.run(function () {
+            ui[key].setText("")
+        });
     }
 }
 
-//无需复制的属性
+let checkableItem = {
+    key: "",
+    value: null
+};
+checkableItem.key = "skipStoryUseScreenCapture";
+checkableItem.value = paramsMap[checkableItem.key];
+if (checkableItem.value == null) checkableItem.value = false;
+ui[checkableItem.key].attr("checked", checkableItem.value.toString());
+
+checkableItem.key = "mirrorsUseScreenCapture";
+checkableItem.value = paramsMap[checkableItem.key];
+if (checkableItem.value == null) checkableItem.value = false;
+ui.mirrorsAutoBattleStrategy1.attr("checked", (!checkableItem.value).toString());
+ui.mirrorsAutoBattleStrategy2.attr("checked", checkableItem.value.toString());
+
+checkableItem.key = "useScreencapShellCmd";
+checkableItem.value = paramsMap[checkableItem.key];
+if (checkableItem.value == null) checkableItem.value = false;
+ui.screenCaptureMethod1.attr("checked", (!checkableItem.value).toString());
+ui.screenCaptureMethod2.attr("checked", checkableItem.value.toString());
+
+checkableItem.key = "useInputShellCmd";
+checkableItem.value = paramsMap[checkableItem.key];
+if (checkableItem.value == null) checkableItem.value = false;
+if (device.sdkInt >= 24 ) {
+    ui.clickMethod1.attr("visibility", "gone");
+    ui.clickMethod2.attr("visibility", "visible");
+    ui.clickMethod2.attr("clickable", "false");
+    ui.clickMethod2.attr("focusable", "true");
+    ui.clickMethod2.attr("checked", (!checkableItem.value).toString());
+    ui.clickMethod3.attr("checked", checkableItem.value.toString());
+} else {
+    ui.clickMethod1.attr("visibility", "visible");
+    ui.clickMethod2.attr("visibility", "gone");
+    ui.clickMethod2.attr("focusable", "false");
+    ui.clickMethod2.attr("checked", "false");
+    ui.clickMethod3.attr("checked", "true");
+    paramsMap[checkableItem.key] = true; checkableItem.value = true;
+}
+
+
+//不被保存、无需UI赋值的属性
 for (let i = 0; i < paramsNotInitList.length; i++) {
     paramsMap[paramsNotInitList[i]] = false;
 }
@@ -168,6 +236,7 @@ paramsMap["version"] = version
 paramsMap["drug1num"] = ""
 paramsMap["drug2num"] = ""
 paramsMap["drug3num"] = ""
+paramsMap["bpdrugnum"] = ""
 
 //同步值
 floatUI.adjust(paramsMap)
@@ -186,6 +255,10 @@ ui.start.click(() => {
         }
 
     }
+    paramsMap["skipStoryUseScreenCapture"] = ui["skipStoryUseScreenCapture"].checked;
+    paramsMap["mirrorsUseScreenCapture"] = ui["mirrorsAutoBattleStrategy2"].checked;
+    paramsMap["useScreencapShellCmd"] = ui["screenCaptureMethod2"].checked;
+    paramsMap["useInputShellCmd"] = ui["clickMethod3"].checked;
     // log(paramsMap)
     // log(JSON.stringify(paramsMap))
     storage.remove("data")
@@ -197,7 +270,7 @@ ui.start.click(() => {
     paramsMap["drug1num"] = ui["drug1num"].getText()+""
     paramsMap["drug2num"] = ui["drug2num"].getText()+""
     paramsMap["drug3num"] = ui["drug3num"].getText()+""
-    paramsMap["mirrorsUseScreenCapture"] = ui["mirrorsAutoBattleStrategy2"].checked;
+    paramsMap["bpdrugnum"] = ui["bpdrugnum"].getText()+""
     floatUI.adjust(paramsMap)
     toastLog("修改完成")
 });
