@@ -194,9 +194,9 @@ int parse_args(int argc, char **argv) {
     }
 }
 
-static void flip_pixels(char *group, int elements_per_group, int bytes_per_element) {
+static void flip_pixels(unsigned char *group, int elements_per_group, int bytes_per_element) {
     int i, group_size_bytes, len, allocated;
-    char *px1, *px2;
+    unsigned char *px1, *px2;
 
     if (elements_per_group <= 1) return;
 
@@ -257,7 +257,7 @@ static inline void swap_uint32(uint32_t *num) {
 
 int main(int argc, char **argv) {
     int i = 0, j = 0;
-    char *_buf_;
+    unsigned char *_buf_;
     int buf_size = 0;
     int read_size = 0, written_size = 0, total_size_written = 0, remaining_write_size = 0;
 

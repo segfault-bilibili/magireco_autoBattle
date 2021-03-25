@@ -37,6 +37,7 @@ var shellABI = "arm";
 var busyboxSetupDone = false;
 
 var dataDir = files.cwd();
+var pkgName = dataDir.match(/[^\/]+(?=\/files\/project)/)[0];
 
 var shellPrivilegeCheckDone = false;
 
@@ -250,7 +251,7 @@ function detectABI() {
 //在应用数据目录下安装busybox
 function setupBusybox() {
     //https://github.com/Magisk-Modules-Repo/busybox-ndk/commit/1f3f92c9375a92444d7201be7093424167fc4a28
-    if (files.isFile(dataDir+"/bin/busybox") && files.isFile(dataDir+"/bin/scrcap2bmp")) {
+    if (files.isFile("/data/local/tmp/"+pkgName+"/sbin/busybox") && files.isFile("/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp")) {
         log("busybox和scrcap2bmp文件已存在，应该是之前已经安装好了");
         return;
     }
@@ -270,11 +271,23 @@ function setupBusybox() {
     normalShellCmd("chmod a+x "+dataDir+"/../");    // pkgname/files/
     normalShellCmd("chmod a+x "+dataDir);           // pkgname/files/project/
     normalShellCmd("chmod a+x "+dataDir+"/bin");
-    normalShellCmd("cp "+dataDir+"/bin/busybox-"+shellABI+"-selinux "+dataDir+"/bin/busybox");
-    normalShellCmd("chmod 755 "+dataDir+"/bin/busybox");
-    normalShellCmd(dataDir+"/bin/busybox --install -s "+dataDir+"/bin/");
-    normalShellCmd("cp "+dataDir+"/bin/scrcap2bmp-"+shellABI+" "+dataDir+"/bin/scrcap2bmp");
-    normalShellCmd("chmod 755 "+dataDir+"/bin/scrcap2bmp");
+
+    let busyboxPath = dataDir+"/bin/busybox-"+shellABI+"-selinux";
+    normalShellCmd("chmod a+r "+busyboxPath);
+    let scrcap2bmpPath = dataDir+"/bin/scrcap2bmp-"+shellABI;
+    normalShellCmd("chmod a+r "+scrcap2bmpPath);
+
+    privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName);
+    privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName+"/sbin");
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName);
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin");
+
+    privilegedShellCmd("cat "+busyboxPath+" > "+"/data/local/tmp/"+pkgName+"/sbin/busybox");
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin/busybox");
+    privilegedShellCmd("cat "+scrcap2bmpPath+" > "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
+    privilegedShellCmd("/data/local/tmp/"+pkgName+"/sbin/busybox --install -s "+"/data/local/tmp/"+pkgName+"/sbin/");
+
     busyboxSetupDone = true;
 }
 
@@ -392,16 +405,16 @@ var localHttpListenPort = -1;
 function detectScreencapLength() {
     if (screencapLength > 0) return screencapLength;
     let useRoot = shellHasRootWithoutShizuku;
-    let result = privilegedShellCmd("screencap | "+dataDir+"/bin/scrcap2bmp -a | "+dataDir+"/bin/busybox wc -c", useRoot);
+    let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "+"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c", useRoot);
     if (result.code == 0) return parseInt(result.result);
     throw "detectScreencapLengthFailed"
 }
 function findListenPort() {
-    let busyboxPath = dataDir+"/bin/busybox";
+    let busyboxPath = "/data/local/tmp/"+pkgName+"/sbin/busybox";
     let BBoxnetstat = busyboxPath+" netstat"
     let BBoxawk = busyboxPath+" awk"
     let shellcmd = BBoxnetstat+" -tln | "+BBoxawk+" '{print $4}'"
-    let result = normalShellCmd(shellcmd);
+    let result = privilegedShellCmd(shellcmd);
     if (result.code == 0) {
         let strArr = result.result.toString().split("\n");
         for (let i=11023; i<12048; i++) {
@@ -429,8 +442,8 @@ function compatCaptureScreen() {
             httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
             httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
             let shellcmd = "{ echo -ne \""+httpResponseHeader+"\";";
-            shellcmd    += "screencap | "+ dataDir +"/bin/scrcap2bmp -a; }"
-            shellcmd    += " | "+dataDir+"/bin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
+            shellcmd    += "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a; }"
+            shellcmd    += " | "+"/data/local/tmp/"+pkgName+"/sbin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
             let useRoot = shellHasRootWithoutShizuku;
             let result = privilegedShellCmdMuted(shellcmd, useRoot);
         });
