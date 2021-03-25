@@ -388,7 +388,6 @@ function waitUntilScreenCaptureReady() {
 var screencapShellCmdThread = null;
 var screencapLength = -1;
 var screencapShellCmdLock = threads.lock();
-var screencapScriptPath = dataDir+"/bin/screencap.sh";
 var localHttpListenPort = -1;
 function detectScreencapLength() {
     if (screencapLength > 0) return screencapLength;
@@ -396,21 +395,6 @@ function detectScreencapLength() {
     let result = privilegedShellCmd("screencap | "+dataDir+"/bin/scrcap2bmp -a | "+dataDir+"/bin/busybox wc -c", useRoot);
     if (result.code == 0) return parseInt(result.result);
     throw "detectScreencapLengthFailed"
-}
-var screencapScriptSetupDone = false;
-function setupScreencapScript() {
-    let shebang = "#!"+dataDir+"/bin/busybox ash\n";
-    let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
-    httpResponseHeader    += "Content-Type: image/bmp\\r\\n";
-    httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
-    httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
-    let shellcmd = "echo -ne \""+httpResponseHeader+"\";\n";
-    shellcmd    += "screencap | "+ dataDir +"/bin/scrcap2bmp -a;\n"
-    let script = shebang+shellcmd;
-    files.write(screencapScriptPath, script);
-    normalShellCmd("chmod 755 "+screencapScriptPath);
-    if (!files.isFile(screencapScriptPath)) throw "setupScreencapScriptFail";
-    screencapScriptSetupDone = true;
 }
 function findListenPort() {
     let busyboxPath = dataDir+"/bin/busybox";
@@ -437,11 +421,16 @@ function compatCaptureScreen() {
     if (limit.useScreencapShellCmd) {
         //使用shell命令 screencap 截图
         screencapShellCmdLock.lock();
-        if (!screencapScriptSetupDone) setupScreencapScript();
         if (localHttpListenPort<0) localHttpListenPort = findListenPort();
         try {screencapShellCmdThread.interrupt();} catch (e) {};
         screencapShellCmdThread = threads.start(function() {
-            let shellcmd = screencapScriptPath+" | "+dataDir+"/bin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
+            let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
+            httpResponseHeader    += "Content-Type: image/bmp\\r\\n";
+            httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
+            httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
+            let shellcmd = "{ echo -ne \""+httpResponseHeader+"\";";
+            shellcmd    += "screencap | "+ dataDir +"/bin/scrcap2bmp -a; }"
+            shellcmd    += " | "+dataDir+"/bin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
             let useRoot = shellHasRootWithoutShizuku;
             let result = privilegedShellCmdMuted(shellcmd, useRoot);
         });
