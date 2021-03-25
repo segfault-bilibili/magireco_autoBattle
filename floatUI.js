@@ -677,16 +677,16 @@ floatUI.main = function () {
                     let main_script = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/main.js");
                     let float_script = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/floatUI.js");
                     if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                        toastLog("更新加载中");
+                        toastLog("更新加载中，界面可能暂时失去响应");
                         let mainjs = main_script.body.string();
                         let floatjs = float_script.body.string();
                         files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                         files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                        engines.stopAll()
                         events.on("exit", function () {
                             engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
                             toast("更新完毕")
                         })
+                        engines.stopAll()
                     } else {
                         toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
                     }
