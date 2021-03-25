@@ -215,7 +215,7 @@ if (checkableItem.value == null) checkableItem.value = false;
 if (device.sdkInt >= 24 ) {
     ui.clickMethod1.attr("visibility", "gone");
     ui.clickMethod2.attr("visibility", "visible");
-    ui.clickMethod2.attr("clickable", "false");
+    ui.clickMethod2.attr("clickable", "true");
     ui.clickMethod2.attr("focusable", "true");
     ui.clickMethod2.attr("checked", (!checkableItem.value).toString());
     ui.clickMethod3.attr("checked", checkableItem.value.toString());
@@ -223,6 +223,7 @@ if (device.sdkInt >= 24 ) {
     ui.clickMethod1.attr("visibility", "visible");
     ui.clickMethod2.attr("visibility", "gone");
     ui.clickMethod2.attr("focusable", "false");
+    ui.clickMethod2.attr("clickable", "false");
     ui.clickMethod2.attr("checked", "false");
     ui.clickMethod3.attr("checked", "true");
     paramsMap[checkableItem.key] = true; checkableItem.value = true;
