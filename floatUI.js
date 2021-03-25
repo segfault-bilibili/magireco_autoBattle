@@ -272,9 +272,11 @@ function setupBusybox() {
     normalShellCmd("chmod a+x "+dataDir+"/bin");
     normalShellCmd("cp "+dataDir+"/bin/busybox-"+shellABI+"-selinux "+dataDir+"/bin/busybox");
     normalShellCmd("chmod 755 "+dataDir+"/bin/busybox");
-    normalShellCmd(dataDir+"/busybox --install -s "+dataDir+"/");
+    normalShellCmd("chcon u:object_r:shell_data_file:s0 "+dataDir+"/bin/busybox");
+    normalShellCmd(dataDir+"/bin/busybox --install -s "+dataDir+"/bin/");
     normalShellCmd("cp "+dataDir+"/bin/scrcap2bmp-"+shellABI+" "+dataDir+"/bin/scrcap2bmp");
     normalShellCmd("chmod 755 "+dataDir+"/bin/scrcap2bmp");
+    normalShellCmd("chcon u:object_r:shell_data_file:s0 "+dataDir+"/bin/scrcap2bmp");
     busyboxSetupDone = true;
 }
 
