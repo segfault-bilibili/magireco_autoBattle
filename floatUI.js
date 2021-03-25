@@ -406,7 +406,10 @@ function detectScreencapLength() {
     if (screencapLength > 0) return screencapLength;
     let useRoot = shellHasRootWithoutShizuku;
     let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "+"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c", useRoot);
-    if (result.code == 0) return parseInt(result.result);
+    if (result.code == 0) {
+        screencapLength = parseInt(result.result);
+        return screencapLength;
+    }
     throw "detectScreencapLengthFailed"
 }
 function findListenPort() {
