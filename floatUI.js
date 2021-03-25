@@ -356,7 +356,7 @@ var screencapScriptSetupDone = false;
 function setupScreencapScript() {
     let shebang = "#!"+dataDir+"/bin/busybox ash\n";
     let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
-    httpResponseHeader    += "Content-Type: application/octect-stream\\r\\n";
+    httpResponseHeader    += "Content-Type: image/bmp\\r\\n";
     httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
     httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
     let shellcmd = "echo -ne \""+httpResponseHeader+"\";\n";
@@ -404,7 +404,7 @@ function compatCaptureScreen() {
         let screenshot = null;
         while (screenshot == null) {
             try {
-                let response = http.get("http://127.0.0.1:"+localHttpListenPort+"/screencap.dump");
+                let response = http.get("http://127.0.0.1:"+localHttpListenPort+"/screencap.dump.bmp");
                 let screenshot = images.fromBytes(response.body.bytes());
             } catch (e) {log(e)};
             sleep(200);

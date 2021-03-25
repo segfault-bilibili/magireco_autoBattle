@@ -497,4 +497,6 @@ int main(int argc, char **argv) {
         remaining_write_size = total_size_to_write - total_size_written;
     }
     //fprintf(stderr, "debug: max_written_size=%d\n", max_written_size);
+    free(buf);
+    return 0;
 }
