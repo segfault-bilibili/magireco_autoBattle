@@ -260,16 +260,10 @@ int main(int argc, char **argv) {
     char *_buf_;
     int buf_size = 0;
     int read_size = 0, written_size = 0, total_size_written = 0, remaining_write_size = 0;
-    int stdin_fd = STDIN_FILENO, stdout_fd = STDOUT_FILENO, stderr_fd = STDERR_FILENO;
 
     int invalid_arg = parse_args(argc, argv);
     if (invalid_arg != VALID_ARG) return invalid_arg;
 
-    stdin_fd = fileno(freopen(NULL, "rb", stdin));
-    if (stdin_fd == -1) {
-        fprintf(stderr, "freopen(NULL, \"rb\", stdin) failed. errno=%d\n", errno);
-        return 1;
-    }
     setvbuf(stdin, NULL, _IOFBF, IBS);
     buf_size = IBS;
     buf = NULL;
@@ -281,7 +275,7 @@ int main(int argc, char **argv) {
     ptr = buf;
     int max_read_size = 0;
     while (1) {
-        read_size = read(stdin_fd, ptr, IBS);
+        read_size = read(STDIN_FILENO, ptr, IBS);
 
         if (read_size < 0 || read_size > IBS) {
             fprintf(stderr, "Cannot read from stdin. read_size=%d errno=%d\n", read_size, errno);
@@ -474,12 +468,6 @@ int main(int argc, char **argv) {
         total_size_to_write = scrdump_size;
     }
 
-    stdout_fd =fileno(freopen(NULL, "wb", stdout));
-    if (stdout_fd == -1) {
-        fprintf(stderr, "freopen(NULL, \"wb\", stdout) failed. errno=%d\n", errno);
-        free(buf);
-        return 1;
-    }
     setvbuf(stdout, NULL, _IOFBF, OBS);
     total_size_written = 0;
     remaining_write_size = total_size_to_write;
@@ -494,9 +482,9 @@ int main(int argc, char **argv) {
         }
 
         if (remaining_write_size >= OBS) {
-            written_size = write(stdout_fd, ptr, OBS);
+            written_size = write(STDOUT_FILENO, ptr, OBS);
         } else {
-            written_size = write(stdout_fd, ptr, remaining_write_size);
+            written_size = write(STDOUT_FILENO, ptr, remaining_write_size);
         }
 
         if (written_size <= 0 || written_size > OBS) {
