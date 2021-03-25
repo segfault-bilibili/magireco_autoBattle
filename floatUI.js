@@ -114,6 +114,24 @@ function privilegedShellCmdMuted() {
         throw "privilegedShellCmdMutedIncorrectArgc"
     }
 }
+function rootMarkerFile() {
+    let filePath = dataDir+"/../../magireco_auto_root_granted";
+    switch (arguments.length) {
+    case 0:
+        return files.isFile(filePath);
+        break;
+    case 1:
+        let rootGranted = arguments[0];
+        if (rootGranted) {
+            files.create(filePath);
+        } else {
+            files.remove(filePath);
+        }
+        break;
+    default:
+        throw "rootMarkerFileIncorrectArgc"
+    }
+}
 function checkShellPrivilege() {
     let isThreadAlive = false;
     try {
@@ -129,14 +147,6 @@ function checkShellPrivilege() {
         if (shellHasPrivilege) {
             log("已经获取到root或adb权限了");
         } else {
-            sleep(2000);
-            toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
-            sleep(2000);
-            toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
-            sleep(2000);
-            toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
-            sleep(2000);
-
             let shellcmd = "id -u";
             let result = null;
             try {
@@ -163,19 +173,32 @@ function checkShellPrivilege() {
                 }
             } else {
                 log("似乎没有安装Shizuku，或者没有在Shizuku中授权。尝试直接获取root权限");
+                if (!rootMarkerFile()) {
+                    sleep(2000);
+                    toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
+                    sleep(2000);
+                    toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
+                    sleep(2000);
+                    toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
+                    sleep(2000);
+                }
+
                 let useRoot = true;
                 result = normalShellCmd(shellcmd, useRoot);
                 if (result.code == 0) euid = parseInt(result.result.match(/\d+/));
                 if (euid == 0) {
                     log("直接获取root权限成功");
                     shellHasRootWithoutShizuku = true;
+                    rootMarkerFile(true);
                     shellHasPrivilege = true;
                 } else {
                     log("直接获取root权限失败");
+                    shellHasRootWithoutShizuku = false;
+                    rootMarkerFile(false);
+                    shellHasPrivilege = false;
                     toastLog("请下载安装Shizuku，并按照说明启动它，\n然后在Shizuku中给本应用授权。");
                     $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
                     sleep(1000);
-                    shellHasPrivilege = false;
                 }
             }
         }
@@ -243,7 +266,9 @@ function setupBusybox() {
         exit();
     }
     //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
-    normalShellCmd("chmod a+x "+dataDir);
+    normalShellCmd("chmod a+x "+dataDir+"/../../"); // pkgname/
+    normalShellCmd("chmod a+x "+dataDir+"/../");    // pkgname/files/
+    normalShellCmd("chmod a+x "+dataDir);           // pkgname/files/project/
     normalShellCmd("chmod a+x "+dataDir+"/bin");
     normalShellCmd("cp "+dataDir+"/bin/busybox-"+shellABI+"-selinux "+dataDir+"/bin/busybox");
     normalShellCmd("chmod 755 "+dataDir+"/bin/busybox");

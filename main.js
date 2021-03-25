@@ -227,7 +227,7 @@ if (device.sdkInt >= 24 ) {
 }
 
 
-//不被保存、无需UI赋值的属性
+//不被保存（保存后会被忽略、重置）、无需UI赋值的属性
 for (let i = 0; i < paramsNotInitList.length; i++) {
     paramsMap[paramsNotInitList[i]] = false;
 }
@@ -272,7 +272,7 @@ ui.start.click(() => {
     paramsMap["drug3num"] = ui["drug3num"].getText()+""
     paramsMap["bpdrugnum"] = ui["bpdrugnum"].getText()+""
     floatUI.adjust(paramsMap)
-    toastLog("修改完成")
+    toastLog("设置已保存")
 });
 
 http.__okhttp__.setTimeout(5000);
