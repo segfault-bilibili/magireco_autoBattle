@@ -43,15 +43,17 @@ var shellPrivilegeCheckDone = false;
 function shellCmd_() {
     let useRoot = false;
     let useShizuku = false;
+    let logEnabled = true;
     let argc = 0;
     switch (arguments.length) {
-    case 2:
     case 3:
+    case 4:
         argc = arguments.length;
-        if (argc == 2) {
+        if (argc == 3) {
             useRoot = false;
             useShizuku = arguments[1];
-        } else if (argc == 3) {
+            logEnabled = arguments[2];
+        } else if (argc == 4) {
             useRoot = arguments[1];
             if (useRoot) {
                 log("useRoot is true, not using Shizuku this time");
@@ -59,6 +61,7 @@ function shellCmd_() {
             } else {
                 useShizuku = arguments[2];
             }
+            logEnabled = arguments[3];
         }
         if (useShizuku) {
             $shell.setDefaultOptions({adb: true});
@@ -66,9 +69,9 @@ function shellCmd_() {
             $shell.setDefaultOptions({adb: false});
         }
         let shellcmd = arguments[0];
-        log("shellCmd: \""+shellcmd+"\"", "useRoot:", useRoot, "useShizuku:", useShizuku);
+        if (logEnabled) log("shellCmd: \""+shellcmd+"\"", "useRoot:", useRoot, "useShizuku:", useShizuku);
         let result = $shell(shellcmd, useRoot);
-        log("result", result);
+        if (logEnabled) log("result", result);
         return result;
         break;
     default:
@@ -78,10 +81,10 @@ function shellCmd_() {
 function normalShellCmd() {
     switch (arguments.length) {
     case 1:
-        return shellCmd_(arguments[0], false);
+        return shellCmd_(arguments[0], false, true);
         break;
     case 2:
-        return shellCmd_(arguments[0], arguments[1], false);
+        return shellCmd_(arguments[0], arguments[1], false, true);
         break;
     default:
         throw "normalShellCmdIncorrectArgc"
@@ -90,13 +93,25 @@ function normalShellCmd() {
 function privilegedShellCmd() {
     switch (arguments.length) {
     case 1:
-        return shellCmd_(arguments[0], true);
+        return shellCmd_(arguments[0], true, true);
         break;
     case 2:
-        return shellCmd_(arguments[0], arguments[1], true);
+        return shellCmd_(arguments[0], arguments[1], true, true);
         break;
     default:
         throw "privilegedShellCmdIncorrectArgc"
+    }
+}
+function privilegedShellCmdMuted() {
+    switch (arguments.length) {
+    case 1:
+        return shellCmd_(arguments[0], true, false);
+        break;
+    case 2:
+        return shellCmd_(arguments[0], arguments[1], true, false);
+        break;
+    default:
+        throw "privilegedShellCmdMutedIncorrectArgc"
     }
 }
 function checkShellPrivilege() {
@@ -403,7 +418,7 @@ function compatCaptureScreen() {
         screencapShellCmdThread = threads.start(function() {
             let shellcmd = screencapScriptPath+" | "+dataDir+"/bin/busybox nc -l -p "+localHttpListenPort+" -s 127.0.0.1";
             let useRoot = shellHasRootWithoutShizuku;
-            let result = privilegedShellCmd(shellcmd, useRoot);
+            let result = privilegedShellCmdMuted(shellcmd, useRoot);
         });
         sleep(100);
         let screenshot = null;
