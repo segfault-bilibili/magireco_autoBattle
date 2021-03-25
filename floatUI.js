@@ -416,7 +416,7 @@ function compatCaptureScreen() {
         if (localHttpListenPort<0) localHttpListenPort = findListenPort();
         try {screencapShellCmdThread.interrupt();} catch (e) {};
         screencapShellCmdThread = threads.start(function() {
-            let shellcmd = screencapScriptPath+" | "+dataDir+"/bin/busybox nc -l -p "+localHttpListenPort+" -s 127.0.0.1";
+            let shellcmd = screencapScriptPath+" | "+dataDir+"/bin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
             let useRoot = shellHasRootWithoutShizuku;
             let result = privilegedShellCmdMuted(shellcmd, useRoot);
         });
