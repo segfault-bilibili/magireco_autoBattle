@@ -1,3 +1,8 @@
+/* scrcap2bmp - convert Android screencap raw data to Windows BMP
+   Author: segfault
+   https://space.bilibili.com/15209122
+*/
+
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
