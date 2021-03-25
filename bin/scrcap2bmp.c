@@ -51,9 +51,9 @@ int move_distance = 0, move_length = 0;
 #define ARG_TYPE_NUMBER 12
 
 #define VALID_ARG                0
-#define INVALIDARG_MULTIPLE_TIME 1
-#define INVALIDARG_OUT_OF_RANGE  2
-#define INVALIDARG_UNKNOWN_ARG   3
+#define INVALID_ARG_MULTIPLE_TIME 1
+#define INVALID_ARG_OUT_OF_RANGE  2
+#define INVALID_ARG_UNKNOWN_ARG   3
 
 typedef struct parse_result_struct {
     int invalid_arg;
@@ -61,7 +61,7 @@ typedef struct parse_result_struct {
 } parse_result;
 
 void parse_arg(char *arg, char *test, int type, char max, parse_result *result) {
-    result->invalid_arg = INVALIDARG_UNKNOWN_ARG;
+    result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
     result->value = 0;
 
     switch(type) {
@@ -74,11 +74,11 @@ void parse_arg(char *arg, char *test, int type, char max, parse_result *result) 
     case ARG_TYPE_NUMBER:
         if (strncmp(arg, test, 2) == 0 && arg[3] == 0) {
             if (arg[2] < '0' || arg[2] > '9') {
-                result->invalid_arg = INVALIDARG_UNKNOWN_ARG;
+                result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
                 break;
             }
             if (arg[3] != 0 || arg[2] < '1' || arg[2] > max) {
-                result->invalid_arg = INVALIDARG_OUT_OF_RANGE;
+                result->invalid_arg = INVALID_ARG_OUT_OF_RANGE;
                 break;
             }
             result->value = arg[2] - '0';
@@ -86,7 +86,7 @@ void parse_arg(char *arg, char *test, int type, char max, parse_result *result) 
         }
         break;
     default:
-        result->invalid_arg = INVALIDARG_UNKNOWN_ARG;
+        result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
     }
 }
 
@@ -99,7 +99,7 @@ int parse_args(int argc, char **argv) {
         print_help = 1;
     } else {
         for (i=1; i<argc; i++) {
-            arg_result.invalid_arg = INVALIDARG_UNKNOWN_ARG;
+            arg_result.invalid_arg = INVALID_ARG_UNKNOWN_ARG;
             if (strncmp(argv[i], "-h", 2) == 0 || strncmp(argv[i], "--help", 6) == 0) {
                 print_help = 1;
                 break;
@@ -107,7 +107,7 @@ int parse_args(int argc, char **argv) {
             parse_arg(argv[i], "-a", ARG_TYPE_SWITCH, '0', &arg_result);
             if (arg_result.invalid_arg == VALID_ARG) {
                 if (bmp != 0 || flip != 0 || swap != 0 || del != 0) {
-                    arg_result.invalid_arg = INVALIDARG_MULTIPLE_TIME;
+                    arg_result.invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 bmp = 1; flip = 2; swap = 1; del = 1;
@@ -116,7 +116,7 @@ int parse_args(int argc, char **argv) {
             parse_arg(argv[i], "-b", ARG_TYPE_SWITCH, '0', &arg_result);
             if (arg_result.invalid_arg == VALID_ARG) {
                 if (bmp != 0) {
-                    arg_result.invalid_arg = INVALIDARG_MULTIPLE_TIME;
+                    arg_result.invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 bmp = 1;
@@ -125,7 +125,7 @@ int parse_args(int argc, char **argv) {
             parse_arg(argv[i], "-s", ARG_TYPE_SWITCH, '0', &arg_result);
             if (arg_result.invalid_arg == VALID_ARG) {
                 if (swap != 0) {
-                    invalid_arg = INVALIDARG_MULTIPLE_TIME;
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 swap = 1;
@@ -135,24 +135,24 @@ int parse_args(int argc, char **argv) {
             parse_arg(argv[i], "-f", ARG_TYPE_NUMBER, '2', &arg_result);
             if (arg_result.invalid_arg == VALID_ARG) {
                 if (flip != 0) {
-                    invalid_arg = INVALIDARG_MULTIPLE_TIME;
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 flip = arg_result.value;
                 continue;
             }
-            if (arg_result.invalid_arg != INVALIDARG_UNKNOWN_ARG) break;
+            if (arg_result.invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
 
             parse_arg(argv[i], "-d", ARG_TYPE_NUMBER, '4', &arg_result);
             if (arg_result.invalid_arg == VALID_ARG) {
                 if (del != 0) {
-                    invalid_arg = INVALIDARG_MULTIPLE_TIME;
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 del = arg_result.value;
                 continue;
             }
-            if (arg_result.invalid_arg != INVALIDARG_UNKNOWN_ARG) break;
+            if (arg_result.invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
 
             if (arg_result.invalid_arg != VALID_ARG) break;
         }
@@ -181,13 +181,13 @@ int parse_args(int argc, char **argv) {
     switch (arg_result.invalid_arg) {
     case VALID_ARG:
         break;
-    case INVALIDARG_MULTIPLE_TIME:
+    case INVALID_ARG_MULTIPLE_TIME:
         fprintf(stderr, "Invalid argument: \"-a\", \"-f\", \"-s\" or \"-d\" cannot be specified for multiple times.\n");
         return 1;
-    case INVALIDARG_OUT_OF_RANGE:
+    case INVALID_ARG_OUT_OF_RANGE:
         fprintf(stderr, "Invalid argument: \"%.8s\" number out of range.\n", argv[i]);
         return 1;
-    case INVALIDARG_UNKNOWN_ARG:
+    case INVALID_ARG_UNKNOWN_ARG:
     default:
         fprintf(stderr, "Invalid argument: \"%.8s\"\n", argv[i]);
         return 1;
