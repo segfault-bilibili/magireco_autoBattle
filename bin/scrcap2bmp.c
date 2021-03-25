@@ -9,6 +9,7 @@
 #include "unistd.h"
 #include "errno.h"
 #include "inttypes.h"
+#include "byteswap.h"
 
 int bmp = 0;
 int flip = 0;
@@ -36,7 +37,7 @@ const int bmp_total_size_offset = 2;
 const int bmp_width_offset = 18;
 const int bmp_height_offset = 22;
 const int bmp_bit_depth_offset = 28;
-const int bmp_pixel_data_pointer_offset = 34;
+const int bmp_pixel_data_size_offset = 34;
 
 const unsigned char bmp_header_template[54] = {
     0x42, 0x4D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00,
@@ -242,12 +243,14 @@ static void flip_pixels(char *group, int elements_per_group, int bytes_per_eleme
     }
 }
 
+/*
 static inline void swap_uint32(uint32_t *num) {
     *num = (*num & 0x000000ffu) << 24u |
            (*num & 0x0000ff00u) << 8u  |
            (*num & 0x00ff0000u) >> 8u  |
            (*num & 0xff000000u) >> 24u;
 }
+*/
 
 #define IBS 4194304
 #define OBS 4194304
@@ -367,7 +370,8 @@ int main(int argc, char **argv) {
     if (swap) {
         ptr = buf + scrdump_header_size;
         for (i=0; i<px_count; i++) {
-            swap_uint32((uint32_t*)ptr);
+//          swap_uint32((uint32_t*)ptr);
+            *(uint32_t*)ptr = bswap_32(*(uint32_t*)ptr);
             ptr += 4;
         }
     }
@@ -455,6 +459,12 @@ int main(int argc, char **argv) {
         } else {
             ptr[0] = 32u;
         }
+
+        ptr = buf + bmp_pixel_data_size_offset;
+        ptr[0] =  bmp_pixel_data_size & 0x000000ffu;
+        ptr[1] = (bmp_pixel_data_size & 0x0000ff00u) >> 8 ;
+        ptr[2] = (bmp_pixel_data_size & 0x00ff0000u) >> 16 ;
+        ptr[3] = (bmp_pixel_data_size & 0xff000000u) >> 24 ;
     } else {
         total_size_to_write = scrdump_size;
     }
