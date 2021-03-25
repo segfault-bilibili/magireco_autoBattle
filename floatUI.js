@@ -114,14 +114,13 @@ function checkShellPrivilege() {
         if (shellHasPrivilege) {
             log("已经获取到root或adb权限了");
         } else {
-            //debug
-            //sleep(2000);
-            //toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
-            //sleep(2000);
-            //toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
-            //sleep(2000);
-            //toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
-            //sleep(2000);
+            sleep(2000);
+            toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
+            sleep(2000);
+            toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
+            sleep(2000);
+            toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
+            sleep(2000);
 
             let shellcmd = "id -u";
             let result = null;
