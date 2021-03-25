@@ -82,6 +82,8 @@ ui.layout(
                             <text layout_weight="1" size="19" color="#222222" text="截屏方法：" />
                             <radio id="screenCaptureMethod1" text="Android录屏API（可能因为杀后台等原因不稳定）" checked="true" />
                             <radio id="screenCaptureMethod2" text="shell命令 screencap（需要root或adb权限）" />
+                            <text layout_weight="1" size="12" color="#222222" text="root授权通知可能遮挡屏幕、干扰截屏" />
+                            <text layout_weight="1" size="12" color="#222222" text="推荐安装Shizuku来进行授权" />
                         </radiogroup>
                     </linear>
                 </vertical>
