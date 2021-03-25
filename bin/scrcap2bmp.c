@@ -55,75 +55,72 @@ int move_distance = 0, move_length = 0;
 #define INVALID_ARG_OUT_OF_RANGE  2
 #define INVALID_ARG_UNKNOWN_ARG   3
 
-typedef struct parse_result_struct {
-    int invalid_arg;
-    int value;
-} parse_result;
+int parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+int parse_result_value = 0;
 
-void parse_arg(char *arg, char *test, int type, char max, parse_result *result) {
-    result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
-    result->value = 0;
+static inline void parse_arg(char *arg, char *test, int type, char max) {
+    parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+    parse_result_value = 0;
 
     switch(type) {
     case ARG_TYPE_SWITCH:
         if (strncmp(arg, test, 2) == 0 && arg[2] == 0) {
-            result->value = 1;
-            result->invalid_arg = VALID_ARG;
+            parse_result_value = 1;
+            parse_result_invalid_arg = VALID_ARG;
         }
         break;
     case ARG_TYPE_NUMBER:
         if (strncmp(arg, test, 2) == 0 && arg[3] == 0) {
             if (arg[2] < '0' || arg[2] > '9') {
-                result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+                parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
                 break;
             }
             if (arg[3] != 0 || arg[2] < '1' || arg[2] > max) {
-                result->invalid_arg = INVALID_ARG_OUT_OF_RANGE;
+                parse_result_invalid_arg = INVALID_ARG_OUT_OF_RANGE;
                 break;
             }
-            result->value = arg[2] - '0';
-            result->invalid_arg = VALID_ARG;
+            parse_result_value = arg[2] - '0';
+            parse_result_invalid_arg = VALID_ARG;
         }
         break;
     default:
-        result->invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+        parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
     }
 }
 
-int parse_args(int argc, char **argv) {
+static inline int parse_args(int argc, char **argv) {
     int print_help = 0, invalid_arg = 0;
     int i=0;
-    parse_result arg_result;
 
     if (argc <= 1) {
         print_help = 1;
     } else {
         for (i=1; i<argc; i++) {
-            arg_result.invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+            parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
             if (strncmp(argv[i], "-h", 2) == 0 || strncmp(argv[i], "--help", 6) == 0) {
                 print_help = 1;
                 break;
             }
-            parse_arg(argv[i], "-a", ARG_TYPE_SWITCH, '0', &arg_result);
-            if (arg_result.invalid_arg == VALID_ARG) {
+            parse_arg(argv[i], "-a", ARG_TYPE_SWITCH, '0');
+            if (parse_result_invalid_arg == VALID_ARG) {
                 if (bmp != 0 || flip != 0 || swap != 0 || del != 0) {
-                    arg_result.invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    parse_result_invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 bmp = 1; flip = 2; swap = 1; del = 1;
                 continue;
             }
-            parse_arg(argv[i], "-b", ARG_TYPE_SWITCH, '0', &arg_result);
-            if (arg_result.invalid_arg == VALID_ARG) {
+            parse_arg(argv[i], "-b", ARG_TYPE_SWITCH, '0');
+            if (parse_result_invalid_arg == VALID_ARG) {
                 if (bmp != 0) {
-                    arg_result.invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    parse_result_invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 bmp = 1;
                 continue;
             }
-            parse_arg(argv[i], "-s", ARG_TYPE_SWITCH, '0', &arg_result);
-            if (arg_result.invalid_arg == VALID_ARG) {
+            parse_arg(argv[i], "-s", ARG_TYPE_SWITCH, '0');
+            if (parse_result_invalid_arg == VALID_ARG) {
                 if (swap != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
@@ -132,29 +129,29 @@ int parse_args(int argc, char **argv) {
                 continue;
             }
 
-            parse_arg(argv[i], "-f", ARG_TYPE_NUMBER, '2', &arg_result);
-            if (arg_result.invalid_arg == VALID_ARG) {
+            parse_arg(argv[i], "-f", ARG_TYPE_NUMBER, '2');
+            if (parse_result_invalid_arg == VALID_ARG) {
                 if (flip != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
-                flip = arg_result.value;
+                flip = parse_result_value;
                 continue;
             }
-            if (arg_result.invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
+            if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
 
-            parse_arg(argv[i], "-d", ARG_TYPE_NUMBER, '4', &arg_result);
-            if (arg_result.invalid_arg == VALID_ARG) {
+            parse_arg(argv[i], "-d", ARG_TYPE_NUMBER, '4');
+            if (parse_result_invalid_arg == VALID_ARG) {
                 if (del != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
-                del = arg_result.value;
+                del = parse_result_value;
                 continue;
             }
-            if (arg_result.invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
+            if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
 
-            if (arg_result.invalid_arg != VALID_ARG) break;
+            if (parse_result_invalid_arg != VALID_ARG) break;
         }
     }
 
@@ -178,7 +175,7 @@ int parse_args(int argc, char **argv) {
         return 2;
     }
 
-    switch (arg_result.invalid_arg) {
+    switch (parse_result_invalid_arg) {
     case VALID_ARG:
         break;
     case INVALID_ARG_MULTIPLE_TIME:
