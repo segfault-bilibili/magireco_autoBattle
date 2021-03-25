@@ -403,13 +403,9 @@ var screencapLength = -1;
 var screencapShellCmdLock = threads.lock();
 var localHttpListenPort = -1;
 function detectScreencapLength() {
-    if (screencapLength > 0) return screencapLength;
     let useRoot = shellHasRootWithoutShizuku;
     let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "+"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c", useRoot);
-    if (result.code == 0) {
-        screencapLength = parseInt(result.result);
-        return screencapLength;
-    }
+    return parseInt(result.result);
     throw "detectScreencapLengthFailed"
 }
 function findListenPort() {
@@ -439,10 +435,15 @@ function compatCaptureScreen() {
         screencapShellCmdLock.lock();
         if (localHttpListenPort<0) localHttpListenPort = findListenPort();
         try {screencapShellCmdThread.interrupt();} catch (e) {};
+        if (screencapLength < 0) screencapLength = detectScreencapLength();
+        if (screencapLength <= 0) {
+            log("screencapLength="+screencapLength+"<= 0, exit");
+            exit();
+        }
         screencapShellCmdThread = threads.start(function() {
             let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
             httpResponseHeader    += "Content-Type: image/bmp\\r\\n";
-            httpResponseHeader    += "Content-Length: " + detectScreencapLength() + "\\r\\n";
+            httpResponseHeader    += "Content-Length: " + screencapLength + "\\r\\n";
             httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
             let shellcmd = "{ echo -ne \""+httpResponseHeader+"\";";
             shellcmd    += "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a; }"
