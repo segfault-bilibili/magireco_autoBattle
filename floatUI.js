@@ -42,28 +42,24 @@ var pkgName = dataDir.match(/[^\/]+(?=\/files\/project)/)[0];
 var shellPrivilegeCheckDone = false;
 
 function shellCmd_() {
+//                 cmd, useRoot, useShizuku, logEnabled
     let useRoot = false;
     let useShizuku = false;
     let logEnabled = true;
     let argc = 0;
     switch (arguments.length) {
-    case 3:
     case 4:
         argc = arguments.length;
-        if (argc == 3) {
-            useRoot = false;
-            useShizuku = arguments[1];
-            logEnabled = arguments[2];
-        } else if (argc == 4) {
-            useRoot = arguments[1];
-            if (useRoot) {
-                if (logEnabled) log("useRoot is true, not using Shizuku this time");
-                useShizuku = false;
-            } else {
-                useShizuku = arguments[2];
-            }
-            logEnabled = arguments[3];
+
+        useRoot = arguments[1];
+        if (useRoot) {
+            if (logEnabled) log("useRoot is true, not using Shizuku this time");
+            useShizuku = false;
+        } else {
+            useShizuku = arguments[2];
         }
+        logEnabled = arguments[3];
+
         if (useShizuku) {
             $shell.setDefaultOptions({adb: true});
         } else {
@@ -82,10 +78,10 @@ function shellCmd_() {
 function normalShellCmd() {
     switch (arguments.length) {
     case 1:
-        return shellCmd_(arguments[0], false, true);
+        return shellCmd_(arguments[0], false, false, true); //cmd, useRoot=false, useShizuku=false, logEnabled=true
         break;
     case 2:
-        return shellCmd_(arguments[0], arguments[1], false, true);
+        return shellCmd_(arguments[0], arguments[1], false, true); //cmd, useRoot=arguments[1], useShizuku=false, logEnabled=true
         break;
     default:
         throw "normalShellCmdIncorrectArgc"
@@ -94,7 +90,16 @@ function normalShellCmd() {
 function privilegedShellCmd() {
     switch (arguments.length) {
     case 1:
-        return shellCmd_(arguments[0], true, true);
+        let useRoot = false;
+        let useShizuku = true;
+        if (shellHasRootWithoutShizuku) {
+            useRoot = true;
+            useShizuku = false;
+        } else {
+            useRoot = false;
+            useShizuku = true;
+        }
+        return shellCmd_(arguments[0], useRoot, useShizuku, true);
         break;
     case 2:
         return shellCmd_(arguments[0], arguments[1], true, true);
@@ -106,10 +111,19 @@ function privilegedShellCmd() {
 function privilegedShellCmdMuted() {
     switch (arguments.length) {
     case 1:
-        return shellCmd_(arguments[0], true, false);
+        let useRoot = false;
+        let useShizuku = true;
+        if (shellHasRootWithoutShizuku) {
+            useRoot = true;
+            useShizuku = false;
+        } else {
+            useRoot = false;
+            useShizuku = true;
+        }
+        return shellCmd_(arguments[0], useRoot, useShizuku, false); //cmd, useRoot, useShizuku, logEnabled=false
         break;
     case 2:
-        return shellCmd_(arguments[0], arguments[1], true, false);
+        return shellCmd_(arguments[0], arguments[1], true, false); //cmd, useRoot, useShizuku=true, logEnabled=false
         break;
     default:
         throw "privilegedShellCmdMutedIncorrectArgc"
@@ -403,8 +417,8 @@ var screencapLength = -1;
 var screencapShellCmdLock = threads.lock();
 var localHttpListenPort = -1;
 function detectScreencapLength() {
-    let useRoot = shellHasRootWithoutShizuku;
-    let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "+"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c", useRoot);
+    let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "
+                                    +"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c");
     return parseInt(result.result);
     throw "detectScreencapLengthFailed"
 }
@@ -448,8 +462,7 @@ function compatCaptureScreen() {
             let shellcmd = "{ echo -ne \""+httpResponseHeader+"\";";
             shellcmd    += "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a; }"
             shellcmd    += " | "+"/data/local/tmp/"+pkgName+"/sbin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
-            let useRoot = shellHasRootWithoutShizuku;
-            let result = privilegedShellCmdMuted(shellcmd, useRoot);
+            let result = privilegedShellCmdMuted(shellcmd);
         });
         sleep(100);
         let screenshot = null;
@@ -1217,8 +1230,7 @@ function compatClickOrSwipe() {
             shellcmd += " tap";
         }
         shellcmd += " " + coordsAndDuration;
-        let useRoot = shellHasRootWithoutShizuku;
-        return privilegedShellCmd(shellcmd, useRoot);
+        return privilegedShellCmd(shellcmd);
     } else {
         //Android 7.0及以上，以及非坐标点击
         return click.apply(this, arguments);
