@@ -26,6 +26,13 @@ int line_size24 = 0;
 
 unsigned char *buf, *ptr, *ptr2, *tmp_buf;
 
+typedef struct buf_chunk_struct {
+    unsigned char *buf;
+    struct buf_chunk_struct *next;
+} buf_chunk_type;
+
+buf_chunk_type *buf_chunk_head, *buf_chunk;
+
 int scrdump_size = 0, scrdump_header_size = 0;
 int total_size_to_write = 0;
 
@@ -240,6 +247,20 @@ static void flip_pixels(unsigned char *group, int elements_per_group, int bytes_
     }
 }
 
+void free_buf_chunks(buf_chunk_type *head) {
+    buf_chunk_type *chunk, *last_chunk;
+    chunk = head;
+    while (chunk != NULL) {
+        if (chunk->buf != NULL) free(chunk->buf);
+        chunk->buf = NULL;
+
+        last_chunk = chunk;
+        chunk = chunk->next;
+        last_chunk->next = NULL;
+        free(last_chunk);
+    }
+}
+
 /*
 static inline void swap_uint32(uint32_t *num) {
     *num = (*num & 0x000000ffu) << 24u |
@@ -256,55 +277,113 @@ int main(int argc, char **argv) {
     int i = 0, j = 0;
     unsigned char *_buf_;
     int buf_size = 0;
-    int read_size = 0, written_size = 0, total_size_written = 0, remaining_write_size = 0;
+    int read_size = 0, size_to_read = 0, written_size = 0, total_size_written = 0, remaining_write_size = 0;
 
     int invalid_arg = parse_args(argc, argv);
     if (invalid_arg != VALID_ARG) return invalid_arg;
 
     setvbuf(stdin, NULL, _IOFBF, IBS);
     buf_size = IBS;
-    buf = NULL;
-    buf = malloc(buf_size);
-    if (buf == NULL) {
+    buf_chunk_head = NULL;
+    buf_chunk_head = malloc(sizeof(buf_chunk_type));
+    if (buf_chunk_head == NULL) {
         fprintf(stderr, "Cannot allocate memory.\n");
         return 2;
     }
-    ptr = buf;
+    buf_chunk_head->buf = NULL; buf_chunk_head->next = NULL;
+    buf_chunk_head->buf = malloc(buf_size);
+    if (buf_chunk_head->buf == NULL) {
+        fprintf(stderr, "Cannot allocate memory.\n");
+        return 2;
+    }
+    buf_chunk = buf_chunk_head;
+    ptr = buf_chunk->buf;
+    size_to_read = IBS;
     int max_read_size = 0;
     while (1) {
-        read_size = read(STDIN_FILENO, ptr, IBS);
+        read_size = read(STDIN_FILENO, ptr, size_to_read);
 
-        if (read_size < 0 || read_size > IBS) {
+        if (read_size < 0 || read_size > size_to_read || read_size > IBS) {
             fprintf(stderr, "Cannot read from stdin. read_size=%d errno=%d\n", read_size, errno);
-            free(buf);
+            free_buf_chunks(buf_chunk_head);
             return 64;
         }
 
         scrdump_size += read_size;
+        size_to_read -= read_size;
         if (read_size > max_read_size) max_read_size = read_size;
 
         if (read_size == 0) {
             break;
         } else if (buf_size - scrdump_size < IBS) {
-            if (buf_size >= 16*IBS) {
+            if (buf_size > 64*IBS) {
                 fprintf(stderr, "screendump too large, exit.\n");
-                free(buf);
+                free_buf_chunks(buf_chunk_head);
                 return 128;
             }
-            buf_size += IBS;
-            _buf_ = NULL;
-            _buf_ = realloc(buf, buf_size);
-            if (_buf_ == NULL) {
-                fprintf(stderr, "Cannot reallocate memory.\n");
-                free(buf);
+            buf_chunk->next = NULL;
+            buf_chunk->next = malloc(sizeof(buf_chunk_type));
+            if (buf_chunk->next == NULL) {
+                fprintf(stderr, "Cannot allocate memory.\n");
+                free_buf_chunks(buf_chunk_head);
                 return 2;
             }
-            ptr = _buf_ + (ptr - buf);
-            buf = _buf_;
+            buf_chunk->next->buf = NULL; buf_chunk->next->next = NULL;
+            buf_chunk->next->buf = malloc(IBS);
+            if (buf_chunk->next->buf == NULL) {
+                fprintf(stderr, "Cannot allocate memory.\n");
+                free_buf_chunks(buf_chunk_head);
+                return 2;
+            }
+            buf_size += IBS;
         }
-        ptr += read_size;
+
+        if (size_to_read > 0) {
+            ptr += read_size;
+        } else if (size_to_read == 0) {
+            size_to_read = IBS;
+            buf_chunk = buf_chunk->next;
+            if (buf_chunk == NULL) {
+                fprintf(stderr, "Error: buf_chunk->next == NULL\n");
+                free_buf_chunks(buf_chunk_head);
+                return 2;
+            }
+            ptr = buf_chunk->buf;
+        } else {
+            fprintf(stderr, "Error: size_to_read < 0\nsize_to_read=%d read_size=%d scrdump_size=%d\n", size_to_read, read_size, scrdump_size);
+            free_buf_chunks(buf_chunk_head);
+            return 2;
+        }
     }
+
+    buf = NULL;
+    buf = malloc(buf_size);
+    if (buf == NULL) {
+        fprintf(stderr, "Cannot allocate memory.\n");
+        free_buf_chunks(buf_chunk_head);
+        return 2;
+    }
+    buf_chunk = buf_chunk_head;
     ptr = buf;
+    while (buf_chunk != NULL) {
+        if (buf_chunk->buf == NULL) {
+            fprintf(stderr, "Error: buf_chunk->buf == NULL\n");
+            free_buf_chunks(buf_chunk_head);
+            return 2;
+        }
+
+        memcpy(ptr, buf_chunk->buf, IBS);
+        free(buf_chunk->buf);
+        buf_chunk->buf = NULL;
+
+        buf_chunk = buf_chunk->next;
+        ptr += IBS;
+    }
+    free_buf_chunks(buf_chunk_head);
+    buf_chunk_head = NULL;
+
+    ptr = buf;
+
     //fprintf(stderr, "debug: max_read_size=%d\n", max_read_size);
 
     if (buf[3] != 0 || buf [7] != 0) {
