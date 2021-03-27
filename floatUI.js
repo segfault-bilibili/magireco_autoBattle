@@ -1212,7 +1212,11 @@ function compatClickOrSwipe() {
         return privilegedShellCmd(shellcmd);
     } else {
         //Android 7.0及以上，以及非坐标点击
-        return click.apply(this, arguments);
+        if (arguments.length == 5) {
+            return swipe.apply(this, arguments);
+        } else {
+            return click.apply(this, arguments);
+        }
     }
 }
 function compatClick() {
