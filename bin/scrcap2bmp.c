@@ -3,18 +3,25 @@
    https://space.bilibili.com/15209122
 */
 
-#include "stdio.h"
-#include "string.h"
-#include "stdlib.h"
-#include "unistd.h"
-#include "errno.h"
-#include "inttypes.h"
-#include "byteswap.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <byteswap.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 int bmp = 0;
 int flip = 0;
 int swap = 0;
+int test_length = 0;
 int del = 0;
+int http = 0;
+int test_port = 0;
+int timeout = 0;
 
 int scr_width = 0;
 int scr_height = 0;
@@ -38,9 +45,13 @@ int total_size_to_write = 0;
 
 const int bmp_header_size = 54;
 int bmp_pixel_data_size;
-int bmp_total_size;
+int whole_image_file_size;
 
-const int bmp_total_size_offset = 2;
+#define http_header_buf_len 256
+unsigned char http_header_buf[http_header_buf_len];
+int http_header_size = 0;
+
+const int whole_image_file_size_offset = 2;
 const int bmp_width_offset = 18;
 const int bmp_height_offset = 22;
 const int bmp_bit_depth_offset = 28;
@@ -53,6 +64,7 @@ const unsigned char bmp_header_template[54] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 int move_distance = 0, move_length = 0;
+unsigned char *move_src;
 
 #define ARG_TYPE_SWITCH 11
 #define ARG_TYPE_NUMBER 12
@@ -65,7 +77,10 @@ int move_distance = 0, move_length = 0;
 int parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
 int parse_result_value = 0;
 
-static inline void parse_arg(char *arg, char *test, int type, char max) {
+static inline void parse_arg(char *arg, char *test, int type, unsigned int max) {
+    int i = 0, max_str_len = 0;
+    unsigned char max_str[64];
+
     parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
     parse_result_value = 0;
 
@@ -77,17 +92,27 @@ static inline void parse_arg(char *arg, char *test, int type, char max) {
         }
         break;
     case ARG_TYPE_NUMBER:
-        if (strncmp(arg, test, 2) == 0 && arg[3] == 0) {
-            if (arg[2] < '0' || arg[2] > '9') {
-                parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
-                break;
-            }
-            if (arg[3] != 0 || arg[2] < '1' || arg[2] > max) {
-                parse_result_invalid_arg = INVALID_ARG_OUT_OF_RANGE;
-                break;
-            }
-            parse_result_value = arg[2] - '0';
+        memset((char*)max_str, 0, 64);
+        sprintf((char*)max_str, "%d", max);
+        max_str_len = strlen((char*)max_str);
+        if (strncmp(arg, test, 2) == 0) {
             parse_result_invalid_arg = VALID_ARG;
+            parse_result_value = 0;
+            for (int i=2; arg[i]!=0; i++) {
+                if (arg[i] >= '0' && arg[i] <= '9') {
+                    if (i >= 2 + max_str_len) {
+                        parse_result_invalid_arg = INVALID_ARG_OUT_OF_RANGE;
+                        break;
+                    }
+                    parse_result_value *= 10;
+                    parse_result_value += arg[i] - '0';
+                } else {
+                    parse_result_invalid_arg = INVALID_ARG_UNKNOWN_ARG;
+                    break;
+                }
+            }
+            if (parse_result_invalid_arg != VALID_ARG) break;
+            if (parse_result_value > max) parse_result_invalid_arg = INVALID_ARG_OUT_OF_RANGE;
         }
         break;
     default:
@@ -108,7 +133,7 @@ static inline int parse_args(int argc, char **argv) {
                 print_help = 1;
                 break;
             }
-            parse_arg(argv[i], "-a", ARG_TYPE_SWITCH, '0');
+            parse_arg(argv[i], "-a", ARG_TYPE_SWITCH, 0);
             if (parse_result_invalid_arg == VALID_ARG) {
                 if (bmp != 0 || flip != 0 || swap != 0 || del != 0) {
                     parse_result_invalid_arg = INVALID_ARG_MULTIPLE_TIME;
@@ -117,7 +142,7 @@ static inline int parse_args(int argc, char **argv) {
                 bmp = 1; flip = 2; swap = 1; del = 1;
                 continue;
             }
-            parse_arg(argv[i], "-b", ARG_TYPE_SWITCH, '0');
+            parse_arg(argv[i], "-b", ARG_TYPE_SWITCH, 0);
             if (parse_result_invalid_arg == VALID_ARG) {
                 if (bmp != 0) {
                     parse_result_invalid_arg = INVALID_ARG_MULTIPLE_TIME;
@@ -126,7 +151,7 @@ static inline int parse_args(int argc, char **argv) {
                 bmp = 1;
                 continue;
             }
-            parse_arg(argv[i], "-s", ARG_TYPE_SWITCH, '0');
+            parse_arg(argv[i], "-s", ARG_TYPE_SWITCH, 0);
             if (parse_result_invalid_arg == VALID_ARG) {
                 if (swap != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
@@ -135,8 +160,17 @@ static inline int parse_args(int argc, char **argv) {
                 swap = 1;
                 continue;
             }
+            parse_arg(argv[i], "-l", ARG_TYPE_SWITCH, 0);
+            if (parse_result_invalid_arg == VALID_ARG) {
+                if (test_length != 0) {
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    break;
+                }
+                test_length = 1;
+                continue;
+            }
 
-            parse_arg(argv[i], "-f", ARG_TYPE_NUMBER, '2');
+            parse_arg(argv[i], "-f", ARG_TYPE_NUMBER, 2);
             if (parse_result_invalid_arg == VALID_ARG) {
                 if (flip != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
@@ -147,13 +181,46 @@ static inline int parse_args(int argc, char **argv) {
             }
             if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
 
-            parse_arg(argv[i], "-d", ARG_TYPE_NUMBER, '4');
+            parse_arg(argv[i], "-d", ARG_TYPE_NUMBER, 4);
             if (parse_result_invalid_arg == VALID_ARG) {
                 if (del != 0) {
                     invalid_arg = INVALID_ARG_MULTIPLE_TIME;
                     break;
                 }
                 del = parse_result_value;
+                continue;
+            }
+            if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
+
+            parse_arg(argv[i], "-p", ARG_TYPE_NUMBER, 65535);
+            if (parse_result_invalid_arg == VALID_ARG) {
+                if (http != 0) {
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    break;
+                }
+                http = parse_result_value;
+                continue;
+            }
+            if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
+
+            parse_arg(argv[i], "-t", ARG_TYPE_NUMBER, 65535);
+            if (parse_result_invalid_arg == VALID_ARG) {
+                if (test_port != 0) {
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    break;
+                }
+                test_port = parse_result_value;
+                continue;
+            }
+            if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
+
+            parse_arg(argv[i], "-w", ARG_TYPE_NUMBER, 3600);
+            if (parse_result_invalid_arg == VALID_ARG) {
+                if (timeout != 0) {
+                    invalid_arg = INVALID_ARG_MULTIPLE_TIME;
+                    break;
+                }
+                timeout = parse_result_value;
                 continue;
             }
             if (parse_result_invalid_arg != INVALID_ARG_UNKNOWN_ARG) break;
@@ -179,23 +246,30 @@ static inline int parse_args(int argc, char **argv) {
         fprintf(stderr, "                        1, 2, 3, 4\n");
         fprintf(stderr, "                    eg. \"-d1\" means ABGR => BGR\n");
         fprintf(stderr, "                    NOTE: currently, only 4-channel input is accepted.\n\n");
-        return 2;
+        fprintf(stderr, "    -pPORT          set up a bogus HTTP server listening at PORT\n");
+        fprintf(stderr, "                    output data will be sent through HTTP instead of stdout\n\n");
+        fprintf(stderr, "    -tPORT          test whether local PORT is available and then exit\n\n");
+        fprintf(stderr, "    -wTIMEOUT       wait for HTTP connection for at most TIMEOUT seconds\n\n");
+        fprintf(stderr, "    -l (not number) report output length (in bytes) to stderr,\n");
+        fprintf(stderr, "                    do not write any actual output data\n\n");
+        return INVALID_ARG_UNKNOWN_ARG;
     }
 
     switch (parse_result_invalid_arg) {
     case VALID_ARG:
         break;
     case INVALID_ARG_MULTIPLE_TIME:
-        fprintf(stderr, "Invalid argument: \"-a\", \"-f\", \"-s\" or \"-d\" cannot be specified for multiple times.\n");
-        return 1;
+        fprintf(stderr, "Invalid argument: \"%.8s\" cannot be specified for multiple times.\n", argv[i]);
+        return parse_result_invalid_arg;
     case INVALID_ARG_OUT_OF_RANGE:
         fprintf(stderr, "Invalid argument: \"%.8s\" number out of range.\n", argv[i]);
-        return 1;
+        return parse_result_invalid_arg;
     case INVALID_ARG_UNKNOWN_ARG:
     default:
         fprintf(stderr, "Invalid argument: \"%.8s\"\n", argv[i]);
-        return 1;
+        return parse_result_invalid_arg;
     }
+    return parse_result_invalid_arg;
 }
 
 static void flip_pixels(unsigned char *group, int elements_per_group, int bytes_per_element) {
@@ -261,6 +335,30 @@ void free_buf_chunks(buf_chunk_type *head) {
     }
 }
 
+int http_header_add_str(char *line) {
+    int line_len;
+    line_len = strlen(line);
+    memcpy(http_header_buf+http_header_size, line, line_len);
+    http_header_size += line_len;
+    return line_len;
+}
+
+int http_header_add_int(int number) {
+    int number_str_len;
+    unsigned char *ptr;
+    if (http_header_buf_len - http_header_size < 32) {
+        fprintf(stderr, "Error: http_header_buf has only %d bytes left (32 bytes needed)\n", http_header_buf_len-http_header_size);
+        free(buf);
+        return -1;
+    }
+    ptr = http_header_buf+http_header_size;
+    memset((char*)ptr, 0, 32);
+    sprintf((char*)ptr, "%d", number);
+    number_str_len = strlen((char*)ptr);
+    http_header_size += number_str_len;
+    return number_str_len;
+}
+
 /*
 static inline void swap_uint32(uint32_t *num) {
     *num = (*num & 0x000000ffu) << 24u |
@@ -271,16 +369,56 @@ static inline void swap_uint32(uint32_t *num) {
 */
 
 #define IBS 4194304
-#define OBS 4194304
+#define OBS 262144
 
 int main(int argc, char **argv) {
     int i = 0, j = 0;
     unsigned char *_buf_;
     int buf_size = 0;
-    int read_size = 0, size_to_read = 0, written_size = 0, total_size_written = 0, remaining_write_size = 0;
+    int read_size = 0, size_to_read = 0, written_size = 0, size_to_write = 0, total_size_written = 0, remaining_write_size = 0;
+
+    int write_fd = -1;
+    int listen_sock_fd = -1, accept_sock_fd = -1;
+    struct sockaddr_in listen_addr;
+    fd_set accept_fdset; struct timeval timeout_timeval; struct timeval *timeout_timeval_ptr; int select_ret = -1;
 
     int invalid_arg = parse_args(argc, argv);
     if (invalid_arg != VALID_ARG) return invalid_arg;
+
+    if (http || test_port) {
+        if (test_length) {
+            fprintf(stderr, "Output length test (\"-l\") cannot be specified at same time when HTTP (\"-hPORT\") or port test (\"-tPORT\") is also specified\n");
+            return 1;
+        }
+
+        if (test_port > 0) http = test_port;
+        if (http < 1 || http > 65535) {
+            fprintf(stderr, "PORT is out of range\n");
+            return 1;
+        }
+
+        listen_sock_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (listen_sock_fd == -1) {
+            perror("socket() failed\n");
+            return 255;
+        }
+        memset(&listen_addr, 0, sizeof(listen_addr));
+        listen_addr.sin_family = AF_INET;
+        listen_addr.sin_addr.s_addr= inet_addr("127.0.0.1");
+        listen_addr.sin_port = htons(http);
+        if (bind(listen_sock_fd, (struct sockaddr*)&listen_addr, sizeof(listen_addr)) == -1) {
+            perror("bind() failed\n");
+            return 255;
+        }
+        if (listen(listen_sock_fd, 1) == -1) {
+            perror("listen() failed\n");
+            return 255;
+        }
+        if (test_port > 0) {
+            fprintf(stderr, "Port %d is available\n", http);
+            return 0;
+        }
+    }
 
     setvbuf(stdin, NULL, _IOFBF, IBS);
     buf_size = IBS;
@@ -304,7 +442,8 @@ int main(int argc, char **argv) {
         read_size = read(STDIN_FILENO, ptr, size_to_read);
 
         if (read_size < 0 || read_size > size_to_read || read_size > IBS) {
-            fprintf(stderr, "Cannot read from stdin. read_size=%d errno=%d\n", read_size, errno);
+            fprintf(stderr, "Cannot read from stdin. read_size=%d", read_size);
+            perror("");
             free_buf_chunks(buf_chunk_head);
             return 64;
         }
@@ -407,6 +546,8 @@ int main(int argc, char **argv) {
     }
 
     switch (flip) {
+    case 0:
+        break;
     case 1: //horizontally flip
         ptr = buf + scrdump_header_size;
         tmp_buf = NULL;
@@ -482,19 +623,63 @@ int main(int argc, char **argv) {
         return 16;
     }
 
-    if (bmp) {
-        move_distance = bmp_header_size - scrdump_header_size;
-        if (del) {
-            bmp_pixel_data_size = px_size24;
-            move_length = px_size24;
-        } else {
-            bmp_pixel_data_size = px_size32;
-            move_length = px_size32;
-        }
-        bmp_total_size = bmp_header_size + bmp_pixel_data_size;
-        total_size_to_write = bmp_total_size;
+    if (bmp || http) {
+        move_distance = 0;
+        move_length = 0;
+        total_size_to_write = 0;
 
-        if (bmp_total_size > buf_size) {
+        if (bmp) {
+            whole_image_file_size = bmp_header_size;
+            move_distance += bmp_header_size - scrdump_header_size;
+            if (del) {
+                bmp_pixel_data_size = px_size24;
+                move_length = px_size24; //move pixels only
+            } else {
+                bmp_pixel_data_size = px_size32;
+                move_length = px_size32; //move pixels only
+            }
+            whole_image_file_size += bmp_pixel_data_size;
+        } else {
+            whole_image_file_size = scrdump_header_size;
+            move_length = scrdump_header_size; //move all data, scrdump_header+pixels
+            if (del) {
+                whole_image_file_size += px_size24;
+                move_length += px_size24;
+            } else {
+                whole_image_file_size += px_size32;
+                move_length += px_size32;
+            }
+        }
+        total_size_to_write += whole_image_file_size;
+
+        if (http) {
+            http_header_add_str("HTTP/1.1 200 OK\r\n");
+
+            http_header_add_str("Content-Type: ");
+            if (bmp) {
+                http_header_add_str("image/bmp\r\n");
+            } else {
+                http_header_add_str("application/octect-stream\r\n");
+            }
+
+            http_header_add_str("Content-Length: ");
+            if (http_header_add_int(whole_image_file_size) <= 0) {
+                fprintf(stderr, "Error: http_header_add_int(whole_image_file_size=%d) failed\n", whole_image_file_size);
+                free(buf);
+                return 32;
+            }
+            http_header_add_str("\r\n");
+
+            http_header_add_str("Connection: close\r\n\r\n");
+
+            move_distance += http_header_size;
+            total_size_to_write += http_header_size;
+        } else {
+            http_header_size = 0;
+        }
+
+        // reallocate more memory if needed
+        if (total_size_to_write > buf_size) {
             buf_size += (move_distance / IBS + 1) * IBS;
             _buf_ = NULL;
             _buf_ = realloc(buf, buf_size);
@@ -507,44 +692,103 @@ int main(int argc, char **argv) {
             buf = _buf_;
         }
 
-        if (move_distance != 0) memmove(buf+bmp_header_size, buf+scrdump_header_size, move_length);
-        memcpy(buf, bmp_header_template, bmp_header_size);
-
-        ptr = buf + bmp_total_size_offset;
-        ptr[0] =  bmp_total_size & 0x000000ffu;
-        ptr[1] = (bmp_total_size & 0x0000ff00u) >> 8 ;
-        ptr[2] = (bmp_total_size & 0x00ff0000u) >> 16 ;
-        ptr[3] = (bmp_total_size & 0xff000000u) >> 24 ;
-
-        ptr = buf + bmp_width_offset;
-        ptr[0] =  scr_width & 0x000000ffu;
-        ptr[1] = (scr_width & 0x0000ff00u) >> 8 ;
-        ptr[2] = (scr_width & 0x00ff0000u) >> 16 ;
-        ptr[3] = (scr_width & 0xff000000u) >> 24 ;
-
-        ptr = buf + bmp_height_offset;
-        ptr[0] =  scr_height & 0x000000ffu;
-        ptr[1] = (scr_height & 0x0000ff00u) >> 8 ;
-        ptr[2] = (scr_height & 0x00ff0000u) >> 16 ;
-        ptr[3] = (scr_height & 0xff000000u) >> 24 ;
-
-        ptr = buf + bmp_bit_depth_offset;
-        if (del) {
-            ptr[0] = 24u;
-        } else {
-            ptr[0] = 32u;
+        // move pixel (or whole screendump) data
+        if (move_distance != 0) {
+            move_src = buf;
+            if (bmp) move_src += scrdump_header_size; // bmp: move pixels only
+            memmove(move_src+move_distance, move_src, move_length);
         }
 
-        ptr = buf + bmp_pixel_data_size_offset;
-        ptr[0] =  bmp_pixel_data_size & 0x000000ffu;
-        ptr[1] = (bmp_pixel_data_size & 0x0000ff00u) >> 8 ;
-        ptr[2] = (bmp_pixel_data_size & 0x00ff0000u) >> 16 ;
-        ptr[3] = (bmp_pixel_data_size & 0xff000000u) >> 24 ;
+        // fill headers
+        if (http) {
+            ptr = buf;
+            memcpy(ptr, http_header_buf, http_header_size);
+        }
+
+        if (bmp) {
+            ptr = buf+http_header_size;
+            memcpy(ptr, bmp_header_template, bmp_header_size);
+
+            ptr = buf + http_header_size + whole_image_file_size_offset;
+            ptr[0] =  whole_image_file_size & 0x000000ffu;
+            ptr[1] = (whole_image_file_size & 0x0000ff00u) >> 8 ;
+            ptr[2] = (whole_image_file_size & 0x00ff0000u) >> 16 ;
+            ptr[3] = (whole_image_file_size & 0xff000000u) >> 24 ;
+
+            ptr = buf + http_header_size + bmp_width_offset;
+            ptr[0] =  scr_width & 0x000000ffu;
+            ptr[1] = (scr_width & 0x0000ff00u) >> 8 ;
+            ptr[2] = (scr_width & 0x00ff0000u) >> 16 ;
+            ptr[3] = (scr_width & 0xff000000u) >> 24 ;
+
+            ptr = buf + http_header_size + bmp_height_offset;
+            ptr[0] =  scr_height & 0x000000ffu;
+            ptr[1] = (scr_height & 0x0000ff00u) >> 8 ;
+            ptr[2] = (scr_height & 0x00ff0000u) >> 16 ;
+            ptr[3] = (scr_height & 0xff000000u) >> 24 ;
+
+            ptr = buf + http_header_size + bmp_bit_depth_offset;
+            if (del) {
+                ptr[0] = 24u;
+            } else {
+                ptr[0] = 32u;
+            }
+
+            ptr = buf + http_header_size + bmp_pixel_data_size_offset;
+            ptr[0] =  bmp_pixel_data_size & 0x000000ffu;
+            ptr[1] = (bmp_pixel_data_size & 0x0000ff00u) >> 8 ;
+            ptr[2] = (bmp_pixel_data_size & 0x00ff0000u) >> 16 ;
+            ptr[3] = (bmp_pixel_data_size & 0xff000000u) >> 24 ;
+        }
     } else {
         total_size_to_write = scrdump_size;
     }
 
-    setvbuf(stdout, NULL, _IOFBF, OBS);
+    if (test_length) {
+        fprintf(stderr, "%d\n", total_size_to_write);
+        free(buf);
+        return 0;
+    }
+
+    if (http) {
+        FD_ZERO(&accept_fdset);
+        FD_SET(listen_sock_fd, &accept_fdset);
+
+        if (timeout < 0 || timeout > 3600) {
+            fprintf(stderr, "timeout is out of range\n");
+            free(buf);
+            return 1;
+        }
+        timeout_timeval_ptr = NULL;
+        if (timeout == 0) {
+            timeout_timeval_ptr = NULL;
+        } else {
+            timeout_timeval.tv_sec = timeout;
+            timeout_timeval.tv_usec = 0;
+            timeout_timeval_ptr = &timeout_timeval;
+        }
+
+        select_ret = select(listen_sock_fd+1, &accept_fdset, NULL, NULL, timeout_timeval_ptr);
+        if (select_ret == -1) {
+            perror("select() failed\n");
+            free(buf);
+            return 255;
+        }
+        if (select_ret == 0) {
+            fprintf(stderr, "select() time out\n");
+            free(buf);
+            return 254;
+        }
+        accept_sock_fd = accept(listen_sock_fd, NULL, NULL);
+        if (accept_sock_fd == -1) {
+            perror("accept() failed\n");
+            free(buf);
+            return 255;
+        }
+    } else {
+        setvbuf(stdout, NULL, _IOFBF, OBS);
+    }
+
     total_size_written = 0;
     remaining_write_size = total_size_to_write;
     ptr = buf;
@@ -558,13 +802,25 @@ int main(int argc, char **argv) {
         }
 
         if (remaining_write_size >= OBS) {
-            written_size = write(STDOUT_FILENO, ptr, OBS);
+            size_to_write = OBS;
         } else {
-            written_size = write(STDOUT_FILENO, ptr, remaining_write_size);
+            size_to_write = remaining_write_size;
+        }
+
+        if (http) {
+            written_size = send(accept_sock_fd, ptr, size_to_write, 0);
+        } else {
+            written_size = write(STDOUT_FILENO, ptr, size_to_write);
         }
 
         if (written_size <= 0 || written_size > OBS) {
-            fprintf(stderr, "Cannot write to stdout. written_size=%d\n", written_size);
+            if (http == 0) {
+                fprintf(stderr, "Cannot write to stdout. written_size=%d", written_size);
+                perror("");
+            } else {
+                fprintf(stderr, "Cannot write to socket. written_size=%d", written_size);
+                perror("");
+            }
             free(buf);
             return 64;
         }
@@ -580,6 +836,13 @@ int main(int argc, char **argv) {
         }
         remaining_write_size = total_size_to_write - total_size_written;
     }
+
+    if (accept_sock_fd != -1) {
+        shutdown(accept_sock_fd, SHUT_RDWR);
+        close(accept_sock_fd);
+    }
+    if (listen_sock_fd != -1) close(listen_sock_fd);
+
     //fprintf(stderr, "debug: max_written_size=%d\n", max_written_size);
     free(buf);
     return 0;

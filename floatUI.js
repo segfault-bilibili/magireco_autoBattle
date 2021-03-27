@@ -34,7 +34,7 @@ var shellPrivilegeCheckLock = threads.lock();
 var shellHasPrivilege = false;
 var shellHasRootWithoutShizuku = false;
 var shellABI = "arm";
-var busyboxSetupDone = false;
+var binarySetupDone = false;
 
 var dataDir = files.cwd();
 var pkgName = dataDir.match(/[^\/]+(?=\/files\/project)/)[0];
@@ -218,7 +218,7 @@ function checkShellPrivilege() {
             }
         }
 
-        if (shellHasPrivilege && (!busyboxSetupDone)) setupBusybox();
+        if (shellHasPrivilege && (!binarySetupDone)) setupBinary();
 
         shellPrivilegeCheckDone = true;
         shellPrivilegeCheckLock.unlock();
@@ -262,19 +262,13 @@ function detectABI() {
     }
     return shellABI;
 }
-//在应用数据目录下安装busybox
-function setupBusybox() {
-    //https://github.com/Magisk-Modules-Repo/busybox-ndk/commit/1f3f92c9375a92444d7201be7093424167fc4a28
-    if (files.isFile("/data/local/tmp/"+pkgName+"/sbin/busybox") && files.isFile("/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp")) {
-        log("busybox和scrcap2bmp文件已存在，应该是之前已经安装好了");
+//在/data/local/tmp/下安装scrcap2bmp
+function setupBinary() {
+    if (files.isFile("/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp")) {
+        log("scrcap2bmp文件已存在，应该是之前已经安装好了");
         return;
     }
     detectABI();
-    if (!files.isFile(dataDir+"/bin/busybox-"+shellABI+"-selinux")) {
-        toastLog("找不到自带的busybox，请下载新版安装包");
-        sleep(2000);
-        exit();
-    }
     if (!files.isFile(dataDir+"/bin/scrcap2bmp-"+shellABI)) {
         toastLog("找不到自带的scrcap2bmp，请下载新版安装包");
         sleep(2000);
@@ -286,8 +280,6 @@ function setupBusybox() {
     normalShellCmd("chmod a+x "+dataDir);           // pkgname/files/project/
     normalShellCmd("chmod a+x "+dataDir+"/bin");
 
-    let busyboxPath = dataDir+"/bin/busybox-"+shellABI+"-selinux";
-    normalShellCmd("chmod a+r "+busyboxPath);
     let scrcap2bmpPath = dataDir+"/bin/scrcap2bmp-"+shellABI;
     normalShellCmd("chmod a+r "+scrcap2bmpPath);
 
@@ -296,13 +288,10 @@ function setupBusybox() {
     privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName);
     privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin");
 
-    privilegedShellCmd("cat "+busyboxPath+" > "+"/data/local/tmp/"+pkgName+"/sbin/busybox");
-    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin/busybox");
     privilegedShellCmd("cat "+scrcap2bmpPath+" > "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
     privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
-    privilegedShellCmd("/data/local/tmp/"+pkgName+"/sbin/busybox --install -s "+"/data/local/tmp/"+pkgName+"/sbin/");
 
-    busyboxSetupDone = true;
+    binarySetupDone = true;
 }
 
 //提醒用户先把游戏切到前台，否则结束脚本运行
@@ -417,30 +406,20 @@ var screencapLength = -1;
 var screencapShellCmdLock = threads.lock();
 var localHttpListenPort = -1;
 function detectScreencapLength() {
-    let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a | "
-                                    +"/data/local/tmp/"+pkgName+"/sbin/busybox wc -c");
-    return parseInt(result.result);
+    let result = privilegedShellCmd("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -l");
+    if (result.code == 0) return parseInt(result.error);
     throw "detectScreencapLengthFailed"
 }
 function findListenPort() {
-    let busyboxPath = "/data/local/tmp/"+pkgName+"/sbin/busybox";
-    let BBoxnetstat = busyboxPath+" netstat"
-    let BBoxawk = busyboxPath+" awk"
-    let shellcmd = BBoxnetstat+" -tln | "+BBoxawk+" '{print $4}'"
-    let result = privilegedShellCmd(shellcmd);
-    if (result.code == 0) {
-        let strArr = result.result.toString().split("\n");
-        for (let i=11023; i<12048; i++) {
-            let occupied = false;
-            for (let j=0; j<strArr.length; j++) {
-                let matched = strArr[j].match(/(?:)\d+$/);
-                let port = -1;
-                if (matched != null) port = matched[0];
-                if (i==parseInt(port)) {occupied = true; break;}
-            }
-            if (!occupied) {log("可用监听端口", i);return i;}
+    for (let i=11023; i<65535; i+=16) {
+        let shellcmd = "/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -t"+i;
+        let result = privilegedShellCmd(shellcmd);
+        if (result.code == 0 && result.error.startsWith("Port "+i+" is available")) {
+            log("可用监听端口", i);
+            return i;
         }
     }
+    log("找不到可用监听端口");
     throw "cannotFindAvailablePort"
 }
 function compatCaptureScreen() {
@@ -455,22 +434,22 @@ function compatCaptureScreen() {
             exit();
         }
         screencapShellCmdThread = threads.start(function() {
-            let httpResponseHeader = "HTTP/1.1 200 OK\\r\\n";
-            httpResponseHeader    += "Content-Type: image/bmp\\r\\n";
-            httpResponseHeader    += "Content-Length: " + screencapLength + "\\r\\n";
-            httpResponseHeader    += "Connection: close\\r\\n\\r\\n";
-            let shellcmd = "{ echo -ne \""+httpResponseHeader+"\";";
-            shellcmd    += "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a; }"
-            shellcmd    += " | "+"/data/local/tmp/"+pkgName+"/sbin/busybox nc -w 5 -n -l -p "+localHttpListenPort+" -s 127.0.0.1";
-            let result = privilegedShellCmdMuted(shellcmd);
+            let shellcmd = "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
+            let sleepMS = 200;
+            for (let cmdRetry=0; cmdRetry*1000<300*sleepMS; cmdRetry++) {
+                let result = privilegedShellCmdMuted(shellcmd);
+                sleep(sleepMS);
+            }
         });
         sleep(100);
         let screenshot = null;
-        while (screenshot == null) {
+        let sleepMS = 200;
+        for (let imageLoadRetry=0; imageLoadRetry*1000<300*sleepMS; imageLoadRetry++) {
             try {
                 screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp");
             } catch (e) {log(e)};
-            sleep(200);
+            if (screenshot != null) break;
+            sleep(sleepMS);
         }
         screencapShellCmdThread.interrupt();
         screencapShellCmdLock.unlock();
@@ -1357,7 +1336,7 @@ function detectAP() {
         } else {
             log("resource-id为\"ap\"的控件：", IDEqualsAP);
         }
-        
+
         let knownApComCoords = {
             topLeft: {x: 880, y: 0, pos: "top"},
             bottomRight: {x: 1210, y: 120, pos: "top"}
@@ -1367,7 +1346,7 @@ function detectAP() {
             bottomRight: convertCoords(knownApComCoords.bottomRight)
         };
         let apComLikes = [];
-        
+
         let apComLikesRegExp = [];
         let apComLikesAltRegExp = [];
         let apCom = null;
@@ -1391,7 +1370,7 @@ function detectAP() {
             } else {
                 log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
             }
-        
+
             let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
             for (let arrindex in arr) {
                 thisApComLikes = arr[arrindex];
@@ -2473,7 +2452,7 @@ function connectDisk(fromDisk) {
 function clickDisk(disk) {
     log("点击第", disk.position+1, "号盘");
     var point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
-    compatClick(point.x, point.y);
+    compatClick(point.x, point.y); //点击有时候会没效果，还需要监控盘是否按下了
     sleep(1000);
     log("点击动作完成");
     clickedDisksCount++;
