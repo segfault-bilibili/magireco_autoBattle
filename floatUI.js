@@ -1181,6 +1181,13 @@ function convertCoords(d)
   if (verboselog) log("换算后的坐标", " x=", actual.x, " y=", actual.y);
   return actual;
 }
+function getConvertedArea(area) {
+    let convertedArea = {
+        topLeft: convertCoords(area.topLeft),
+        bottomRight: convertCoords(area.bottomRight)
+    };
+    return convertedArea;
+}
 
 //按换算后的坐标点击屏幕
 function screenutilClick(d) {
@@ -2698,8 +2705,9 @@ for (let imgName in knownImgs) {
         if (area == null) area = knownMirrorsWinLoseCoords[imgName];
     }
     if (area != null) {
-        log("缩放图片 imgName", imgName, "area", area);
-        var resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(area), getAreaHeight(area)]);
+        let convertedArea = getConvertedArea(area);
+        log("缩放图片 imgName", imgName, "area", area, "convertedArea", convertedArea);
+        var resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
         knownImgs[imgName] = resizedImg;
     } else {
         log("缩放图片出错 imgName", imgName);
