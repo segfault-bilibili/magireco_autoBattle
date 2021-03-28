@@ -1850,11 +1850,16 @@ var knownImgs = {
     charge: images.read("./images/charge.png"),
     connectIndicator: images.read("./images/connectIndicator.png"),
     connectIndicatorBtnDown: images.read("./images/connectIndicatorBtnDown.png"),
-    attrib_light: images.read("./images/attrib_light.png"),
-    attrib_dark: images.read("./images/attrib_dark.png"),
-    attrib_water: images.read("./images/attrib_water.png"),
-    attrib_fire: images.read("./images/attrib_fire.png"),
-    attrib_wood: images.read("./images/attrib_wood.png"),
+    light: images.read("./images/light.png"),
+    dark: images.read("./images/dark.png"),
+    water: images.read("./images/water.png"),
+    fire: images.read("./images/fire.png"),
+    wood: images.read("./images/wood.png"),
+    lightBtnDown: images.read("./images/lightBtnDown.png"),
+    darkBtnDown: images.read("./images/darkBtnDown.png"),
+    waterBtnDown: images.read("./images/waterBtnDown.png"),
+    fireBtnDown: images.read("./images/fireBtnDown.png"),
+    woodBtnDown: images.read("./images/woodBtnDown.png"),
     HPBarRightEdge: images.read("./images/HPBarRightEdge.png"),
     mirrorsWinLetterI: images.read("./images/mirrorsWinLetterI.png"),
     mirrorsLose: images.read("./images/mirrorsLose.png")
@@ -2093,7 +2098,7 @@ var knownFirstDiskCoords = {
             pos: "bottom"
         }
     },
-    attribImg: {
+    attrib: {
         topLeft: {
             x:   ,
             y:   ,
@@ -2126,6 +2131,7 @@ var allActionDisks = [
     {
         position:    0,
         priority:    "first",
+        down:        false,
         action:      "accel",
         attrib:      "water",
         charaImg:    null,
@@ -2136,6 +2142,7 @@ var allActionDisks = [
     {
         position:    1,
         priority:    "second",
+        down:        false,
         action:      "accel",
         attrib:      "water",
         charaImg:    null,
@@ -2146,6 +2153,7 @@ var allActionDisks = [
     {
         position:    2,
         priority:    "third",
+        down:        false,
         action:      "accel",
         attrib:      "water",
         img:         null,
@@ -2157,6 +2165,7 @@ var allActionDisks = [
     {
         position:    3,
         priority:    "fourth",
+        down:        false,
         action:      "accel",
         attrib:      "water",
         charaImg:    null,
@@ -2167,6 +2176,7 @@ var allActionDisks = [
     {
         position:    4,
         priority:    "fifth",
+        down:        false,
         action:      "accel",
         attrib:      "water",
         charaImg:    null,
@@ -2181,6 +2191,7 @@ var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
 var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
 var diskActions = ["accel", "blast", "charge"];
 var diskAttribs = ["light", "dark", "water", "fire", "wood"];
+var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
 function logDiskInfo(disk) {
     let connectableStr = "不可连携";
@@ -2217,52 +2228,143 @@ function getDiskImg(screenshot, diskPos, part) {
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
-//识别ABC盘
-function recognizeDiskAction_(actionImg, threshold) {
-    var maxSimilarity = -1.0;
-    var mostSimilar = 0;
-    for (let i=0; i<diskActions.length; i++) {
-        var refImg = knownImgs[diskActions[i]];
-        var similarity = images.getSimilarity(refImg, actionImg, {"type": "MSSIM"});
-        log("与", diskActions[i], "盘的相似度 MSSIM=", similarity);
+//识别ABC盘或属性
+//除非要识别盘是否按下，否则假设所有盘都没按下
+function recognizeDisk_(capturedImg, recogWhat, threshold) {
+    let maxSimilarity = -1.0;
+    let mostSimilar = 0;
+
+    let possibilities = null;
+    if (recogWhat == "action") {
+        possibilities = diskActions;
+    } else if (recogWhat == "attrib") {
+        possibilities = diskAttribs;
+    } else if (recogWhat.startsWith("attrib") && recogWhat.endsWith("BtnDown")) {
+        // attrib_all_BtnDown比对所有属性；attrib_water_BtnDown只和水属性比对
+        let recogWhatArr = recogWhat.split("_");
+        if (recogWhatArr[1] == "all") {
+            possibilities = diskAttribsBtnDown;
+        } else {
+            possibilities = [recogWhatArr[1], recogWhatArr[1]+"BtnDown"];
+        }
+    } else {
+        throw "recognizeDiskUnknownrecogWhat"
+    }
+    for (let i=0; i<possibilities.length; i++) {
+        let refImg = knownImgs[possibilities[i]];
+        let similarity = images.getSimilarity(refImg, capturedImg, {"type": "MSSIM"});
+        log("与", possibilities[i], "盘的相似度 MSSIM=", similarity);
         if (similarity > maxSimilarity) {
             maxSimilarity = similarity;
             mostSimilar = i;
         }
     }
     if (maxSimilarity < threshold) {
-        log("MSSIM=", maxSimilarity, "小于阈值=", threshold, "无法识别ABC盘");
-        throw "recognizeDiskActionLowerThanThreshold"
+        log("MSSIM=", maxSimilarity, "小于阈值=", threshold, "无法识别", recogWhat);
+        throw "recognizeDiskLowerThanThreshold";
     }
-    log("识别为", diskActions[mostSimilar], "盘 MSSIM=", maxSimilarity);
-    return diskActions[mostSimilar];
+    log("识别为", possibilities[mostSimilar], "盘 MSSIM=", maxSimilarity);
+    return possibilities[mostSimilar];
 }
-function recognizeDiskAction(actionImg) {
-    var result = "accel";
+function recognizeDisk() {
+    let result = null;
     switch (arguments.length) {
-    case 1:
+    case 2:
+        let capturedImg = arguments[0];
+        let recogWhat = arguments[1];
         try {
-            result = recognizeDiskAction_(actionImg, 0.5);
-        } catch(err) {
-            log("当作accel盘，继续运行");
-            result = "accel";
+            result = recognizeDisk_(capturedImg, recogWhat, 0);
+        } catch(e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            result = null;
+        }
+        if (result == null) {
+            if (recogWhat == "action") result = "accel";
+            log("当作", result, "盘，继续运行");
         }
         break;
-    case 2:
-        threshold = arguments[1];
-        result = recognizeDiskAction_(actionImg, threshold);
+    case 3:
+        let capturedImg = arguments[0];
+        let recogWhat = arguments[1];
+        let threshold = arguments[2];
+        result = recognizeDisk_(capturedImg, recogWhat, threshold);
         break;
     default:
-        throw "recognizeDiskActionArgcIncorrect"
+        throw "recognizeDiskArgcIncorrect"
     }
     return result;
 }
-
-//返回ABC盘识别结果
 function getDiskAction(screenshot, diskPos) {
-    var actionImg = getDiskImg(screenshot, diskPos, "action");
+    let actionImg = getDiskImg(screenshot, diskPos, "action");
     log("识别第", diskPos+1, "盘的A/B/C类型...");
-    return allActionDisks[diskPos].action = recognizeDiskAction(actionImg);
+    return recognizeDisk(actionImg, "action");
+}
+function getDiskAttribDown(screenshot, diskPos) {
+    let result = {attrib: null, down: false};
+    let attribImg = getDiskImg(screenshot, diskPos, "attrib");
+    log("识别第", diskPos+1, "盘的光/暗/水/火/木属性，以及盘是否被按下...");
+    try {
+        result.attrib = recognizeDisk(attribImg, "attrib", 1.5);
+    } catch (e) {
+        if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+        result.attrib = null;
+    }
+    if (result.attrib != null) {
+        result.down = false;
+        log("识别结果", result);
+        return result;
+    }
+
+    try {
+        result.attrib = recognizeDisk(attribImg, "attrib_all_BtnDown", 1.5);
+    } catch (e) {
+        if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+        result.attrib = null;
+    }
+    if (result.attrib != null) {
+        result.down = true;
+        log("识别结果", result);
+        return result;
+    }
+
+    log("识别失败，当作没按下的水属性盘处理");
+    result.attrib = "water";
+    result.down = false;
+    return result;
+}
+function isDiskDown(screenshot, diskPos) {
+    let attribImg = getDiskImg(screenshot, diskPos, "attrib");
+    let disk = allActionDisks[diskPos];
+    log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
+    let recogResult = null;
+    try {
+       recogResult = recognizeDisk(attribImg, "attrib_"+disk.attrib+"_BtnDown", 1.5);
+    } catch (e) {
+        if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+        recogResult = null;
+    }
+    if (recogResult != null) {
+        log("识别结果", recogResult);
+        if (recogResult.endsWith("BtnDown")) return true;
+        return false;
+    }
+
+    log("之前识别的盘属性", disk.attrib, "可能有误");
+    recogResult = null;
+    try {
+        recogResult = recognizeDisk(attribImg, "attrib_all_BtnDown", 1.5);
+    } catch (e) {
+        if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+        recogResult = null;
+    }
+    if (recogResult != null) {
+        log("识别结果", recogResult);
+        if (recogResult.endsWith("BtnDown")) return true;
+        return false;
+    }
+
+    log("无法识别盘是否被按下，当作没按下处理")
+    return false;
 }
 
 //截取盘上的角色头像
@@ -2271,38 +2373,27 @@ function getDiskCharaImg(screenshot, diskPos) {
 }
 
 //判断盘是否可以连携
-function isDiskConnectable(screenshot, diskPos) {
-    var img = getDiskImg(screenshot, diskPos, "connectIndicator");
-    var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
+function isDiskConnectableDown(screenshot, diskPos) {
+    let img = getDiskImg(screenshot, diskPos, "connectIndicator");
+    let similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
+    let result = {connectable: false, down: false};
     if (similarity > 2.1) {
         log("第", diskPos+1, "号盘【可以连携】，MSSIM=", similarity);
-        return true;
+        result.connectable = true;
+        result.down = false;
+        return result;
     }
     similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
     if (similarity > 2.1) {
-        log("第", diskPos+1, "号盘可以连携，并且已经被按下，MSSIM=", similarity);
-        return false; //只剩下一个人，无法连携时的识别结果是一样的，只能返回false避免误识别
-        //已经按下的连携盘也不应再点击（会取消），所以也应该返回false。需要用来判断连携是否完成时，应该用isConnectableDiskDown()函数
+        // 这里还无法分辨到底是盘已经按下了，还是因为没有其他人可以连携而灰掉
+        log("第", diskPos+1, "号盘可以连携，但是已经被按下，或因为我方只剩一人而无法连携，MSSIM=", similarity);
+        result.connectable = true;
+        result.down = true;
+        return result;
     }
     log("第", diskPos+1, "号盘不能连携，MSSIM=", similarity);
-    return false;
-}
-
-//判断连携盘是否成功按下
-function isConnectableDiskDown(screenshot, diskPos) {
-    var img = getDiskImg(screenshot, diskPos, "connectIndicator");
-    similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
-    if (similarity > 2.1) {
-        log("第", diskPos+1, "号连携盘处于【按下】状态，MSSIM=", similarity);
-        return true;
-    }
-    var similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
-    if (similarity > 2.1) {
-        log("第", diskPos+1, "号连携盘处于没有按下的状态，MSSIM=", similarity);
-        return false;
-    }
-    log("第", diskPos+1, "号盘不像是连携盘，MSSIM=", similarity);
-    return false;
+    result = {connectable: false, down: false}; //这里没有进一步判断down的值
+    return result;
 }
 
 //判断两个盘是否是同一角色
@@ -2327,8 +2418,10 @@ function scanDisks() {
     //重新赋值，覆盖上一轮选盘残留的数值
     for (let i=0; i<allActionDisks.length; i++) {
         allActionDisks[i].priority = ordinalWord[i];
+        allActionDisks[i].down = false;
         allActionDisks[i].action = "accel";
         allActionDisks[i].charaImg = null;
+        allActionDisks[i].attrib = "water";
         allActionDisks[i].charaID = i;
         allActionDisks[i].connectable = false;
         allActionDisks[i].connectTo = -1;
@@ -2336,14 +2429,21 @@ function scanDisks() {
     clickedDisksCount = 0;
 
     //截屏，对盘进行识别
+    //这里还是假设没有盘被按下
     let screenshot = compatCaptureScreen();
     for (let i=0; i<allActionDisks.length; i++) {
         let disk = allActionDisks[i];
         disk.action = getDiskAction(screenshot, i);
         disk.charaImg = getDiskCharaImg(screenshot, i);
-        disk.connectable = isDiskConnectable(screenshot, i);
+        let isConnectableDown = isDiskConnectableDown(screenshot, i); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
+        disk.connectable = isConnectableDown.connectable; //所以这里还无法区分盘是否被按下
+        let diskAttribDown = getDiskAttribDown(screenshot, i);
+        disk.attrib = diskAttribDown.attrib;
+        disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
     }
     //分辨不同的角色，用charaID标记
+    //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
+    //如果有按下的盘，这里也会把同一位角色误判为不同角色
     for (let i=0; i<allActionDisks.length-1; i++) {
         let diskI = allActionDisks[i];
         for (let j=i+1; j<allActionDisks.length; j++) {
@@ -2457,7 +2557,8 @@ function connectDisk(fromDisk) {
                 compatSwipe(src.x, src.y, dst.x, dst.y, 1000);
                 sleep(1000);
                 let screenshot = compatCaptureScreen();
-                if (isConnectableDiskDown(screenshot, fromDisk.position)) {
+                let isConnectableDown = isDiskConnectableDown(screenshot, fromDisk.position);
+                if (isConnectableDown.down) {
                     screenshot.recycle();
                     log("连携动作完成");
                     clickedDisksCount++;
@@ -2477,11 +2578,22 @@ function connectDisk(fromDisk) {
 //点击行动盘
 function clickDisk(disk) {
     log("点击第", disk.position+1, "号盘");
-    var point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
-    compatClick(point.x, point.y); //点击有时候会没效果，还需要监控盘是否按下了
-    sleep(1000);
-    log("点击动作完成");
-    clickedDisksCount++;
+    let point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
+    let clickAttemptMax = 10;
+    for (let i=0; i<clickAttemptMax; i++) {
+        compatClick(point.x, point.y);
+        //点击有时候会没效果，还需要监控盘是否按下了
+        disk.down = isDiskDown(disk.position);
+        if (disk.down) break;
+        sleep(1000);
+    }
+    if (!disk.down) {
+        log("点了", clickAttemptMax, "次都没反应，可能遇到问题，退出");
+        exit();
+    } else {
+        log("点击动作完成");
+        clickedDisksCount++;
+    }
 }
 
 
@@ -2587,9 +2699,9 @@ function waitForOurTurn() {
             log("截取第一个盘的动作图片时出现问题");
         }
         try {
-            recognizeDiskAction(img, 2.1);
+            recognizeDisk(img, "action", 2.1);
         } catch(e) {
-            if (e.toString() != "recognizeDiskActionLowerThanThreshold") log(e);
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             diskAppeared = false;
         }
         if (diskAppeared) {
@@ -2712,6 +2824,8 @@ for (let imgName in knownImgs) {
     var area = null;
     if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
         area = knownFirstDiskCoords["action"];
+    } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
+        area = knownFirstDiskCoords["attrib"];
     } else if (imgName == "connectIndicatorBtnDown") {
         area = knownFirstDiskCoords["connectIndicator"];
     } else {
