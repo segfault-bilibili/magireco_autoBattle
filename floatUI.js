@@ -1352,10 +1352,7 @@ function detectAP() {
             topLeft: {x: 880, y: 0, pos: "top"},
             bottomRight: {x: 1210, y: 120, pos: "top"}
         };
-        let convertedApComCoords = {
-            topLeft: convertCoords(knownApComCoords.topLeft),
-            bottomRight: convertCoords(knownApComCoords.bottomRight)
-        };
+        let convertedApComCoords = getConvertedArea(knownApComCoords);
         let apComLikes = [];
 
         let apComLikesRegExp = [];
@@ -1549,12 +1546,7 @@ function pickSupportWithTheMostPt() {
       topLeft: {x: 1680, y: 280, pos: "top"},
       bottomRight: {x: 1870, y: 1079, pos: "bottom"}
     };
-    let ptArea = {
-      topLeft: {x: 0, y: 0, pos: "top"},
-      bottomRight: {x: 0, y: 0, pos: "bottom"}
-    };
-    ptArea.topLeft = convertCoords(knownPtArea.topLeft);
-    ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
+    let ptArea = getConvertedArea(knownPtArea);
     log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
     log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
     let ptCom = textMatches(/^\+{0,1}\d+$/).find();
@@ -1858,6 +1850,11 @@ var knownImgs = {
     charge: images.read("./images/charge.png"),
     connectIndicator: images.read("./images/connectIndicator.png"),
     connectIndicatorBtnDown: images.read("./images/connectIndicatorBtnDown.png"),
+    attrib_light: images.read("./images/attrib_light.png"),
+    attrib_dark: images.read("./images/attrib_dark.png"),
+    attrib_water: images.read("./images/attrib_water.png"),
+    attrib_fire: images.read("./images/attrib_fire.png"),
+    attrib_wood: images.read("./images/attrib_wood.png"),
     HPBarRightEdge: images.read("./images/HPBarRightEdge.png"),
     mirrorsWinLetterI: images.read("./images/mirrorsWinLetterI.png"),
     mirrorsLose: images.read("./images/mirrorsLose.png")
@@ -2096,6 +2093,18 @@ var knownFirstDiskCoords = {
             pos: "bottom"
         }
     },
+    attribImg: {
+        topLeft: {
+            x:   ,
+            y:   ,
+            pos: "bottom"
+        },
+        bottomRight: {
+            x:   ,
+            y:   ,
+            pos: "bottom"
+        }
+    },
     connectIndicator: {
         topLeft: {
             x:   340, //第五个盘是1420
@@ -2118,6 +2127,7 @@ var allActionDisks = [
         position:    0,
         priority:    "first",
         action:      "accel",
+        attrib:      "water",
         charaImg:    null,
         charaID:     0,
         connectable: false,
@@ -2127,6 +2137,7 @@ var allActionDisks = [
         position:    1,
         priority:    "second",
         action:      "accel",
+        attrib:      "water",
         charaImg:    null,
         charaID:     1,
         connectable: false,
@@ -2136,6 +2147,7 @@ var allActionDisks = [
         position:    2,
         priority:    "third",
         action:      "accel",
+        attrib:      "water",
         img:         null,
         charaImg:    null,
         charaID:     2,
@@ -2146,6 +2158,7 @@ var allActionDisks = [
         position:    3,
         priority:    "fourth",
         action:      "accel",
+        attrib:      "water",
         charaImg:    null,
         charaID:     3,
         connectable: false,
@@ -2155,6 +2168,7 @@ var allActionDisks = [
         position:    4,
         priority:    "fifth",
         action:      "accel",
+        attrib:      "water",
         charaImg:    null,
         charaID:     4,
         connectable: false,
@@ -2166,6 +2180,7 @@ var clickedDisksCount = 0;
 var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
 var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
 var diskActions = ["accel", "blast", "charge"];
+var diskAttribs = ["light", "dark", "water", "fire", "wood"];
 
 function logDiskInfo(disk) {
     let connectableStr = "不可连携";
