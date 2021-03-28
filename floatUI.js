@@ -2137,7 +2137,7 @@ var allActionDisks = [
         charaImg:    null,
         charaID:     0,
         connectable: false,
-        connectTo:   -1
+        connectedTo:   -1
     },
     {
         position:    1,
@@ -2148,7 +2148,7 @@ var allActionDisks = [
         charaImg:    null,
         charaID:     1,
         connectable: false,
-        connectTo:   -1
+        connectedTo:   -1
     },
     {
         position:    2,
@@ -2160,7 +2160,7 @@ var allActionDisks = [
         charaImg:    null,
         charaID:     2,
         connectable: false,
-        connectTo:   -1
+        connectedTo:   -1
     },
     {
         position:    3,
@@ -2171,7 +2171,7 @@ var allActionDisks = [
         charaImg:    null,
         charaID:     3,
         connectable: false,
-        connectTo:   -1
+        connectedTo:   -1
     },
     {
         position:    4,
@@ -2182,7 +2182,7 @@ var allActionDisks = [
         charaImg:    null,
         charaID:     4,
         connectable: false,
-        connectTo:   -1
+        connectedTo:   -1
     }
 ];
 var clickedDisksCount = 0;
@@ -2196,7 +2196,7 @@ var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs; i++) { diskAttribsBtnD
 function logDiskInfo(disk) {
     let connectableStr = "不可连携";
     if (disk.connectable) connectableStr = "【连携】";
-    log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, connectableStr, "要连携到角色", disk.connectTo);
+    log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, connectableStr, "已经连携到角色", disk.connectedTo);
 
 }
 
@@ -2424,7 +2424,7 @@ function scanDisks() {
         allActionDisks[i].attrib = "water";
         allActionDisks[i].charaID = i;
         allActionDisks[i].connectable = false;
-        allActionDisks[i].connectTo = -1;
+        allActionDisks[i].connectedTo = -1;
     }
     clickedDisksCount = 0;
 
@@ -2561,6 +2561,7 @@ function connectDisk(fromDisk) {
                 if (isConnectableDown.down) {
                     screenshot.recycle();
                     log("连携动作完成");
+                    fromDisk.connectedTo = getConnectAcceptorCharaID(connectableDisk); //判断接连携的角色是谁
                     clickedDisksCount++;
                     isConnectDone = true;
                     break;
@@ -2905,10 +2906,8 @@ function mirrorsAutoBattleMain() {
             //如果有连携，第一个盘上连携
             prioritiseDisks([connectableDisk]); //将当前连携盘从选盘中排除
             connectDisk(connectableDisk);
-            //判断接连携的角色是谁
-            var connectAcceptorCharaID = getConnectAcceptorCharaID(connectableDisk);
             //上连携后，尽量用接连携的角色
-            var connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectAcceptorCharaID);
+            var connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectableDisk.connectedTo);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
