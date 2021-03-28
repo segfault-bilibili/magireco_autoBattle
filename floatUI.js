@@ -2462,11 +2462,13 @@ function scanDisks() {
 }
 
 //找出第一个可以给出连携的盘
-function getFirstConnectableDisk(disks) {
+function getConnectableDisks(disks) {
+    let result = [];
     for (let i=0; i<disks.length; i++) {
         var disk = disks[i];
-        if (disk.connectable) return disk;
+        if (disk.connectable && (!disk.down)) result.push(disk);
     }
+    return result;
 }
 
 //找出某一角色的盘
@@ -2899,26 +2901,29 @@ function mirrorsAutoBattleMain() {
         scanOurBattleField();
 
         //在所有盘中找第一个能连携的盘
-        var connectableDisk = null;
-        connectableDisk = getFirstConnectableDisk(allActionDisks);
+        let connectableDisks = null;
+        connectableDisks = getConnectableDisks(allActionDisks);
 
-        if (connectableDisk != null) {
+        if (connectableDisks.length > 0) {
             //如果有连携，第一个盘上连携
-            prioritiseDisks([connectableDisk]); //将当前连携盘从选盘中排除
-            connectDisk(connectableDisk);
+            //连携尽量用blast盘
+            let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
+            let selectedDisk = blastConnectableDisks[0];
+            prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
+            connectDisk(selectedDisk);
             //上连携后，尽量用接连携的角色
-            var connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectableDisk.connectedTo);
+            let connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectableDisks[0].connectedTo);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
-            var blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
+            let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
             prioritiseDisks(blastDisks);
         } else {
             //没有连携
             //先找Puella Combo
-            var sameCharaDisks = findSameCharaDisks(allActionDisks);
+            let sameCharaDisks = findSameCharaDisks(allActionDisks);
             prioritiseDisks(sameCharaDisks);
             //Pcombo内尽量Blast Combo
-            var blastDisks = findSameActionDisks(sameCharaDisks, "blast");
+            let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
             prioritiseDisks(blastDisks);
         }
 
