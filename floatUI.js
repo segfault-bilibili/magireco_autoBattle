@@ -48,13 +48,12 @@ function shellCmd_() {
         argc = arguments.length;
 
         useRoot = arguments[1];
+        useShizuku = arguments[2];
+        logEnabled = arguments[3];
         if (useRoot) {
             if (logEnabled) log("useRoot is true, not using Shizuku this time");
             useShizuku = false;
-        } else {
-            useShizuku = arguments[2];
         }
-        logEnabled = arguments[3];
 
         if (useShizuku) {
             $shell.setDefaultOptions({adb: true});
@@ -2112,7 +2111,7 @@ var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
 var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
 var diskActions = ["accel", "blast", "charge"];
 var diskAttribs = ["light", "dark", "water", "fire", "wood"];
-var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
+var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
 function logDiskInfo(disk) {
     let connectableStr = "不可连携";

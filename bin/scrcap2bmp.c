@@ -837,6 +837,7 @@ int main(int argc, char **argv) {
         remaining_write_size = total_size_to_write - total_size_written;
     }
 
+    //FIXME
     if (accept_sock_fd != -1) {
         shutdown(accept_sock_fd, SHUT_RDWR);
         close(accept_sock_fd);
