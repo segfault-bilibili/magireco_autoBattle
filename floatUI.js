@@ -2487,7 +2487,7 @@ function connectDisk(fromDisk) {
                 if (isConnectableDown.down) {
                     screenshot.recycle();
                     log("连携动作完成");
-                    fromDisk.connectedTo = getConnectAcceptorCharaID(connectableDisk); //判断接连携的角色是谁
+                    fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk); //判断接连携的角色是谁
                     clickedDisksCount++;
                     isConnectDone = true;
                     break;
