@@ -2287,8 +2287,8 @@ function isDiskDown(screenshot, diskPos) {
         return false;
     }
 
-    log("无法识别盘是否被按下，当作没按下处理")
-    return false;
+    log("无法识别盘是否被按下")
+    throw "isDiskDownInconclusive";
 }
 
 //截取盘上的角色头像
@@ -2507,14 +2507,25 @@ function clickDisk(disk) {
     log("点击第", disk.position+1, "号盘");
     let point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
     let clickAttemptMax = 10;
+    let inconclusiveCount = 0;
     for (let i=0; i<clickAttemptMax; i++) {
         compatClick(point.x, point.y);
         //点击有时候会没效果，还需要监控盘是否按下了
+        sleep(333);
         let screenshot = compatCaptureScreen();
-        disk.down = isDiskDown(screenshot, disk.position);
+        try {
+            disk.down = isDiskDown(screenshot, disk.position);
+        } catch (e) {
+            if (e.toString() == "isDiskDownInconclusive") {
+                inconclusiveCount++;
+            } else {
+                log(e);
+            }
+            //最后一个盘点击成功的表现就是行动盘消失，所以当然无法分辨盘是否被按下
+            if (clickedDisksCount == 2 && inconclusiveCount >= 3) disk.down = true;
+        }
         screenshot.recycle();
         if (disk.down) break;
-        sleep(1000);
     }
     if (!disk.down) {
         log("点了", clickAttemptMax, "次都没反应，可能遇到问题，退出");
