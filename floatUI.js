@@ -2021,13 +2021,13 @@ var knownFirstDiskCoords = {
     },
     attrib: {
         topLeft: {
-            x:   ,
-            y:   ,
+            x:   349,
+            y:   966,
             pos: "bottom"
         },
         bottomRight: {
-            x:   ,
-            y:   ,
+            x:   378,
+            y:   995,
             pos: "bottom"
         }
     },
