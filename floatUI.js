@@ -2189,12 +2189,16 @@ function recognizeDisk_(capturedImg, recogWhat, threshold) {
 }
 function recognizeDisk() {
     let result = null;
+    let capturedImg = null;
+    let recogWhat = null;
+    let threshold = 0;
     switch (arguments.length) {
     case 2:
-        let capturedImg = arguments[0];
-        let recogWhat = arguments[1];
+        capturedImg = arguments[0];
+        recogWhat = arguments[1];
+        threshold = 0;
         try {
-            result = recognizeDisk_(capturedImg, recogWhat, 0);
+            result = recognizeDisk_(capturedImg, recogWhat, threshold);
         } catch(e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             result = null;
@@ -2205,9 +2209,9 @@ function recognizeDisk() {
         }
         break;
     case 3:
-        let capturedImg = arguments[0];
-        let recogWhat = arguments[1];
-        let threshold = arguments[2];
+        capturedImg = arguments[0];
+        recogWhat = arguments[1];
+        threshold = arguments[2];
         result = recognizeDisk_(capturedImg, recogWhat, threshold);
         break;
     default:
