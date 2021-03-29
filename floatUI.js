@@ -2511,7 +2511,9 @@ function clickDisk(disk) {
     for (let i=0; i<clickAttemptMax; i++) {
         compatClick(point.x, point.y);
         //点击有时候会没效果，还需要监控盘是否按下了
-        disk.down = isDiskDown(disk.position);
+        let screenshot = compatCaptureScreen();
+        disk.down = isDiskDown(screenshot, disk.position);
+        screenshot.recycle();
         if (disk.down) break;
         sleep(1000);
     }
