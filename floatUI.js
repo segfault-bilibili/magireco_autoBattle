@@ -2945,6 +2945,9 @@ floatUI.adjust = function (config) {
     } else {
         log("使用无障碍服务模拟点击");
     }
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
+        checkShellPrivilege();
+    }
 }
 
 module.exports = floatUI;
