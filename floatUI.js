@@ -29,8 +29,6 @@ importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
 //检查shell权限
-var shellPrivilegeCheckThread = null;
-var shellPrivilegeCheckLock = threads.lock();
 var shellHasPrivilege = false;
 var shellHasRootWithoutShizuku = false;
 var shellABI = "arm";
@@ -38,8 +36,6 @@ var binarySetupDone = false;
 
 var dataDir = files.cwd();
 var pkgName = dataDir.match(/[^\/]+(?=\/files\/project)/)[0];
-
-var shellPrivilegeCheckDone = false;
 
 function shellCmd_() {
 //                 cmd, useRoot, useShizuku, logEnabled
@@ -148,102 +144,68 @@ function rootMarkerFile() {
     }
 }
 function checkShellPrivilege() {
-    let isThreadAlive = false;
-    try {
-        isThreadAlive = shellPrivilegeCheckThread.isAlive();
-    } catch (err) {
-        isThreadAlive = false;
-    }
-    if (isThreadAlive) return;
-    shellPrivilegeCheckThread = threads.start(function() {
-        shellPrivilegeCheckLock.lock();
-        shellPrivilegeCheckDone = false;
-
-        if (shellHasPrivilege) {
-            log("已经获取到root或adb权限了");
-        } else {
-            let shellcmd = "id -u";
-            let result = null;
-            try {
-                result = privilegedShellCmd(shellcmd);
-            } catch (e) {
-                result = {code: 1, result: "-1", err: ""};
-                log(e);
+    if (shellHasPrivilege) {
+        log("已经获取到root或adb权限了");
+    } else {
+        let shellcmd = "id -u";
+        let result = null;
+        try {
+            result = privilegedShellCmd(shellcmd);
+        } catch (e) {
+            result = {code: 1, result: "-1", err: ""};
+            log(e);
+        }
+        let euid = -1;
+        if (result.code == 0) {
+            euid = parseInt(result.result.match(/\d+/));
+            switch (euid) {
+            case 0:
+                log("Shizuku有root权限");
+                shellHasPrivilege = true;
+                break;
+            case 2000:
+                log("Shizuku有adb shell权限");
+                shellHasPrivilege = true;
+                break;
+            default:
+                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+                shellHasPrivilege = false;
             }
-            let euid = -1;
-            if (result.code == 0) {
-                euid = parseInt(result.result.match(/\d+/));
-                switch (euid) {
-                case 0:
-                    log("Shizuku有root权限");
-                    shellHasPrivilege = true;
-                    break;
-                case 2000:
-                    log("Shizuku有adb shell权限");
-                    shellHasPrivilege = true;
-                    break;
-                default:
-                    log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                    shellHasPrivilege = false;
-                }
-            } else {
-                log("似乎没有安装Shizuku，或者没有在Shizuku中授权。尝试直接获取root权限");
-                if (!rootMarkerFile()) {
-                    sleep(2000);
-                    toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
-                    sleep(2000);
-                    toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
-                    sleep(2000);
-                    toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
-                    sleep(2000);
-                }
+        } else {
+            log("似乎没有安装Shizuku，或者没有在Shizuku中授权。尝试直接获取root权限");
+            if (!rootMarkerFile()) {
+                sleep(2000);
+                toastLog("为了截屏和模拟点击，请授予root权限，并选择【总是】放行(而不是\"一次\")");
+                sleep(2000);
+                toastLog("如果你在使用模拟器，请先在模拟器设置中启用root权限，再重试");
+                sleep(2000);
+                toastLog("如果你安装了Shizuku，请确保它已经启动，并授权本应用");
+                sleep(2000);
+            }
 
-                let useRoot = true;
-                result = normalShellCmd(shellcmd, useRoot);
-                if (result.code == 0) euid = parseInt(result.result.match(/\d+/));
-                if (euid == 0) {
-                    log("直接获取root权限成功");
-                    shellHasRootWithoutShizuku = true;
-                    rootMarkerFile(true);
-                    shellHasPrivilege = true;
-                } else {
-                    log("直接获取root权限失败");
-                    shellHasRootWithoutShizuku = false;
-                    rootMarkerFile(false);
-                    shellHasPrivilege = false;
-                    toastLog("请下载安装Shizuku，并按照说明启动它，\n然后在Shizuku中给本应用授权。");
-                    $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-                    sleep(1000);
-                }
+            let useRoot = true;
+            result = normalShellCmd(shellcmd, useRoot);
+            if (result.code == 0) euid = parseInt(result.result.match(/\d+/));
+            if (euid == 0) {
+                log("直接获取root权限成功");
+                shellHasRootWithoutShizuku = true;
+                rootMarkerFile(true);
+                shellHasPrivilege = true;
+            } else {
+                log("直接获取root权限失败");
+                shellHasRootWithoutShizuku = false;
+                rootMarkerFile(false);
+                shellHasPrivilege = false;
+                toastLog("请下载安装Shizuku，并按照说明启动它，\n然后在Shizuku中给本应用授权。");
+                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+                sleep(1000);
             }
         }
-
-        if (shellHasPrivilege && (!binarySetupDone)) setupBinary();
-
-        shellPrivilegeCheckDone = true;
-        shellPrivilegeCheckLock.unlock();
-    });
+    }
+    if (shellHasPrivilege && (!binarySetupDone)) setupBinary();
     return shellHasPrivilege;
 }
-function waitUntilShellPrivilegeReady() {
-    while(true){
-        sleep(500);
-        shellPrivilegeCheckLock.lock();
-        if (shellPrivilegeCheckDone) {
-            if (shellHasPrivilege) {
-                shellPrivilegeCheckLock.unlock();
-                break;
-            } else {
-                shellPrivilegeCheckLock.unlock();
-                exit();
-                continue;
-            }
-        } else {
-            shellPrivilegeCheckLock.unlock();
-            continue;
-        }
-    }
-}
+
 //检测CPU ABI
 function detectABI() {
     let shellcmd = "getprop ro.product.cpu.abi"
@@ -334,71 +296,39 @@ function waitForGameForeground() {
 //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
 //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
 //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
-var scrCapLock = threads.lock();
 var canCaptureScreen = false;
-var screenCapThread = null;
 function startScreenCapture() {
-    scrCapLock.lock();
     if (canCaptureScreen) {
         log("已经获取到截图权限了");
         return;
     }
-    scrCapLock.unlock();
 
-    var isThreadAlive = false;
-    try {
-        isThreadAlive = screenCapThread.isAlive();
-    } catch(err) {
-        isThreadAlive = false;
+    $settings.setEnabled("stop_all_on_volume_up", false);
+    $settings.setEnabled("foreground_service", true);
+    sleep(500);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        let screencap_landscape = true;
+        if (requestScreenCapture(screencap_landscape)) {
+            sleep(500);
+            toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
+            sleep(3000);
+            toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
+            sleep(3000);
+            canCaptureScreen = true;
+            break;
+        } else {
+            log("第", attempt, "次获取截图权限失败");
+            sleep(1000);
+        }
     }
-    if (isThreadAlive) return;
 
-    screenCapThread = threads.start(function() {
-        let success = false;
-        $settings.setEnabled("stop_all_on_volume_up", false);
-        $settings.setEnabled("foreground_service", true);
-        sleep(500);
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            let screencap_landscape = true;
-            if (requestScreenCapture(screencap_landscape)) {
-                sleep(500);
-                toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
-                sleep(3000);
-                toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
-                sleep(3000);
-                success = true;
-                break;
-            } else {
-                log("第", attempt, "次获取截图权限失败");
-                sleep(1000);
-            }
-        }
-        scrCapLock.lock();
-        canCaptureScreen = success;
-        scrCapLock.unlock();
-        if (!success) {
-            log("截图权限获取失败，退出");
-            exit();
-        }
-    });
+    if (!canCaptureScreen) {
+        log("截图权限获取失败，退出");
+        exit();
+    }
 
     return;
 }
-function waitUntilScreenCaptureReady() {
-    while(true){
-        sleep(500);
-        scrCapLock.lock();
-        if (!canCaptureScreen) {
-            scrCapLock.unlock();
-            //截图权限申请失败时会在screenCapThread里直接exit()
-            continue;
-        } else {
-            scrCapLock.unlock();
-            break;
-        }
-    }
-}
-
 
 //用shizuku adb/root权限，或者直接用root权限截屏
 var screencapShellCmdThread = null;
@@ -1597,10 +1527,7 @@ function pickSupportWithTheMostPt() {
 function autoMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useInputShellCmd) {
-        checkShellPrivilege();
-        waitUntilShellPrivilegeReady();
-    }
+    if (limit.useInputShellCmd) checkShellPrivilege();
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -1702,14 +1629,8 @@ function autoMain() {
 function autoMainver2() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
-        checkShellPrivilege();
-        waitUntilShellPrivilegeReady();
-    }
-    if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) {
-        startScreenCapture();
-        waitUntilScreenCaptureReady();
-    }
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -2850,10 +2771,7 @@ for (let imgName in knownImgs) {
 function mirrorsSimpleAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useInputShellCmd) {
-        checkShellPrivilege();
-        waitUntilShellPrivilegeReady();
-    }
+    if (limit.useInputShellCmd) checkShellPrivilege();
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
@@ -2879,14 +2797,8 @@ function mirrorsSimpleAutoBattleMain() {
 function mirrorsAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
-        checkShellPrivilege();
-        waitUntilShellPrivilegeReady();
-    }
-    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) {
-        startScreenCapture();
-        waitUntilScreenCaptureReady();
-    }
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
@@ -2951,14 +2863,8 @@ function mirrorsAutoBattleMain() {
 function jingMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
-        checkShellPrivilege();
-        waitUntilShellPrivilegeReady();
-    }
-    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) {
-        startScreenCapture();
-        waitUntilScreenCaptureReady();
-    }
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     let usedBPDrugNum = 0;
 
