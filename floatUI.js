@@ -2939,7 +2939,7 @@ function clickMirrorsBattleResult() {
         pos: "center"
     };
     let failedCount = 0; //调查无法判定镜层战斗输赢的问题
-    while (id("ArenaResult").findOnce()) {
+    while (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         log("匹配到镜层战斗结算控件");
         let screenshot = compatCaptureScreen();
         //调查无法判定镜层战斗输赢的问题
@@ -2999,19 +2999,19 @@ function mirrorsSimpleAutoBattleMain() {
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
-        if (!id("ArenaResult").findOnce()) {
+        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
             screenutilClick(clickSets.battlePan1)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce()) {
+        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce()))) {
             screenutilClick(clickSets.battlePan2)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce()) {
+        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
             screenutilClick(clickSets.battlePan3)
             sleep(1000)
         }
-        if (id("ArenaResult").findOnce()) {
+        if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
             screenutilClick(clickSets.levelup)
         }
         sleep(3000)
