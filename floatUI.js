@@ -3058,14 +3058,15 @@ function mirrorsAutoBattleMain() {
         }
 
         //在所有盘中找第一个能连携的盘
-        let connectableDisks = null;
+        let connectableDisks = [];
         connectableDisks = getConnectableDisks(allActionDisks);
 
         if (connectableDisks.length > 0) {
             //如果有连携，第一个盘上连携
+            let selectedDisk = connectableDisks[0];
             //连携尽量用blast盘
             let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
-            let selectedDisk = blastConnectableDisks[0];
+            if (blastConnectableDisks.length > 0) selectedDisk = blastConnectableDisks[0];
             prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
             connectDisk(selectedDisk);
             //上连携后，尽量用接连携的角色
