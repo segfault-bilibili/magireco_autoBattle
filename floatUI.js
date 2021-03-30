@@ -1977,8 +1977,8 @@ function getStandPointAttrib(screenshot, whichSide, rowNum, columnNum) {
         let testAttrib = diskAttribs[i];
         let refImg = knownImgs[testAttrib];
         let firstStandPointArea = getStandPointArea("our", 0, 0, "attrib");
-        let gaussianX = getAreaWidth(firstStandPointArea);
-        let gaussianY = getAreaHeight(firstStandPointArea);
+        let gaussianX = parseInt(getAreaWidth(firstStandPointArea) / 2);
+        let gaussianY = parseInt(getAreaHeight(firstStandPointArea) / 2);
         if (gaussianX % 2 == 0) gaussianX += 1;
         if (gaussianY % 2 == 0) gaussianY += 1;
         let gaussianSize = [gaussianX, gaussianY];
