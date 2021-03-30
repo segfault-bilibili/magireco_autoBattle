@@ -2610,7 +2610,7 @@ function avoidAimAtEnemies(enemiesToAvoid) {
     for (let i=0; i<rows.length; i++) {
         for (let j=0; j<columns.length; j++) {
             let standPoint = battleField.their[rows[i]][columns[j]];
-            if (standPoint.occupied) allEnemies.push();
+            if (standPoint.occupied) allEnemies.push(standPoint);
         }
     }
 
