@@ -382,6 +382,7 @@ function compatCaptureScreen() {
         }
         screencapShellCmdThread.interrupt();
         screencapShellCmdLock.unlock();
+        if (screenshot == null) log("截图失败");
         return screenshot;
     } else {
         //使用AutoJS默认提供的录屏API截图
@@ -1780,7 +1781,6 @@ var knownImgs = {
     waterBtnDown: images.read("./images/waterBtnDown.png"),
     fireBtnDown: images.read("./images/fireBtnDown.png"),
     woodBtnDown: images.read("./images/woodBtnDown.png"),
-    HPBarRightEdge: images.read("./images/HPBarRightEdge.png"),
     mirrorsWinLetterI: images.read("./images/mirrorsWinLetterI.png"),
     mirrorsLose: images.read("./images/mirrorsLose.png")
 };
@@ -1851,80 +1851,73 @@ function getAreaCenter() {
 
 //已知左上角站位坐标等数据
 var knownFirstStandPointCoords = {
-    HPBarRightEdge: {
-        topLeft: {
-            x:   1188,
-            y:   282,
-            pos: "center"
+    our: {
+        attrib: {
+            topLeft:     { x: 1047, y: 274, pos: "center" },
+            bottomRight: { x: 1076, y: 303, pos: "center" }
         },
-        bottomRight: {
-            x:   1191,
-            y:   291,
-            pos: "center"
+        floor: {
+            topLeft:     { x: 1048, y: 518, pos: "center" },
+            bottomRight: { x: 1168, y: 575, pos: "center" }
         }
     },
-    floor: {
-        topLeft: {
-            x:   1048,
-            y:   518,
-            pos: "center"
+    their: {
+        attrib: {
+            topLeft:     { x: 230, y: 275, pos: "center" },
+            bottomRight: { x: 259, y: 304, pos: "center" }
         },
-        bottomRight: {
-            x:   1168,
-            y:   575,
-            pos: "center"
+        floor: {
+            topLeft:     { x: 231, y: 519, pos: "center" },
+            bottomRight: { x: 351, y: 576, pos: "center" }
         }
     },
-    //r1c1x: 1090, r1c1y: 280,
-    //r2c1x: 1165, r2c1y: 383,
-    //r2c2x: 1420, r2c2y: 383,
-    distancex: 1420-1165,
-    distancey: 383-280,
-    indent: 1165-1090
+    //our
+    //r1c1x: 1090, r1c1y: 280
+    //r2c1x: 1165, r2c1y: 383
+    //r2c2x: 1420, r2c2y: 383
+    //their
+    //r1c1x: 230, r1c1y: 275
+    //r2c2y: 410, r2c2y: 378
+    //r3c1x: 80,  r3c1y:481
+    distancex: 255,
+    distancey: 103,
+    indent: 75
 }
 
 //我方阵地信息
-var ourBattleField = {
-    topRow: {
-        left: {
-            occupied: false,
-            charaID: -1
+var battleField = {
+    our: {
+        topRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
         },
-        middle: {
-            occupied: false,
-            charaID: -1
+        middleRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
         },
-        right: {
-            occupied: false,
-            charaID: -1
+        bottomRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
         }
     },
-    middleRow: {
-        left: {
-            occupied: false,
-            charaID: -1
+    their: {
+        topRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
         },
-        middle: {
-            occupied: false,
-            charaID: -1
+        middleRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
         },
-        right: {
-            occupied: false,
-            charaID: -1
-        }
-    },
-    bottomRow: {
-        left: {
-            occupied: false,
-            charaID: -1
-        },
-        middle: {
-            occupied: false,
-            charaID: -1
-        },
-        right: {
-            occupied: false,
-            charaID: -1
+        bottomRow: {
+            left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
+            middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
+            right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
         }
     }
 };
@@ -1935,55 +1928,89 @@ var columnsNum = {left: 0, middle: 1, right: 2};
 
 
 //获取换算后的角色站位所需部分（血条右边框，地板等等）坐标
-function getStandPointCoords(row, column, part, corner) {
-    var convertedCoords = {
-        x:   0,
-        y:   0,
-        pos: "bottom"
-    };
-    var knownCoords = knownFirstStandPointCoords[part][corner];
-    var distancex = knownFirstStandPointCoords.distancex;
-    var distancey = knownFirstStandPointCoords.distancey;
-    var indent = knownFirstStandPointCoords.indent;
-    convertedCoords.x = knownCoords.x + row * indent + distancex * column;
-    convertedCoords.y = knownCoords.y + row * distancey;
-    convertedCoords.pos = knownCoords.pos;
+function getStandPointCoords(whichSide, rowNum, columnNum, part, corner) {
+    let convertedCoords = { x: 0, y: 0, pos: "bottom" };
+    let firstStandPoint = knownFirstStandPointCoords[whichSide][part][corner];
+    let distancex = knownFirstStandPointCoords.distancex;
+    let distancey = knownFirstStandPointCoords.distancey;
+    let indent = 0;
+    if (whichSide == "our") {
+        indent = knownFirstStandPointCoords.indent;
+    } else if (whichSide == "their") {
+        indent = 0 - knownFirstStandPointCoords.indent;
+    } else {
+        throw "getStandPointCoordsIncorrectwhichSide";
+    }
+    convertedCoords.x = firstStandPoint.x + rowNum * indent + distancex * columnNum;
+    convertedCoords.y = firstStandPoint.y + rowNum * distancey;
+    convertedCoords.pos = firstStandPoint.pos;
     return convertCoords(convertedCoords);
 }
-function getStandPointArea(row, column, part) {
-    var result = {
-        topLeft:     getStandPointCoords(row, column, part, "topLeft"),
-        bottomRight: getStandPointCoords(row, column, part, "bottomRight"),
+function getStandPointArea(whichSide, rowNum, columnNum, part) {
+    let firstStandPointArea = {
+        topLeft:     getStandPointCoords("our", 0, 0, part, "topLeft"),
+        bottomRight: getStandPointCoords("our", 0, 0, part, "bottomRight")
+    };
+    let resultTopLeft = getStandPointCoords(whichSide, rowNum, columnNum, part, "topLeft");
+    let result = {
+        topLeft: resultTopLeft,
+        bottomRight: { //防止图像大小不符导致MSSIM==-1
+            x:   resultTopLeft.x + getAreaWidth(firstStandPointArea) - 1,
+            y:   resultTopLeft.y + getAreaHeight(firstStandPointArea) - 1,
+            pos: resultTopLeft.pos
+        }
     };
     return result;
 }
 
 //截取指定站位所需部分的图像
-function getStandPointImg(screenshot, row, column, part) {
-    var area = getStandPointArea(row, column, part);
+function getStandPointImg(screenshot, whichSide, rowNum, columnNum, part) {
+    let area = getStandPointArea(whichSide, rowNum, columnNum, part);
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
-//判断某个站位有没有人（根据是否显示血条右边缘）
-function isStandPointOccupied(screenshot, row, column) {
-    var img = getStandPointImg(screenshot, row, column, "HPBarRightEdge");
-    var similarity = images.getSimilarity(knownImgs.HPBarRightEdge, img, {"type": "MSSIM"});
-    if (similarity > 2.4) {
-        log("第", row+1, "行，第", column+1, "列站位【有】人 MSSIM=", similarity);
-        return true;
+//识别指定站位的属性
+function getStandPointAttrib(screenshot, whichSide, rowNum, columnNum) {
+    let similarity = -1;
+    for (let i=0; i<diskAttribs.length; i++) {
+        let img = getStandPointImg(screenshot, whichSide, rowNum, columnNum, "attrib");
+        let testAttrib = diskAttribs[i];
+        let refImg = knownImgs[testAttrib];
+        let firstStandPointArea = getStandPointArea("our", 0, 0, "attrib");
+        let gaussianX = getAreaWidth(firstStandPointArea);
+        let gaussianY = getAreaHeight(firstStandPointArea);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        imgBlur = images.gaussianBlur(img, gaussianSize);
+        refImgBlur = images.gaussianBlur(refImg, gaussianSize);
+        similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+        if (similarity > 2.1) {
+            log("第", rowNum+1, "行，第", columnNum+1, "列站位【有人】 属性", testAttrib, "MSSIM=", similarity);
+            return testAttrib;
+        }
     }
-    log("第", row+1, "行，第", column+1, "列站位无人 MSSIM=", similarity);
-    return false;
+    log("第", rowNum+1, "行，第", columnNum+1, "列站位无人 MSSIM=", similarity);
+    throw "getStandPointAttribInconclusive";
 }
 
-//扫描我方战场信息
-function scanOurBattleField()
+//扫描战场信息
+function scanBattleField(whichSide)
 {
+    log("scanBattleField("+whichSide+")");
     let screenshot = compatCaptureScreen();
     for(let i=0; i<3; i++) {
         for(let j=0; j<3; j++) {
-            ourBattleField[rows[i]][columns[j]].occupied = isStandPointOccupied(screenshot, i, j);
-            ourBattleField[rows[i]][columns[j]].charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
+            let whichStandPoint = battleField[whichSide][rows[i]][columns[j]];
+            whichStandPoint.occupied = true;
+            try {
+                whichStandPoint.attrib = getStandPointAttrib(screenshot, whichSide, i, j);
+            } catch (e) {
+                if (e.toString() != "getStandPointAttribInconclusive") log(e);
+                whichStandPoint.attrib = "water";
+                whichStandPoint.occupied = false;
+            }
+            whichStandPoint.charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
         }
     }
     screenshot.recycle();
@@ -2116,35 +2143,47 @@ var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttr
 function logDiskInfo(disk) {
     let connectableStr = "不可连携";
     if (disk.connectable) connectableStr = "【连携】";
-    log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, connectableStr, "已经连携到角色", disk.connectedTo);
+    let downStr = "未按下"
+    if (disk.down) downStr = "【按下】"
+    log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
 
 }
 
 //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
 function getDiskCoords(diskPos, part, corner) {
-    var convertedCoords = {
-        x:   0,
-        y:   0,
-        pos: "bottom"
-    };
-    var knownCoords = knownFirstDiskCoords[part][corner];
-    var distance = knownFirstDiskCoords.distance;
+    let convertedCoords = { x: 0, y: 0, pos: "bottom" };
+    let knownCoords = knownFirstDiskCoords[part][corner];
+    let distance = knownFirstDiskCoords.distance;
     convertedCoords.x = knownCoords.x + diskPos * distance;
     convertedCoords.y = knownCoords.y;
     convertedCoords.pos = knownCoords.pos;
     return convertCoords(convertedCoords);
 }
 function getDiskArea(diskPos, part) {
-    var result = {
-        topLeft:     getDiskCoords(diskPos, part, "topLeft"),
-        bottomRight: getDiskCoords(diskPos, part, "bottomRight"),
+    let firstDiskArea = null;
+    if (part == "attrib") { //防止图像大小不符导致MSSIM==-1
+        firstDiskArea = getStandPointArea("our", 0, 0, "attrib");
+    } else {
+        firstDiskArea = {
+            topLeft:     getDiskCoords(0, part, "topLeft"),
+            bottomRight: getDiskCoords(0, part, "bottomRight")
+        };
+    }
+    let resultTopLeft = getDiskCoords(diskPos, part, "topLeft");
+    let result = {
+        topLeft: resultTopLeft,
+        bottomRight: { //防止图像大小不符导致MSSIM==-1
+            x:   resultTopLeft.x + getAreaWidth(firstDiskArea) - 1,
+            y:   resultTopLeft.y + getAreaHeight(firstDiskArea) - 1,
+            pos: resultTopLeft.pos
+        }
     };
     return result;
 }
 
 //截取行动盘所需部位的图像
 function getDiskImg(screenshot, diskPos, part) {
-    var area = getDiskArea(diskPos, part);
+    let area = getDiskArea(diskPos, part);
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 
@@ -2157,22 +2196,39 @@ function recognizeDisk_(capturedImg, recogWhat, threshold) {
     let possibilities = null;
     if (recogWhat == "action") {
         possibilities = diskActions;
-    } else if (recogWhat == "attrib") {
-        possibilities = diskAttribs;
-    } else if (recogWhat.startsWith("attrib") && recogWhat.endsWith("BtnDown")) {
-        // attrib_all_BtnDown比对所有属性；attrib_water_BtnDown只和水属性比对
+    } else if (recogWhat.startsWith("attrib")) {
+        possibilities = [];
         let recogWhatArr = recogWhat.split("_");
-        if (recogWhatArr[1] == "all") {
-            possibilities = diskAttribsBtnDown;
+        if (recogWhatArr.length <= 1) {
+            throw "recognizeDiskIncorrectAttribrecogWhat";
         } else {
-            possibilities = [recogWhatArr[1], recogWhatArr[1]+"BtnDown"];
+            if (recogWhatArr[1] == "all") {
+                // attrib_all 和按下的所有属性比对
+                for (let i=0; i<diskAttribs.length; i++){
+                    possibilities.push(diskAttribs[i]);
+                }
+                for (let i=0; i<diskAttribsBtnDown.length; i++){
+                    possibilities.push(diskAttribsBtnDown[i]);
+                }
+            } else {
+                // attrib_light/dark/water/fire/wood 只和光/暗/水/火/木属性比对
+                possibilities = [recogWhatArr[1], recogWhatArr[1]+"BtnDown"];
+            }
         }
     } else {
         throw "recognizeDiskUnknownrecogWhat"
     }
     for (let i=0; i<possibilities.length; i++) {
         let refImg = knownImgs[possibilities[i]];
-        let similarity = images.getSimilarity(refImg, capturedImg, {"type": "MSSIM"});
+        let firstDiskArea = getDiskArea(0, "action");
+        let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let capturedImgBlur = images.gaussianBlur(capturedImg, gaussianSize);
+        let refImgBlur = images.gaussianBlur(refImg, gaussianSize);
+        let similarity = images.getSimilarity(refImgBlur, capturedImgBlur, {"type": "MSSIM"});
         log("与", possibilities[i], "盘的相似度 MSSIM=", similarity);
         if (similarity > maxSimilarity) {
             maxSimilarity = similarity;
@@ -2228,25 +2284,20 @@ function getDiskAttribDown(screenshot, diskPos) {
     let attribImg = getDiskImg(screenshot, diskPos, "attrib");
     log("识别第", diskPos+1, "盘的光/暗/水/火/木属性，以及盘是否被按下...");
     try {
-        result.attrib = recognizeDisk(attribImg, "attrib", 1.5);
+        result.attrib = recognizeDisk(attribImg, "attrib_all", 2.1);
     } catch (e) {
         if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
         result.attrib = null;
     }
     if (result.attrib != null) {
-        result.down = false;
-        log("识别结果", result);
-        return result;
-    }
-
-    try {
-        result.attrib = recognizeDisk(attribImg, "attrib_all_BtnDown", 1.5);
-    } catch (e) {
-        if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-        result.attrib = null;
-    }
-    if (result.attrib != null) {
-        result.down = true;
+        if (result.attrib.endsWith("BtnDown")) {
+            result.down = true;
+            let indexEnd = result.attrib.length;
+            let indexStart = result.attrib.length - "BtnDown".length;
+            result.attrib = result.attrib.substring(indexStart, indexEnd);
+        } else {
+            result.down = false;
+        }
         log("识别结果", result);
         return result;
     }
@@ -2262,7 +2313,7 @@ function isDiskDown(screenshot, diskPos) {
     log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
     let recogResult = null;
     try {
-       recogResult = recognizeDisk(attribImg, "attrib_"+disk.attrib+"_BtnDown", 1.5);
+       recogResult = recognizeDisk(attribImg, "attrib_"+disk.attrib, 2.1);
     } catch (e) {
         if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
         recogResult = null;
@@ -2276,7 +2327,7 @@ function isDiskDown(screenshot, diskPos) {
     log("之前识别的盘属性", disk.attrib, "可能有误");
     recogResult = null;
     try {
-        recogResult = recognizeDisk(attribImg, "attrib_all_BtnDown", 1.5);
+        recogResult = recognizeDisk(attribImg, "attrib_all", 2.1);
     } catch (e) {
         if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
         recogResult = null;
@@ -2287,7 +2338,7 @@ function isDiskDown(screenshot, diskPos) {
         return false;
     }
 
-    log("无法识别盘是否被按下")
+    log("无法识别盘是否被按下");
     throw "isDiskDownInconclusive";
 }
 
@@ -2299,7 +2350,16 @@ function getDiskCharaImg(screenshot, diskPos) {
 //判断盘是否可以连携
 function isDiskConnectableDown(screenshot, diskPos) {
     let img = getDiskImg(screenshot, diskPos, "connectIndicator");
-    let similarity = images.getSimilarity(knownImgs.connectIndicator, img, {"type": "MSSIM"});
+    let refImg = knownImgs.connectIndicator;
+    let firstDiskArea = getDiskArea(0, "connectIndicator");
+    let gaussianX = getAreaWidth(firstDiskArea) / 3;
+    let gaussianY = getAreaHeight(firstDiskArea) / 3;
+    if (gaussianX % 2 == 0) gaussianX += 1;
+    if (gaussianY % 2 == 0) gaussianY += 1;
+    let gaussianSize = [gaussianX, gaussianY];
+    let refImgBlur = images.gaussianBlur(refImg, gaussianSize);
+    let imgBlur = images.gaussianBlur(img, gaussianSize);
+    let similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
     let result = {connectable: false, down: false};
     if (similarity > 2.1) {
         log("第", diskPos+1, "号盘【可以连携】，MSSIM=", similarity);
@@ -2307,7 +2367,9 @@ function isDiskConnectableDown(screenshot, diskPos) {
         result.down = false;
         return result;
     }
-    similarity = images.getSimilarity(knownImgs.connectIndicatorBtnDown, img, {"type": "MSSIM"});
+    let refImgBtnDown = knownImgs.connectIndicatorBtnDown;
+    let refImgBtnDownBlur = images.gaussianBlur(refImgBtnDown, gaussianSize);
+    similarity = images.getSimilarity(refImgBtnDownBlur, imgBlur, {"type": "MSSIM"});
     if (similarity > 2.1) {
         // 这里还无法分辨到底是盘已经按下了，还是因为没有其他人可以连携而灰掉
         log("第", diskPos+1, "号盘可以连携，但是已经被按下，或因为我方只剩一人而无法连携，MSSIM=", similarity);
@@ -2322,13 +2384,21 @@ function isDiskConnectableDown(screenshot, diskPos) {
 
 //判断两个盘是否是同一角色
 function areDisksSimilar(screenshot, diskAPos, diskBPos) {
-    var diskA = allActionDisks[diskAPos];
-    var diskB = allActionDisks[diskBPos];
-    var imgA = diskA.charaImg;
-    var imgB = diskB.charaImg;
+    let diskA = allActionDisks[diskAPos];
+    let diskB = allActionDisks[diskBPos];
+    let imgA = diskA.charaImg;
+    let imgB = diskB.charaImg;
     if (imgA == null) imgA = getDiskImg(screenshot, diskAPos, "charaImg");
     if (imgB == null) imgB = getDiskImg(screenshot, diskBPos, "charaImg");
-    var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+    let firstDiskArea = getDiskArea(0, "charaImg");
+    let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 5);
+    let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 5);
+    if (gaussianX % 2 == 0) gaussianX += 1;
+    if (gaussianY % 2 == 0) gaussianY += 1;
+    let gaussianSize = [gaussianX, gaussianY];
+    let imgABlur = images.gaussianBlur(imgA, gaussianSize);
+    let imgBBlur = images.gaussianBlur(imgB, gaussianSize);
+    let similarity = images.getSimilarity(imgABlur, imgBBlur, {"type": "MSSIM"});
     if (similarity > 2.4) { //有属性克制时的闪光可能会干扰判断，会造成假阴性，实际上是同一个角色，却被误识别为不同的角色
         log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
         return true;
@@ -2360,7 +2430,7 @@ function scanDisks() {
         disk.action = getDiskAction(screenshot, i);
         disk.charaImg = getDiskCharaImg(screenshot, i);
         let isConnectableDown = isDiskConnectableDown(screenshot, i); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
-        disk.connectable = isConnectableDown.connectable; //所以这里还无法区分盘是否被按下
+        disk.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
         let diskAttribDown = getDiskAttribDown(screenshot, i);
         disk.attrib = diskAttribDown.attrib;
         disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
@@ -2385,7 +2455,7 @@ function scanDisks() {
     }
 }
 
-//找出第一个可以给出连携的盘
+//找出可以给出连携的盘
 function getConnectableDisks(disks) {
     let result = [];
     for (let i=0; i<disks.length; i++) {
@@ -2448,8 +2518,137 @@ function getDiskByPriority(disks, priority) {
     }
 }
 
+//获取克制或被克制属性
+function getAdvDisadvAttrib(attrib, advOrDisadv) {
+    let result = null;
+    switch (advOrDisadv) {
+    case "adv":
+        switch(attrib) {
+        case "light": result = "dark";  break;
+        case "dark":  result = "light"; break;
+        case "water": result = "fire";  break;
+        case "fire":  result = "wood";  break;
+        case "wood":  result = "water"; break;
+        }
+        break;
+    case "disadv":
+        switch(attrib) {
+        case "light": result = "dark";  break;
+        case "dark":  result = "light"; break;
+        case "water": result = "wood";  break;
+        case "fire":  result = "water"; break;
+        case "wood":  result = "fire";  break;
+        }
+        break;
+    }
+    return result;
+}
+
+//获取我方弱点属性（对于水队来说就是木属性）
+function getAdvDisadvAttribsOfDisks(disks, advOrDisadv) {
+    let result = [];
+    let stats = {light: 0, dark: 0, water: 0, fire: 0, wood: 0};
+    let maxCount = 0;
+    for (let i=0; i<disks.length; i++) {
+        let disk = disks[i];
+        let disadvAttrib = getAdvDisadvAttrib(disk.attrib, advOrDisadv);
+        if (disadvAttrib != null) {
+            stats[disadvAttrib]++;
+            if (stats[disadvAttrib] > maxCount) maxCount = stats[disadvAttrib];
+        }
+    }
+    for (let i=1; i<=maxCount; i++) {
+        for (let attrib in stats) {
+            let count = stats[attrib];
+            if (count == i) {
+                result.splice(0, 0, attrib);;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+//选择指定属性的敌人
+function getEnemiesByAttrib(targetedAttrib) {
+    log("getEnemiesByAttrib(", targetedAttrib, ")");
+    let result = [];
+    for (let i=0; i<rows.length; i++) {
+        for (let j=0; j<columns.length; j++) {
+            let standPoint = battleField.their[rows[i]][columns[j]];
+            if (standPoint.occupied && standPoint.attrib == targetedAttrib) {
+                result.push(standPoint);
+                log(standPoint);
+            }
+        }
+    }
+    return result;
+}
+
+//瞄准指定的敌人
+function aimAtEnemy(enemy) {
+    log("aimAtEnemy(", enemy, ")");
+    let area = getStandPointArea("their", enemy.rowNum, enemy.columnNum, "floor");
+    let areaCenter = getAreaCenter(area);
+    let x = areaCenter.x;
+    let y = areaCenter.y;
+    // MuMu模拟器上tap无效，用swipe代替可解，不知道别的机器情况如何
+    compatSwipe(x, y, x, y, 100);
+    sleep(250);
+    compatSwipe(x, y, x, y, 100);
+    sleep(250);
+    compatClick(x, y);
+    sleep(250);
+    compatClick(x, y);
+    sleep(250);
+}
+
+//避免瞄准指定的敌人
+function avoidAimAtEnemies(enemiesToAvoid) {
+    log("avoidAimAtEnemies(", enemiesToAvoid, ")");
+    let allEnemies = [];
+    for (let i=0; i<rows.length; i++) {
+        for (let j=0; j<columns.length; j++) {
+            let standPoint = battleField.their[rows[i]][columns[j]];
+            if (standPoint.occupied) allEnemies.push();
+        }
+    }
+
+    let remainingEnemies = [];
+    for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
+    for (let i=0; i<remainingEnemies.length; i++) {
+        let thisEnemy = allEnemies[i];
+        for (let j=0; j<enemiesToAvoid.length; j++) {
+            let enemyToAvoid = enemiesToAvoid[j];
+            if (thisEnemy.rowNum == enemyToAvoid.rowNum && thisEnemy.columnNum == enemyToAvoid.columnNum) {
+                //绕开的指定要避免的敌人本身
+                remainingEnemies.splice(i, 1);
+            }
+        }
+    }
+    if (remainingEnemies.length > 0) aimAtEnemy(remainingEnemies[0]);
+
+    remainingEnemies = [];
+    for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
+    for (let i=0; i<remainingEnemies.length; i++) {
+        let thisEnemy = allEnemies[i];
+        for (let j=0; j<enemiesToAvoid.length; j++) {
+            let enemyToAvoid = enemiesToAvoid[j];
+            if (thisEnemy.rowNum == enemyToAvoid.rowNum || thisEnemy.columnNum == enemyToAvoid.columnNum) {
+                //绕开与指定敌人同一行或同一列的其他敌人，如果可能的话
+                remainingEnemies.splice(i, 1);
+            }
+        }
+    }
+    if (remainingEnemies.length > 0) aimAtEnemy(remainingEnemies[0]);
+}
+
 //选盘，实质上是把选到的盘在allActionDisks数组里排到前面
 function prioritiseDisks(disks) {
+    log("优先选盘：");
+    for (let i=0; i<disks.length; i++) {
+        logDiskInfo(disks[i]);
+    }
     let replaceDiskAtThisPriority = clickedDisksCount;
     for (let i=0; i<disks.length; i++) {
         let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
@@ -2463,8 +2662,8 @@ function prioritiseDisks(disks) {
     }
 
     log("当前选盘情况：");
-    for (let i=0; i<allActionDisks.length; i++) {
-        logDiskInfo(allActionDisks[i]);
+    for (let i=clickedDisksCount; i<allActionDisks.length; i++) {
+        logDiskInfo(getDiskByPriority(allActionDisks, ordinalWord[i]));
     }
 }
 
@@ -2472,13 +2671,14 @@ function prioritiseDisks(disks) {
 //进行连携
 function connectDisk(fromDisk) {
     isConnectDone = false;
-    for (let row=0; row<3; row++) {
-        for (let column=0; column<3; column++) {
-            if (ourBattleField[rows[row]][columns[column]].occupied) {
-                //找到有人的站位
-                log("从", fromDisk.position+1, "盘向第", row+1, "行第", column+1, "列站位进行连携");
-                var src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
-                var dst = getAreaCenter(getStandPointArea(row, column, "floor"));
+    for (let rowNum=0; rowNum<3; rowNum++) {
+        for (let columnNum=0; columnNum<3; columnNum++) {
+            let thisStandPoint = battleField.our[rows[rowNum]][columns[columnNum]];
+            if (thisStandPoint.occupied && thisStandPoint.charaID != fromDisk.charaID) {
+                //找到有人、并且角色和连携发出角色不同的的站位
+                log("从", fromDisk.position+1, "盘向第", rowNum+1, "行第", columnNum+1, "列站位进行连携");
+                let src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
+                let dst = getAreaCenter(getStandPointArea("our", rowNum, columnNum, "floor"));
                 //连携划动
                 compatSwipe(src.x, src.y, dst.x, dst.y, 1000);
                 sleep(1000);
@@ -2488,6 +2688,7 @@ function connectDisk(fromDisk) {
                     screenshot.recycle();
                     log("连携动作完成");
                     fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk); //判断接连携的角色是谁
+                    thisStandPoint.charaID = fromDisk.connectedTo;
                     clickedDisksCount++;
                     isConnectDone = true;
                     break;
@@ -2522,7 +2723,11 @@ function clickDisk(disk) {
                 log(e);
             }
             //最后一个盘点击成功的表现就是行动盘消失，所以当然无法分辨盘是否被按下
-            if (clickedDisksCount == 2 && inconclusiveCount >= 3) disk.down = true;
+            //这种情况下因为我方回合选盘已经结束，点击行动盘的位置没有影响，所以即便多点几次也是无害的
+            if (clickedDisksCount == 2 && inconclusiveCount >= 3) {
+                log("看不到最后一个盘了，应该是点击动作完成了");
+                disk.down = true;
+            }
         }
         screenshot.recycle();
         if (disk.down) break;
@@ -2555,11 +2760,7 @@ var knownFirstSelectedConnectedDiskCoords = {
 
 //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
 function getFirstSelectedConnectedDiskCoords(corner) {
-    var convertedCoords = {
-        x:   0,
-        y:   0,
-        pos: "bottom"
-    };
+    var convertedCoords = { x: 0, y: 0, pos: "bottom" };
     var knownCoords = knownFirstSelectedConnectedDiskCoords[corner];
     convertedCoords.x = knownCoords.x;
     convertedCoords.y = knownCoords.y;
@@ -2583,15 +2784,23 @@ function getFirstSelectedConnectedDiskImg(screenshot) {
 //返回接到连携的角色
 function getConnectAcceptorCharaID(fromDisk) {
     let screenshot = compatCaptureScreen();
-    var imgA = getFirstSelectedConnectedDiskImg(screenshot);
+    let imgA = getFirstSelectedConnectedDiskImg(screenshot);
 
-    var max = 0;
-    var maxSimilarity = -1.0;
+    let area = getFirstSelectedConnectedDiskArea();
+    let gaussianX = parseInt(getAreaWidth(area) / 5);
+    let gaussianY = parseInt(getAreaHeight(area) / 5);
+    if (gaussianX % 2 == 0) gaussianX += 1;
+    if (gaussianY % 2 == 0) gaussianY += 1;
+    let gaussianSize = [gaussianX, gaussianY];
+    let imgABlur = images.gaussianBlur(imgA, gaussianSize);
+
+    let max = 0;
+    let maxSimilarity = -1.0;
     for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
-        var imgB = getDiskImg(screenshot, diskPos, "charaImg");
-        var area = getFirstSelectedConnectedDiskArea();
-        var imgBshrunk = images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]);
-        var similarity = images.getSimilarity(imgA, imgBshrunk, {"type": "MSSIM"});
+        let imgB = getDiskImg(screenshot, diskPos, "charaImg");
+        let imgBShrunk = images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]);
+        let imgBShrunkBlur = images.gaussianBlur(imgBShrunk, gaussianSize);
+        let similarity = images.getSimilarity(imgABlur, imgBShrunkBlur, {"type": "MSSIM"});
         log("比对第", diskPos+1, "号盘与屏幕上方的第一个盘的连携接受者 MSSIM=", similarity);
         if (similarity > maxSimilarity) {
             maxSimilarity = similarity;
@@ -2602,12 +2811,8 @@ function getConnectAcceptorCharaID(fromDisk) {
     log("比对结束，与第", max+1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
     if (allActionDisks[max].charaID == fromDisk.charaID) {
         log("识图比对结果有误，和连携发出角色相同");
-        for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
-            if (allActionDisks[diskPos].charaID != fromDisk.charaID) {
-                log("为避免问题，返回另一位不同的角色 charaID=", allActionDisks[diskPos].charaID);
-                return allActionDisks[diskPos].charaID;
-            }
-        }
+        log("为避免问题，返回 charaID=-1");
+        return -1;
     }
     return allActionDisks[max].charaID;
 }
@@ -2615,14 +2820,14 @@ function getConnectAcceptorCharaID(fromDisk) {
 
 //等待己方回合
 function waitForOurTurn() {
-    var result = false;
     log("等待己方回合...");
-    var diskAppearedCount = 0;
-    var cycles = 0;
+    let result = false;
+    let cycles = 0;
+    let diskAppearedCount = 0;
     while(true) {
         cycles++;
         let screenshot = compatCaptureScreen();
-        if (id("ArenaResult").findOnce()) {
+        if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         //不再通过识图判断战斗是否结束
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
@@ -2630,20 +2835,24 @@ function waitForOurTurn() {
             screenshot.recycle();
             break;
         }
-        var diskAppeared = true;
-        var img = getDiskImg(screenshot, 0, "action");
+
+        //如果有技能可用，会先闪过我方行动盘，然后闪过技能面板，最后回到显示我方行动盘
+        //所以，必须是连续多次看到我方行动盘，这样才能排除还在闪烁式切换界面的情况
+        let img = getDiskImg(screenshot, 0, "action");
         screenshot.recycle();
         if (img != null) {
             log("已截取第一个盘的动作图片");
         } else {
             log("截取第一个盘的动作图片时出现问题");
         }
+        let diskAppeared = true;
         try {
             recognizeDisk(img, "action", 2.1);
         } catch(e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             diskAppeared = false;
         }
+        img.recycle();
         if (diskAppeared) {
             log("出现我方行动盘");
             diskAppearedCount++;
@@ -2651,8 +2860,7 @@ function waitForOurTurn() {
             log("未出现我方行动盘");
             diskAppearedCount = 0;
         }
-        if (diskAppearedCount >= 5) {
-            log("已来到己方回合");
+        if (diskAppearedCount >= 3) {
             result = true;
             break;
         }
@@ -2660,7 +2868,7 @@ function waitForOurTurn() {
             log("等待己方回合已经超过10分钟，结束运行");
             exit();
         }
-        sleep(200);
+        sleep(333);
     }
     return result;
 }
@@ -2760,23 +2968,23 @@ function clickMirrorsBattleResult() {
 
 //放缩参考图像以适配当前屏幕分辨率
 for (let imgName in knownImgs) {
-    var newsize = [0, 0];
-    var area = null;
+    let newsize = [0, 0];
+    let area = null;
     if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
         area = knownFirstDiskCoords["action"];
     } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
-        area = knownFirstDiskCoords["attrib"];
+        area = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
     } else if (imgName == "connectIndicatorBtnDown") {
         area = knownFirstDiskCoords["connectIndicator"];
     } else {
-        area = knownFirstStandPointCoords[imgName];
+        area = knownFirstStandPointCoords.our[imgName];
         if (area == null) area = knownFirstDiskCoords[imgName];
         if (area == null) area = knownMirrorsWinLoseCoords[imgName];
     }
     if (area != null) {
         let convertedArea = getConvertedArea(area);
         log("缩放图片 imgName", imgName, "area", area, "convertedArea", convertedArea);
-        var resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
+        let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
         knownImgs[imgName] = resizedImg;
     } else {
         log("缩放图片出错 imgName", imgName);
@@ -2824,9 +3032,26 @@ function mirrorsAutoBattleMain() {
         //我的回合，抽盘
         turn++;
 
-        //扫描行动盘和己方战场信息
+        //扫描行动盘和战场信息
         scanDisks();
-        scanOurBattleField();
+        scanBattleField("our");
+        scanBattleField("their");
+
+        //优先打能克制我方的属性
+        let disadvAttribs = [];
+        disadvAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "disadv");
+        let disadvAttrEnemies = [];
+        if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
+        if (disadvAttrEnemies.length > 0) aimAtEnemy(disadvAttrEnemies[0]);
+
+        if (disadvAttrEnemies.length == 0) {
+            //敌方没有能克制我方的属性，推后打被我方克制的属性
+            let advAttribs = [];
+            advAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "adv");
+            let advAttrEnemies = [];
+            if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
+            if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
+        }
 
         //在所有盘中找第一个能连携的盘
         let connectableDisks = null;
@@ -2840,7 +3065,7 @@ function mirrorsAutoBattleMain() {
             prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
             connectDisk(selectedDisk);
             //上连携后，尽量用接连携的角色
-            let connectAcceptorDisks = findDisksByCharaID(allActionDisks, connectableDisks[0].connectedTo);
+            let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
             prioritiseDisks(connectAcceptorDisks);
             //连携的角色尽量打出Blast Combo
             let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");

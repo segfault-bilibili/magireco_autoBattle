@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 
 int bmp = 0;
 int flip = 0;
@@ -381,6 +382,8 @@ int main(int argc, char **argv) {
     int listen_sock_fd = -1, accept_sock_fd = -1;
     struct sockaddr_in listen_addr;
     fd_set accept_fdset; struct timeval timeout_timeval; struct timeval *timeout_timeval_ptr; int select_ret = -1;
+    int accept_sock_flags = -1;
+    struct linger struct_linger;
 
     int invalid_arg = parse_args(argc, argv);
     if (invalid_arg != VALID_ARG) return invalid_arg;
@@ -399,7 +402,11 @@ int main(int argc, char **argv) {
 
         listen_sock_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (listen_sock_fd == -1) {
-            perror("socket() failed\n");
+            perror("socket() failed");
+            return 255;
+        }
+        if (setsockopt(listen_sock_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+            perror("setsockopt() SO_REUSEADDR failed");
             return 255;
         }
         memset(&listen_addr, 0, sizeof(listen_addr));
@@ -407,11 +414,11 @@ int main(int argc, char **argv) {
         listen_addr.sin_addr.s_addr= inet_addr("127.0.0.1");
         listen_addr.sin_port = htons(http);
         if (bind(listen_sock_fd, (struct sockaddr*)&listen_addr, sizeof(listen_addr)) == -1) {
-            perror("bind() failed\n");
+            perror("bind() failed");
             return 255;
         }
         if (listen(listen_sock_fd, 1) == -1) {
-            perror("listen() failed\n");
+            perror("listen() failed");
             return 255;
         }
         if (test_port > 0) {
@@ -785,6 +792,13 @@ int main(int argc, char **argv) {
             free(buf);
             return 255;
         }
+        struct_linger.l_onoff = 1;
+        struct_linger.l_linger = 2;
+        if (setsockopt(accept_sock_fd, SOL_SOCKET, SO_LINGER, &struct_linger, sizeof(struct_linger)) < 0) {
+            perror("setsockopt SO_LINGER failed");
+            free(buf);
+            return 64;
+        }
     } else {
         setvbuf(stdout, NULL, _IOFBF, OBS);
     }
@@ -808,10 +822,12 @@ int main(int argc, char **argv) {
         }
 
         if (http) {
-            written_size = send(accept_sock_fd, ptr, size_to_write, 0);
+            write_fd = accept_sock_fd;
         } else {
-            written_size = write(STDOUT_FILENO, ptr, size_to_write);
+            write_fd = STDOUT_FILENO;
         }
+
+        written_size = write(write_fd, ptr, size_to_write);
 
         if (written_size <= 0 || written_size > OBS) {
             if (http == 0) {
@@ -837,8 +853,24 @@ int main(int argc, char **argv) {
         remaining_write_size = total_size_to_write - total_size_written;
     }
 
-    //FIXME
     if (accept_sock_fd != -1) {
+        shutdown(accept_sock_fd, SHUT_WR);
+        accept_sock_flags = fcntl(accept_sock_fd, F_GETFL, NULL);
+        if (accept_sock_flags == -1) {
+            perror("fcntl(accept_sock_fd, FD_GETFL, NULL) failed");
+            free(buf);
+            return 64;
+        }
+        if (fcntl(accept_sock_fd, F_SETFL, accept_sock_flags | O_NONBLOCK) < 0) {
+            perror("fcntl(accept_sock_fd, FD_SETFL, accept_sock_flags | O_NONBLOCK) failed");
+            free(buf);
+            return 64;
+        }
+        for (i=0; i<200; i++) {
+            read_size = read(accept_sock_fd, http_header_buf, http_header_buf_len/2);
+            if (read_size <=0 && errno != EAGAIN && errno != EWOULDBLOCK) break;
+            usleep(10000);
+        }
         shutdown(accept_sock_fd, SHUT_RDWR);
         close(accept_sock_fd);
     }
