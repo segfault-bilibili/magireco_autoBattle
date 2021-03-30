@@ -1547,8 +1547,8 @@ function autoMain() {
             refillAP();
         }
 
+        log("等待好友列表控件出现...");
         while ((!id("friendWrap").findOnce()) && (!text(keywords.pickSupport[currentLang]).findOnce()) && (!desc(keywords.pickSupport[currentLang]).findOnce())) {
-            log("等待好友列表控件出现...");
             sleep(1000);
         }
         while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
