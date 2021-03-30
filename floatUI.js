@@ -3003,7 +3003,7 @@ function mirrorsSimpleAutoBattleMain() {
             screenutilClick(clickSets.battlePan1)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce()))) {
+        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
             screenutilClick(clickSets.battlePan2)
             sleep(1000)
         }
