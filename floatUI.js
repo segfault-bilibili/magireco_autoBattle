@@ -2902,7 +2902,11 @@ var knownMirrorsWinLoseCoords = {
 };
 
 function getMirrorsWinLoseArea(winOrLose) {
-    return convertCoords(knownMirrorsWinLoseCoords[winOrLose]);
+    let knownArea = knownMirrorsWinLoseCoords[winOrLose];
+    let convertedTopLeft = convertCoords(knownArea.topLeft);
+    let convertedBottomRight = convertCoords(knownArea.bottomRight);
+    let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
+    return convertedArea;
 }
 function getMirrorsWinLoseCoords(winOrLose, corner) {
     let area = getMirrorsWinLoseArea(winOrLose);
