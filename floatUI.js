@@ -2902,21 +2902,21 @@ var knownMirrorsWinLoseCoords = {
 };
 
 function getMirrorsWinLoseArea(winOrLose) {
-    return knownMirrorsWinLoseCoords[winOrLose];
+    return convertCoords(knownMirrorsWinLoseCoords[winOrLose]);
 }
 function getMirrorsWinLoseCoords(winOrLose, corner) {
-    var knownArea = getMirrorsWinLoseArea(winOrLose);
-    return convertCoords(knownArea.corner);
+    let area = getMirrorsWinLoseArea(winOrLose);
+    return area.corner;
 }
 function getMirrorsWinLoseImg(screenshot, winOrLose) {
-    var area = getMirrorsWinLoseArea(winOrLose);
+    let area = getMirrorsWinLoseArea(winOrLose);
     return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
     //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
-    var imgA = knownImgs[winOrLose];
-    var imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
-    var similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+    let imgA = knownImgs[winOrLose];
+    let imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
+    let similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
     log("镜界胜负判断", winOrLose, " MSSIM=", similarity);
     if (similarity > 2.1) {
         return true;
@@ -2969,21 +2969,21 @@ function clickMirrorsBattleResult() {
 //放缩参考图像以适配当前屏幕分辨率
 for (let imgName in knownImgs) {
     let newsize = [0, 0];
-    let area = null;
+    let knownArea = null;
     if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
-        area = knownFirstDiskCoords["action"];
+        knownArea = knownFirstDiskCoords["action"];
     } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
-        area = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
+        knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
     } else if (imgName == "connectIndicatorBtnDown") {
-        area = knownFirstDiskCoords["connectIndicator"];
+        knownArea = knownFirstDiskCoords["connectIndicator"];
     } else {
-        area = knownFirstStandPointCoords.our[imgName];
-        if (area == null) area = knownFirstDiskCoords[imgName];
-        if (area == null) area = knownMirrorsWinLoseCoords[imgName];
+        knownArea = knownFirstStandPointCoords.our[imgName];
+        if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
+        if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
     }
-    if (area != null) {
-        let convertedArea = getConvertedArea(area);
-        log("缩放图片 imgName", imgName, "area", area, "convertedArea", convertedArea);
+    if (knownArea != null) {
+        let convertedArea = getConvertedArea(knownArea);
+        log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
         let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
         knownImgs[imgName] = resizedImg;
     } else {
