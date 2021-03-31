@@ -1,1 +1,5 @@
 make_release_hash_list.sh eol=lf
+project.json eol=crlf
+main.js eol=crlf
+floatUI.js eol=crlf
+.gitattributes eol=crlf
