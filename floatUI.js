@@ -3172,6 +3172,7 @@ function getDrugNum(text) {
     return parseInt(text.match(/\d+/)[0]);
 }
 
+shellPrivCheckThread = null;
 floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
@@ -3191,7 +3192,8 @@ floatUI.adjust = function (config) {
         log("使用无障碍服务模拟点击");
     }
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
-        checkShellPrivilege();
+        if (shellPrivCheckThread != null) shellPrivCheckThread.interrupt();
+        shellPrivCheckThread = threads.start(checkShellPrivilege);
     }
 }
 
