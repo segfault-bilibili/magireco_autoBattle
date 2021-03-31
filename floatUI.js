@@ -355,32 +355,29 @@ function compatCaptureScreen() {
     if (limit.useScreencapShellCmd) {
         //使用shell命令 screencap 截图
         screencapShellCmdLock.lock();
-        if (localHttpListenPort<0) localHttpListenPort = findListenPort();
         try {screencapShellCmdThread.interrupt();} catch (e) {};
+        if (localHttpListenPort<0) localHttpListenPort = findListenPort();
         if (screencapLength < 0) screencapLength = detectScreencapLength();
         if (screencapLength <= 0) {
             log("screencapLength="+screencapLength+"<= 0, exit");
             exit();
         }
-        screencapShellCmdThread = threads.start(function() {
-            let shellcmd = "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
-            let sleepMS = 200;
-            for (let cmdRetry=0; cmdRetry*1000<300*sleepMS; cmdRetry++) {
-                let result = privilegedShellCmdMuted(shellcmd);
-                sleep(sleepMS);
-            }
-        });
-        sleep(100);
         let screenshot = null;
-        let sleepMS = 200;
-        for (let imageLoadRetry=0; imageLoadRetry*1000<300*sleepMS; imageLoadRetry++) {
-            try {
-                screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp");
-            } catch (e) {log(e)};
+        for (let i=0; i<10; i++) {
+            screencapShellCmdThread = threads.start(function() {
+                let shellcmd = "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
+                let result = privilegedShellCmdMuted(shellcmd);
+            });
+            sleep(100);
+            for (let j=0; j<5; j++) {
+                try { screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp"); } catch (e) {log(e)};
+                if (screenshot != null) break;
+                sleep(200);
+            }
+            try {screencapShellCmdThread.interrupt();} catch (e) {};
             if (screenshot != null) break;
-            sleep(sleepMS);
+            sleep(100);
         }
-        screencapShellCmdThread.interrupt();
         screencapShellCmdLock.unlock();
         if (screenshot == null) log("截图失败");
         return screenshot;
