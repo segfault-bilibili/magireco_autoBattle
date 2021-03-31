@@ -1524,7 +1524,7 @@ function pickSupportWithTheMostPt() {
 function autoMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -1626,7 +1626,7 @@ function autoMain() {
 function autoMainver2() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     let druglimit = {
@@ -2998,7 +2998,7 @@ for (let imgName in knownImgs) {
 function mirrorsSimpleAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
@@ -3024,7 +3024,7 @@ function mirrorsSimpleAutoBattleMain() {
 function mirrorsAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
@@ -3108,7 +3108,7 @@ function mirrorsAutoBattleMain() {
 function jingMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     let usedBPDrugNum = 0;
