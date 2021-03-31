@@ -2591,13 +2591,13 @@ function aimAtEnemy(enemy) {
     let y = areaCenter.y;
     // MuMu模拟器上tap无效，用swipe代替可解，不知道别的机器情况如何
     compatSwipe(x, y, x, y, 100);
-    sleep(250);
+    sleep(50);
     compatSwipe(x, y, x, y, 100);
-    sleep(250);
+    sleep(50);
     compatClick(x, y);
-    sleep(250);
+    sleep(100);
     compatClick(x, y);
-    sleep(250);
+    sleep(100);
 }
 
 //避免瞄准指定的敌人
@@ -2724,6 +2724,8 @@ function clickDisk(disk) {
             if (clickedDisksCount == 2 && inconclusiveCount >= 3) {
                 log("看不到最后一个盘了，应该是点击动作完成了");
                 disk.down = true;
+            } else {
+                disk.down = false;
             }
         }
         screenshot.recycle();
