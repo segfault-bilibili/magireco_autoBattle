@@ -3,3 +3,4 @@ project.json eol=crlf
 main.js eol=crlf
 floatUI.js eol=crlf
 .gitattributes eol=crlf
+versions/latest.txt eol=crlf

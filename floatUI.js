@@ -143,6 +143,8 @@ function rootMarkerFile() {
     }
 }
 function checkShellPrivilege() {
+    if (!verifyFiles()) return false;
+
     if (shellHasPrivilege) {
         log("已经获取到root或adb权限了");
     } else {
@@ -201,7 +203,7 @@ function checkShellPrivilege() {
             }
         }
     }
-    if (shellHasPrivilege && (!binarySetupDone)) setupBinary();
+    if (shellHasPrivilege && (!binarySetupDone)) setupBinaries();
     return shellHasPrivilege;
 }
 
@@ -224,14 +226,32 @@ function detectABI() {
     return shellABI;
 }
 //在/data/local/tmp/下安装scrcap2bmp
-function setupBinary() {
-    if (files.isFile("/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp")) {
-        log("scrcap2bmp文件已存在，应该是之前已经安装好了");
-        return;
-    }
+var binariesInfo = [];
+function setupBinaries() {
+    setupBinary("scrcap2bmp");
+}
+function setupBinary(binaryFileName) {
+    let binaryCopyToPath = "/data/local/tmp/"+pkgName+"/sbin/"+binaryFileName;
     detectABI();
-    if (!files.isFile(dataDir+"/bin/scrcap2bmp-"+shellABI)) {
-        toastLog("找不到自带的scrcap2bmp，请下载新版安装包");
+    if (files.isFile(binaryCopyToPath)) {
+        log("setupBinary 文件 "+binaryFileName+" 已存在");
+        let existingFileBytes = files.readBytes(binaryCopyToPath);
+        let fileHashCalc = $crypto.digest(existingFileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
+        for (let i=0; i<binariesInfo.length; i++) {
+            let binaryInfo = binariesInfo[i];
+            if (binaryInfo.fileName == "bin/"+binaryFileName+"-"+shellABI) {
+                if (binaryInfo.fileHash == fileHashCalc) {
+                    log("setupBinary 文件 "+binaryFileName+" hash值相符");
+                    return;
+                }
+                log("setupBinary 文件 "+binaryFileName+" hash值不符");
+                files.remove(binaryCopyToPath);
+                break;
+            }
+        }
+    }
+    if (!files.isFile(dataDir+"/bin/"+binaryFileName+"-"+shellABI)) {
+        toastLog("找不到自带的"+binaryFileName+"，请下载新版安装包");
         sleep(2000);
         exit();
     }
@@ -241,16 +261,16 @@ function setupBinary() {
     normalShellCmd("chmod a+x "+dataDir);           // pkgname/files/project/
     normalShellCmd("chmod a+x "+dataDir+"/bin");
 
-    let scrcap2bmpPath = dataDir+"/bin/scrcap2bmp-"+shellABI;
-    normalShellCmd("chmod a+r "+scrcap2bmpPath);
+    let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+    normalShellCmd("chmod a+r "+binaryCopyFromPath);
 
     privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName);
     privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName+"/sbin");
     privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName);
     privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin");
 
-    privilegedShellCmd("cat "+scrcap2bmpPath+" > "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
-    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp");
+    privilegedShellCmd("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+    privilegedShellCmd("chmod 755 "+binaryCopyToPath);
 
     binarySetupDone = true;
 }
@@ -387,7 +407,287 @@ function compatCaptureScreen() {
     }
 }
 
+
+//在线更新
+let updateURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle";
+function httpDownload_(url, takeWhat) {
+    let response = null;
+    try {
+        response = http.get(url);
+    } catch (e) {
+        toastLog("请求超时");
+        log("url="+url+" exception="+e);
+        response = null;
+    }
+    if (response == null) return null;
+    if (response.statusCode != 200) {
+        toastLog("请求失败 url="+url+" HTTP状态码 "+response.statusCode+" "+response.statusMessage);
+        return null;
+    }
+    if (takeWhat == "string") return response.body.string();
+    if (takeWhat == "bytes") return response.body.bytes();
+    if (takeWhat == "json") return response.body.json();
+    return null;
+}
+function httpDownloadString(url) {
+    return httpDownload_(url, "string");
+}
+function httpDownloadBytes(url) {
+    return httpDownload_(url, "bytes");
+}
+function httpDownloadJson(url) {
+    return httpDownload_(url, "json");
+}
+function onlineUpdate() {
+    let downloadedJson = httpDownloadJson(updateURLBase+"/project.json");
+    if (downloadedJson == null) return;
+    if (downloadedJson.versionName == null) {
+        toastLog("解析JSON时出现问题，没有找到versionName")
+        return;
+    }
+    if (downloadedJson.versionName == limit.version) {
+        toastLog("当前已是最新版本，无需更新")
+        return;
+    }
+
+    if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
+    if (!verifyFiles()) toastLog("警告: 更新未完成 (onlineUpdate)");
+}
+function forcedOnlineUpdate() {
+    if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
+    if (!verifyFiles()) toastLog("警告: 更新未完成 (forcedOnlineUpdate)");
+}
+function verifyAndUpdate() {
+    if (verifyFiles()) {
+        resizeKnownImgs();
+        if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
+    } else {
+        if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
+        if (!verifyFiles()) toastLog("警告: 更新未完成 (verifyAndUpdate)");
+    }
+}
+// 更新latest.txt，里面含有[版本号].txt文件本身的哈希值
+function updateRootHash() {
+    let latestStr = httpDownloadString(updateURLBase+"/versions/latest.txt");
+    if (latestStr == null) return false;
+
+    log("versions/latest.txt 下载完成");
+    files.removeDir(dataDir+"/versions/");
+    files.ensureDir(dataDir+"/versions/");
+    files.create(dataDir+"/versions/latest.txt");
+    files.write(dataDir+"/versions/latest.txt", latestStr);
+    log("versions/latest.txt 写入完成");
+
+    return true;
+}
+// 检查[版本号].txt本身的哈希值是否正确，如果不符，或者文件不存在，就重新下载一个
+function getHashListFileName() {
+    if (!files.isFile(dataDir+"/versions/latest.txt")) return null;
+
+    // 读取latest.txt
+    let latestStr = files.read(dataDir+"/versions/latest.txt", "utf-8");
+
+    // 读取并检查latest.txt的内容
+    let latestStrSplitted = latestStr.split("\r").join("").split("\n");
+    if (latestStrSplitted.length > 2) {
+        toastLog("latest.txt 文件行数不正确");
+        files.removeDir(dataDir+"/versions/");
+        return null;
+    }
+    let firstLine = latestStrSplitted[0];
+    let firstLineSplitted = firstLine.split(" ");
+    if (firstLineSplitted.length != 2) {
+        toastLog("latest.txt 文件内容不正确 (1) "+latestStr);
+        files.removeDir(dataDir+"/versions/");
+        return null;
+    }
+    let rootHash = firstLineSplitted[0];
+    let hashListFileName = firstLineSplitted[1];
+    if (hashListFileName.match(/^versions\/[^\/]*\.txt$/) == null || rootHash == "") {
+        toastLog("latest.txt 文件内容不正确 (2) "+latestStr);
+        files.removeDir(dataDir+"/versions/");
+        return null;
+    }
+
+    // 检查[版本号].txt本身的哈希值
+    let hashListStr = null;
+    if (files.isFile(dataDir+"/"+hashListFileName)) {
+        log("文件 "+hashListFileName+" 已存在");
+        hashListStr = files.read(dataDir+"/"+hashListFileName, "utf-8");
+        let rootHashCalc = $crypto.digest(hashListStr, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
+        if (rootHashCalc != rootHash) { //[版本号].txt文件存在，但是哈希值和latest.txt不符。正常情况不会这样
+            toastLog("验证 "+hashListFileName+".txt hash值不通过");
+            files.removeDir(dataDir+"/versions/");
+        }
+        log("文件 "+hashListFileName+" hash值验证通过");
+    } else {
+        log("文件 "+hashListFileName+" 不存在");
+        hashListStr = null;
+    }
+
+    if (hashListStr == null) {
+        // [版本号].txt不存在，重新下载
+        log("下载 "+hashListFileName);
+        hashListStr = httpDownloadString(updateURLBase+"/"+hashListFileName);
+        if (hashListStr == null) return null;
+
+        let rootHashCalc = $crypto.digest(hashListStr, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
+        if (rootHashCalc != rootHash) {
+            //这里是拿新下载的[版本号].txt计算哈希值，
+            //然后和之前latest.txt文件里保存的哈希值对比，
+            //所以，对不上可能是正常的（有更新）；也可能是意料之外的情况（比如云端的latest.txt和[版本号].txt本来就不符）
+            toastLog("新下载到的 "+hashListFileName+".txt hash值和versions/latest.txt里记录的值不符");
+            return null;
+        }
+        files.ensureDir(dataDir+"/versions/");
+        files.create(dataDir+"/"+hashListFileName);
+        files.write(dataDir+"/"+hashListFileName, hashListStr);
+        log("文件 "+hashListFileName+" 已更新，hash值验证通过");
+    }
+
+    return hashListFileName;
+}
+// 根据[版本号].txt记录的哈希值验证文件内容
+function verifyFiles() {
+    let readOnly = true;
+    return verifyOrUpdate(readOnly);
+}
+// 不仅验证内容，还要在验证不符时覆盖更新文件内容
+function updateFiles() {
+    let readOnly = false;
+    return verifyOrUpdate(readOnly);
+}
+function verifyOrUpdate(readOnly) {
+    let hashListFileName = getHashListFileName();
+    if (hashListFileName == null) return false;
+
+    // 根据[版本号].txt列出的内容，下载文件（不落地）并验证哈希值
+    let hashListStr = files.read(hashListFileName, "utf-8");
+    let hashListStrSplitted = hashListStr.split("\r").join("").split("\n");
+    let updateEntries = [];
+    for (let i=0; i<hashListStrSplitted.length; i++) {
+        let line = hashListStrSplitted[i];
+        if (line == "") continue;
+        let lineSplitted = line.split(" ");
+        if (lineSplitted.length != 2) {
+            toastLog("文件 "+hashListFileName+" 内容解析失败 line="+line);
+            return false;
+        }
+        let fileHash = lineSplitted[0].toLowerCase();
+        let fileName = lineSplitted[1];
+        if (fileName == "" || fileHash == "") {
+            toastLog("文件 "+hashListFileName+" 内容解析失败 line="+line);
+            return false;
+        }
+
+        let isDir = false;
+        let fileBytes = null;
+        if (fileHash == "dir") {
+            isDir = true;
+            fileBytes = null;
+        } else {
+            isDir = false;
+            if (readOnly) { //只是verifyFile()的话，不进行下载
+                fileBytes = null;
+            } else {
+                fileBytes = httpDownloadBytes(updateURLBase+"/"+fileName);
+                if (fileBytes == null) {
+                    toastLog("下载文件 "+fileName+" 失败");
+                    return false;
+                }
+                let fileHashCalc = $crypto.digest(fileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
+                if (fileHashCalc != fileHash) {
+                    toastLog("下载到的文件 "+fileName+" hash值不符");
+                    return false;
+                }
+            }
+        }
+        updateEntries.push({isDir: isDir, fileName: fileName, fileHash: fileHash, fileBytes: fileBytes});
+    }
+
+    // 根据当前版本的文件及哈希值列表，验证文件内容，有必要时覆盖更新
+    for (let i=0; i<updateEntries.length; i++) {
+        let updateEntry = updateEntries[i];
+        let targetFilePath = dataDir+"/"+updateEntry.fileName;
+        let noTrailingSlash = targetFilePath;
+        if (noTrailingSlash.endsWith("/")) noTrailingSlash = noTrailingSlash.match(/.*(?=\/)/)[0];
+        if ((!targetFilePath.startsWith("/data/data/")) && (!targetFilePath.startsWith("/data/user/")) &&
+            (!noTrailingSlash.startsWith("/data/data/")) && (!noTrailingSlash.startsWith("/data/user/"))) {
+            toastLog("升级出错");
+            log("targetFilePath="+targetFilePath); //防止破坏内部存储空间（/sdcard）等位置
+            return false;
+        }
+        if (updateEntry.isDir) {
+            if (!files.isDir(noTrailingSlash)) {
+                if (readOnly) return false;
+                if (files.isFile(noTrailingSlash)) {
+                    files.remove(noTrailingSlash);
+                }
+                log("创建目录 "+updateEntry.fileName);
+                files.ensureDir(noTrailingSlash+"/");
+            }
+        } else {
+            if (updateEntry.fileName == "project.json") continue; //project.json不能更新，否则会触发AutoJS的回滚
+            if (updateEntry.fileName.startsWith("versions/")) continue; //versions目录下的文件本来就不应出现在更新列表中，因为哈希值鸡生蛋蛋生鸡
+            let overwriteFile = false;
+            if (files.isDir(targetFilePath)) {
+                if (readOnly) return false;
+                files.removeDir(targetFilePath);
+                overwriteFile = true;
+            } else if (files.isFile(targetFilePath)) {
+                let existingFileBytes = files.readBytes(targetFilePath);
+                let existingFileHash = $crypto.digest(existingFileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
+                if (updateEntry.fileHash != existingFileHash) {
+                    log("文件 "+updateEntry.fileName+" hash值不符");
+                    overwriteFile = true;
+                }
+            } else {
+                overwriteFile = true;
+            }
+            // 这里不会删除不再需要的文件
+            if (overwriteFile) {
+                if (readOnly) return false;
+                log("写入文件 "+updateEntry.fileName);
+                files.create(targetFilePath);
+                files.writeBytes(targetFilePath, updateEntry.fileBytes);
+            }
+
+            if (updateEntry.fileName.startsWith("bin/")) {
+                // 这里还是updateEntry.isDir == false的情况下
+                // 加入binariesInfo数组，以便在setupBinaries()里检查
+                binariesInfo.push({fileName: updateEntry.fileName, fileHash: updateEntry.fileHash});
+            }
+        }
+    }
+    if (!readOnly) {
+        toastLog("文件更新完成");
+        events.on("exit", function () {
+            engines.execScriptFile(engines.myEngine().cwd() + "/main.js");
+            toast("更新完毕");
+        });
+        engines.stopAll();
+    }
+    return true;
+}
+
+var updateThread = null;
+function startUpdateThread(func) {
+    let canUpdate = true;
+    if (updateThread != null) if (updateThread.isAlive()) canUpdate = false;
+    if (canUpdate) {
+        updateThread = threads.start(func);
+    } else {
+        toastLog("更新正在进行中，请稍候");
+    }
+}
+
 floatUI.main = function () {
+    //每次启动时检查文件哈希值
+    //这样也可以应对老版本（2.4.0.7及以前）升上来的情况，也就是：
+    //    只有main.js和floatUI.js两个文件更新了。
+    //    这种情况下需要第二次重启app完成更新
+    startUpdateThread(verifyAndUpdate); //缩放图片和检查adb或root权限也放在updateThread里进行
+
     let task = null;
     let logo_switch = false;//全局: 悬浮窗的开启关闭检测
     let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
@@ -588,39 +888,7 @@ floatUI.main = function () {
     })
 
     win.id_4_click.on("click", () => {
-        try {
-            let res = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/project.json");
-            if (res.statusCode != 200) {
-                toastLog("请求超时")
-            } else {
-                let resJson = res.body.json();
-                if (parseInt(resJson.versionName.split(".").join("")) == parseInt(limit.version.split(".").join(""))) {
-                    toastLog("为最新版本，无需更新")
-                } else {
-                    let main_script = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/main.js");
-                    let float_script = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/floatUI.js");
-                    if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                        toastLog("更新加载中，界面可能暂时失去响应");
-                        let mainjs = main_script.body.string();
-                        let floatjs = float_script.body.string();
-                        files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                        files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                        events.on("exit", function () {
-                            engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
-                            toast("更新完毕")
-                        })
-                        engines.stopAll()
-                    } else {
-                        toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
-                    }
-                }
-            }
-            // -------
-
-        } catch (error) {
-            toastLog("请求超时，可再一次尝试")
-        }
-
+        startUpdateThread(onlineUpdate);
         img_down();
     })
 
@@ -1522,6 +1790,10 @@ function pickSupportWithTheMostPt() {
 }
 
 function autoMain() {
+    if (!verifyFiles()) {
+        toastLog("更新尚未完成，不能开始");
+        return;
+    }
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
@@ -1624,6 +1896,10 @@ function autoMain() {
 }
 
 function autoMainver2() {
+    if (!verifyFiles()) {
+        toastLog("更新尚未完成，不能开始");
+        return;
+    }
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
@@ -2970,32 +3246,49 @@ function clickMirrorsBattleResult() {
 
 
 //放缩参考图像以适配当前屏幕分辨率
-for (let imgName in knownImgs) {
-    let newsize = [0, 0];
-    let knownArea = null;
-    if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
-        knownArea = knownFirstDiskCoords["action"];
-    } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
-        knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
-    } else if (imgName == "connectIndicatorBtnDown") {
-        knownArea = knownFirstDiskCoords["connectIndicator"];
-    } else {
-        knownArea = knownFirstStandPointCoords.our[imgName];
-        if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
-        if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
+var resizeKnownImgsDone = false;
+function resizeKnownImgs() {
+    if (resizeKnownImgsDone) return;
+    let hasError = false;
+    for (let imgName in knownImgs) {
+        let newsize = [0, 0];
+        let knownArea = null;
+        if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
+            knownArea = knownFirstDiskCoords["action"];
+        } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
+            knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
+        } else if (imgName == "connectIndicatorBtnDown") {
+            knownArea = knownFirstDiskCoords["connectIndicator"];
+        } else {
+            knownArea = knownFirstStandPointCoords.our[imgName];
+            if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
+            if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
+        }
+        if (knownArea != null) {
+            let convertedArea = getConvertedArea(knownArea);
+            log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
+            if (knownImgs[imgName] == null) {
+                hasError = true;
+                log("缩放图片出错 imgName", imgName);
+                break;
+            }
+            let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
+            knownImgs[imgName] = resizedImg;
+        } else {
+            hasError = true;
+            log("缩放图片出错 imgName", imgName);
+            break;
+        }
     }
-    if (knownArea != null) {
-        let convertedArea = getConvertedArea(knownArea);
-        log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
-        let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
-        knownImgs[imgName] = resizedImg;
-    } else {
-        log("缩放图片出错 imgName", imgName);
-    }
+    resizeKnownImgsDone = !hasError;
 }
 
 
 function mirrorsSimpleAutoBattleMain() {
+    if (!verifyFiles()) {
+        toastLog("更新尚未完成，不能开始");
+        return;
+    }
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
@@ -3022,6 +3315,10 @@ function mirrorsSimpleAutoBattleMain() {
 }
 
 function mirrorsAutoBattleMain() {
+    if (!verifyFiles()) {
+        toastLog("更新尚未完成，不能开始");
+        return;
+    }
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
@@ -3106,6 +3403,10 @@ function mirrorsAutoBattleMain() {
 
 
 function jingMain() {
+    if (!verifyFiles()) {
+        toastLog("更新尚未完成，不能开始");
+        return;
+    }
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
@@ -3190,10 +3491,6 @@ floatUI.adjust = function (config) {
         log("使用shell命令 \"input\" 模拟点击");
     } else {
         log("使用无障碍服务模拟点击");
-    }
-    if (limit.useScreencapShellCmd || limit.useInputShellCmd) {
-        if (shellPrivCheckThread != null) shellPrivCheckThread.interrupt();
-        shellPrivCheckThread = threads.start(checkShellPrivilege);
     }
 }
 

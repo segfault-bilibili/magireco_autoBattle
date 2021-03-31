@@ -35,7 +35,7 @@ for FILE in project.json main.js floatUI.js; do
     fi
 done
 
-find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version \
+find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version | grep -v ^\\./project.json | sed -e 's/^.\///g' \
 | while read line; do
     if [ -d "$line" ] ; then
         echo "DIR ${line}/"
@@ -44,7 +44,10 @@ find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version \
     fi
 done | tr -d '*' > versions/${NEWVERSION}.txt
 
-sha256sum versions/${NEWVERSION}.txt | tr -d '*' >> versions/latest.txt
-
 sed -i 's/\r$//g' versions/${NEWVERSION}.txt
 sed -i 's/$/\r/g' versions/${NEWVERSION}.txt
+
+sha256sum versions/${NEWVERSION}.txt | tr -d '*' >> versions/latest.txt
+
+sed -i 's/\r$//g' versions/latest.txt
+sed -i 's/$/\r/g' versions/latest.txt
