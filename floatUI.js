@@ -285,9 +285,9 @@ function waitForGameForeground() {
         sleep(2000);
     }
     if (!isGameFg) {
-        toastLog("游戏没有切到前台，退出");
-        exit();
+        toastLog("游戏没有切到前台");
     }
+    return isGameFg;
 }
 
 //申请截屏权限
@@ -1523,7 +1523,7 @@ function pickSupportWithTheMostPt() {
 
 function autoMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     let druglimit = {
@@ -1625,7 +1625,7 @@ function autoMain() {
 
 function autoMainver2() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
@@ -2997,7 +2997,7 @@ for (let imgName in knownImgs) {
 
 function mirrorsSimpleAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //简单镜层自动战斗
@@ -3023,7 +3023,7 @@ function mirrorsSimpleAutoBattleMain() {
 
 function mirrorsAutoBattleMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
@@ -3107,7 +3107,7 @@ function mirrorsAutoBattleMain() {
 
 function jingMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
