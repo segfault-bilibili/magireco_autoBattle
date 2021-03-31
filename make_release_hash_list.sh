@@ -43,3 +43,8 @@ find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version \
         sha256sum "${line}"
     fi
 done | tr -d '*' > versions/${NEWVERSION}.txt
+
+sha256sum versions/${NEWVERSION}.txt | tr -d '*' >> versions/latest.txt
+
+sed -i 's/\r$//g' versions/${NEWVERSION}.txt
+sed -i 's/$/\r/g' versions/${NEWVERSION}.txt
