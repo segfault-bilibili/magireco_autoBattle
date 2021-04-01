@@ -1874,8 +1874,8 @@ function autoMain() {
                     sleep(3000)
                 }
             }
-            if (id("rankUpWrap").findOnce()) {
-                while (id("rankUpWrap").findOnce()) {
+            if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+                while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.levelup)
                     sleep(3000)
@@ -1995,8 +1995,8 @@ function autoMainver2() {
                     sleep(3000)
                 }
             }
-            if (id("rankUpWrap").findOnce()) {
-                while (id("rankUpWrap").findOnce()) {
+            if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+                while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.levelup)
                     sleep(3000)
