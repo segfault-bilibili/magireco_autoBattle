@@ -47,7 +47,7 @@ done | tr -d '*' > versions/${NEWVERSION}.txt
 sed -i 's/\r$//g' versions/${NEWVERSION}.txt
 sed -i 's/$/\r/g' versions/${NEWVERSION}.txt
 
-sha256sum versions/${NEWVERSION}.txt | tr -d '*' >> versions/latest.txt
+sha256sum versions/${NEWVERSION}.txt | tr -d '*' > versions/latest.txt
 
 sed -i 's/\r$//g' versions/latest.txt
 sed -i 's/$/\r/g' versions/latest.txt

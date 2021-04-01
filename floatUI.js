@@ -516,7 +516,7 @@ function getHashListFileName() {
         hashListStr = files.read(dataDir+"/"+hashListFileName, "utf-8");
         let rootHashCalc = $crypto.digest(hashListStr, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
         if (rootHashCalc != rootHash) { //[版本号].txt文件存在，但是哈希值和latest.txt不符。正常情况不会这样
-            toastLog("验证 "+hashListFileName+".txt hash值不通过");
+            toastLog("验证 "+hashListFileName+" hash值不通过");
             files.removeDir(dataDir+"/versions/");
         }
         log("文件 "+hashListFileName+" hash值验证通过");
@@ -536,7 +536,7 @@ function getHashListFileName() {
             //这里是拿新下载的[版本号].txt计算哈希值，
             //然后和之前latest.txt文件里保存的哈希值对比，
             //所以，对不上可能是正常的（有更新）；也可能是意料之外的情况（比如云端的latest.txt和[版本号].txt本来就不符）
-            toastLog("新下载到的 "+hashListFileName+".txt hash值和versions/latest.txt里记录的值不符");
+            toastLog("新下载到的 "+hashListFileName+" hash值和versions/latest.txt里记录的值不符");
             return null;
         }
         files.ensureDir(dataDir+"/versions/");
@@ -1117,6 +1117,11 @@ var keywords = {
         chs: "请选择支援角色",
         jp:  "サポートキャラを選んでください",
         cht: "請選擇支援角色"
+    },
+    playerRank: {
+        chs: "玩家等级",
+        jp:  "プレイヤーランク",
+        cht: "玩家排名"
     }
 };
 var currentLang = "chs";
