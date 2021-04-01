@@ -1115,8 +1115,8 @@ var keywords = {
     },
     pickSupport: {
         chs: "请选择支援角色",
-        jp:  "",
-        cht: ""
+        jp:  "サポートキャラを選んでください",
+        cht: "請選擇支援角色"
     }
 };
 var currentLang = "chs";
