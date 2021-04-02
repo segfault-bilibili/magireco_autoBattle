@@ -2630,8 +2630,8 @@ function isDiskConnectableDown(screenshot, diskPos) {
     let img = getDiskImg(screenshot, diskPos, "connectIndicator");
     let refImg = knownImgs.connectIndicator;
     let firstDiskArea = getDiskArea(0, "connectIndicator");
-    let gaussianX = getAreaWidth(firstDiskArea) / 3;
-    let gaussianY = getAreaHeight(firstDiskArea) / 3;
+    let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
+    let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
     if (gaussianX % 2 == 0) gaussianX += 1;
     if (gaussianY % 2 == 0) gaussianY += 1;
     let gaussianSize = [gaussianX, gaussianY];
