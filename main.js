@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.4.0.9"
+var version = "2.4.1"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
