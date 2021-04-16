@@ -1139,7 +1139,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.1',
+    version: '2.4.2',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -1624,7 +1624,7 @@ function detectAP() {
     throw "detectAPFailed" //should never reach here
 }//end function
 
-function refillAP() {
+function refillAP(druglimit) {
     //嗑药
     //打开ap面板
     log("开启嗑药面板")
@@ -1818,7 +1818,7 @@ function autoMain() {
         log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
-            refillAP();
+            refillAP(druglimit);
         }
 
         log("等待好友列表控件出现...");
@@ -1926,7 +1926,7 @@ function autoMainver2() {
         log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
-            refillAP();
+            refillAP(druglimit);
         }
         //----------------------------------
         log(limit.shuix, limit.shuiy)
