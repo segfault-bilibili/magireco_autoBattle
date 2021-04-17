@@ -1139,7 +1139,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.2',
+    version: '2.4.3',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -1251,6 +1251,11 @@ var clickSets = {
         y: 950,
         pos: "bottom"
     },
+    mirrorsStartBtn: {
+        x: 1423,
+        y: 900,
+        pos: "center"
+    }
 }
 
 //坐标转换
@@ -3423,7 +3428,7 @@ function jingMain() {
         let matchWrap = id("matchingWrap").findOne().bounds()
         while (!id("battleStartBtn").findOnce()) {
             sleep(1000)
-            compatClick(matchWrap.centerX(), matchWrap.bottom - 50)
+            screenutilClick(clickSets.mirrorsStartBtn);
             sleep(2000)
         }
         let btn = id("battleStartBtn").findOne().bounds()
