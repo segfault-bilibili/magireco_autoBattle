@@ -363,7 +363,7 @@ function findListenPort() {
     for (let i=11023; i<65535; i+=16) {
         let shellcmd = "/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -t"+i;
         let result = privilegedShellCmd(shellcmd);
-        if (result.code == 0 && result.error.startsWith("Port "+i+" is available")) {
+        if (result.code == 0 && result.error.includes("Port "+i+" is available")) {
             log("可用监听端口", i);
             return i;
         }
@@ -1139,7 +1139,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.4',
+    version: '2.4.5',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -3425,16 +3425,14 @@ function jingMain() {
     let usedBPDrugNum = 0;
 
     while (true) {
-        let matchWrap = id("matchingWrap").findOne().bounds()
-        while (!id("battleStartBtn").findOnce()) {
+        while (!id("matchingWrap").findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.mirrorsStartBtn);
             sleep(2000)
         }
-        let btn = id("battleStartBtn").findOne().bounds()
-        while (id("battleStartBtn").findOnce()) {
+        while (id("matchingWrap").findOnce()) {
             sleep(1000)
-            compatClick(btn.centerX(), btn.centerY())
+            screenutilClick(clickSets.mirrorsStartBtn);
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
                 if (limit.BPAutoRefill && usedBPDrugNum < limit.bpdrugnum) {
