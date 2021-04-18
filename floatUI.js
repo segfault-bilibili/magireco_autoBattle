@@ -1139,7 +1139,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.5',
+    version: '2.4.6',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -3436,11 +3436,11 @@ function jingMain() {
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
                 if (limit.BPAutoRefill && usedBPDrugNum < limit.bpdrugnum) {
-                    while (!id("BpCureWrap").findOnce()) {
+                    while (!id("bpTextWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
                     }
-                    while (id("BpCureWrap").findOnce()) {
+                    while (id("bpTextWrap").findOnce()) {
                         screenutilClick(clickSets.bphui2)
                         sleep(1500)
                     }
