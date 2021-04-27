@@ -46,9 +46,16 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
-                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗，经常有连接失败弹窗情况下开启）" />
-                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC（不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用其他）" />
-                    <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能（注意！活动副本(包括星期狗粮)请勿启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持活动副本自动选关）" />
+                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式" />
+                    <text textColor="#666666" text="战斗中会不断点击，去除网络连接失败弹窗，经常有连接失败弹窗情况下开启" />
+                </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
+                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC" />
+                    <text textColor="#666666" text="不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用其他" />
+                </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
+                    <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能" />
+                    <text textColor="#666666" text="注意！活动副本(包括星期狗粮)请勿启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持活动副本自动选关" />
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
