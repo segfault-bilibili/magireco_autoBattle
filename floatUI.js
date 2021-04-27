@@ -143,7 +143,7 @@ function rootMarkerFile() {
     }
 }
 function checkShellPrivilege() {
-    if (!verifyFiles()) return false;
+    if (!verifyFiles(limit.version)) return false;
 
     if (shellHasPrivilege) {
         log("已经获取到root或adb权限了");
@@ -409,8 +409,7 @@ function compatCaptureScreen() {
 
 
 //在线更新
-let oldUpdateURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle";
-let updateURLBase = oldUpdateURLBase+"@"+limit.version;
+var oldUpdateURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle";
 function httpDownload_(url, takeWhat) {
     let response = null;
     try {
@@ -439,37 +438,63 @@ function httpDownloadBytes(url) {
 function httpDownloadJson(url) {
     return httpDownload_(url, "json");
 }
-function onlineUpdate() {
+function getLatestVersionName() {
+    let updateURLBase = oldUpdateURLBase+"@"+"latest";
     let downloadedJson = httpDownloadJson(updateURLBase+"/project.json");
-    if (downloadedJson == null) return;
+    if (downloadedJson == null) {
+        toastLog("下载project.json失败");
+        return null;
+    }
     if (downloadedJson.versionName == null) {
         toastLog("解析JSON时出现问题，没有找到versionName")
-        return;
+        return null;
     }
-    if (downloadedJson.versionName == limit.version) {
+    return downloadedJson.versionName;
+}
+function onlineUpdate() {
+    let latestVersionName = null;
+    latestVersionName = getLatestVersionName();
+    if (latestVersionName == null) return;
+
+    if (latestVersionName == limit.version) {
         toastLog("当前已是最新版本，无需更新")
         return;
     }
 
-    updateURLBase = oldUpdateURLBase+"@"+downloadedJson.versionName;
-    if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
-    if (!verifyFiles()) toastLog("警告: 更新未完成 (onlineUpdate)");
+    if (updateRootHash(latestVersionName)) updateFiles(latestVersionName); //更新成功的情况下不应该继续执行下一句
+    if (!verifyFiles(latestVersionName)) toastLog("警告: 更新未完成 (onlineUpdate)");
 }
 function forcedOnlineUpdate() {
-    if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
-    if (!verifyFiles()) toastLog("警告: 更新未完成 (forcedOnlineUpdate)");
+    let latestVersionName = null;
+    latestVersionName = getLatestVersionName();
+    if (latestVersionName == null) return;
+
+    if (updateRootHash(latestVersionName)) updateFiles(latestVersionName); //更新成功的情况下不应该继续执行下一句
+    if (!verifyFiles(latestVersionName)) toastLog("警告: 更新未完成 (forcedOnlineUpdate)");
 }
 function verifyAndUpdate() {
-    if (verifyFiles()) {
+    if (verifyFiles(limit.version)) {
         resizeKnownImgs();
         if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
     } else {
-        if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
-        if (!verifyFiles()) toastLog("警告: 更新未完成 (verifyAndUpdate)");
+        if (verifyHashListFile(limit.version)) {
+            updateFiles(limit.version);
+        } else {
+            if (updateRootHash(limit.version)) updateFiles(limit.version);
+        }
+        //更新成功的情况下不应该继续执行下一句
+        if (!verifyFiles(limit.version)) toastLog("警告: 更新未完成 (verifyAndUpdate)");
     }
 }
 // 更新latest.txt，里面含有[版本号].txt文件本身的哈希值
-function updateRootHash() {
+function updateRootHash(versionName) {
+    if (versionName == null || versionName == "") {
+        toastLog("更新出错 (updateRootHash)");
+        return false;
+    }
+
+    let updateURLBase = oldUpdateURLBase+"@"+versionName;
+
     let latestStr = httpDownloadString(updateURLBase+"/versions/latest.txt");
     if (latestStr == null) return false;
 
@@ -483,8 +508,11 @@ function updateRootHash() {
     return true;
 }
 // 检查[版本号].txt本身的哈希值是否正确，如果不符，或者文件不存在，就重新下载一个
-function getHashListFileName() {
-    if (!files.isFile(dataDir+"/versions/latest.txt")) return null;
+function verifyHashListFile(versionName) {
+    if (versionName == null || versionName == "") return false;
+    if (!files.isFile(dataDir+"/versions/latest.txt")) return false;
+
+    let updateURLBase = oldUpdateURLBase+"@"+versionName;
 
     // 读取latest.txt
     let latestStr = files.read(dataDir+"/versions/latest.txt", "utf-8");
@@ -494,21 +522,27 @@ function getHashListFileName() {
     if (latestStrSplitted.length > 2) {
         toastLog("latest.txt 文件行数不正确");
         files.removeDir(dataDir+"/versions/");
-        return null;
+        return false;
     }
     let firstLine = latestStrSplitted[0];
     let firstLineSplitted = firstLine.split(" ");
     if (firstLineSplitted.length != 2) {
         toastLog("latest.txt 文件内容不正确 (1) "+latestStr);
         files.removeDir(dataDir+"/versions/");
-        return null;
+        return false;
     }
     let rootHash = firstLineSplitted[0];
     let hashListFileName = firstLineSplitted[1];
     if (hashListFileName.match(/^versions\/[^\/]*\.txt$/) == null || rootHash == "") {
         toastLog("latest.txt 文件内容不正确 (2) "+latestStr);
         files.removeDir(dataDir+"/versions/");
-        return null;
+        return false;
+    }
+
+    let specifiedHashListFileName = "versions/"+versionName+".txt";
+    if (hashListFileName != specifiedHashListFileName) {
+        log("在 latest.txt 中没有找到指定的 "+specifiedHashListFileName+" 文件哈希值");
+        return false;
     }
 
     // 检查[版本号].txt本身的哈希值
@@ -531,7 +565,7 @@ function getHashListFileName() {
         // [版本号].txt不存在，重新下载
         log("下载 "+hashListFileName);
         hashListStr = httpDownloadString(updateURLBase+"/"+hashListFileName);
-        if (hashListStr == null) return null;
+        if (hashListStr == null) return false;
 
         let rootHashCalc = $crypto.digest(hashListStr, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
         if (rootHashCalc != rootHash) {
@@ -539,7 +573,7 @@ function getHashListFileName() {
             //然后和之前latest.txt文件里保存的哈希值对比，
             //所以，对不上可能是正常的（有更新）；也可能是意料之外的情况（比如云端的latest.txt和[版本号].txt本来就不符）
             toastLog("新下载到的 "+hashListFileName+" hash值和versions/latest.txt里记录的值不符");
-            return null;
+            return false;
         }
         files.ensureDir(dataDir+"/versions/");
         files.create(dataDir+"/"+hashListFileName);
@@ -547,21 +581,26 @@ function getHashListFileName() {
         log("文件 "+hashListFileName+" 已更新，hash值验证通过");
     }
 
-    return hashListFileName;
+    return true;
 }
 // 根据[版本号].txt记录的哈希值验证文件内容
-function verifyFiles() {
+function verifyFiles(versionName) {
     let readOnly = true;
-    return verifyOrUpdate(readOnly);
+    return verifyOrUpdate(versionName, readOnly);
 }
 // 不仅验证内容，还要在验证不符时覆盖更新文件内容
-function updateFiles() {
+function updateFiles(versionName) {
     let readOnly = false;
-    return verifyOrUpdate(readOnly);
+    return verifyOrUpdate(versionName, readOnly);
 }
-function verifyOrUpdate(readOnly) {
-    let hashListFileName = getHashListFileName();
+function verifyOrUpdate(versionName, readOnly) {
+    if (versionName == null || versionName == "") return false;
+
+    let hashListFileName = null;
+    if (verifyHashListFile(versionName)) hashListFileName = "versions/"+versionName+".txt";
     if (hashListFileName == null) return false;
+
+    let updateURLBase = oldUpdateURLBase+"@"+versionName;
 
     // 根据[版本号].txt列出的内容，下载文件（不落地）并验证哈希值
     let hashListStr = files.read(hashListFileName, "utf-8");
@@ -1151,7 +1190,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.9',
+    version: '2.4.10',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -2052,7 +2091,7 @@ function clickResult() {
 }
 
 function autoMain() {
-    if (!verifyFiles()) {
+    if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
     }
@@ -2126,7 +2165,7 @@ function autoMain() {
 }
 
 function autoMainver2() {
-    if (!verifyFiles()) {
+    if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
     }
@@ -3511,7 +3550,7 @@ function resizeKnownImgs() {
 
 
 function mirrorsSimpleAutoBattleMain() {
-    if (!verifyFiles()) {
+    if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
     }
@@ -3541,7 +3580,7 @@ function mirrorsSimpleAutoBattleMain() {
 }
 
 function mirrorsAutoBattleMain() {
-    if (!verifyFiles()) {
+    if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
     }
@@ -3629,7 +3668,7 @@ function mirrorsAutoBattleMain() {
 
 
 function jingMain() {
-    if (!verifyFiles()) {
+    if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
     }
