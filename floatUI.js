@@ -1095,22 +1095,32 @@ var keywords = {
     },
     refill: {
         chs: "回复",
-        jp:   "回復する",
+        jp:  "回復する",
         cht: "進行回復"
     },
     start: {
         chs: "开始",
-        jp:   "開始",
+        jp:  "開始",
         cht: "開始"
+    },
+    startAutoRestart: {
+        chs: "续战",
+        jp:  "周回",
+        cht: "週回"  //台服好像还没有，猜的
+    },
+    apCostText: {
+        chs: "消耗AP",
+        jp:  "消費AP",
+        cht: "消費AP"
     },
     follow: {
         chs: "关注",
-        jp:   "フォロー",
+        jp:  "フォロー",
         cht: "關注"
     },
     appendFollow: {
         chs: "关注追加",
-        jp:   "フォロー追加",
+        jp:  "フォロー追加",
         cht: "追加關注"
     },
     pickSupport: {
@@ -1126,7 +1136,6 @@ var keywords = {
 };
 var currentLang = "chs";
 var limit = {
-    limitAP: '20',
     shuix: '',
     shuiy: '',
     drug1: false,
@@ -1134,12 +1143,13 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
+    useAutoRestart: false,
     skipStoryUseScreenCapture: false,
     BPAutoRefill: false,
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.6',
+    version: '2.4.7',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -1181,6 +1191,11 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
+    startAutoRestart: {
+        x: 1800,
+        y: 750,
+        pos: "bottom"
+    },
     levelup: {
         x: 960,
         y: 870,
@@ -1191,7 +1206,7 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
-    reconection: {
+    reconnectYes: {
         x: 700,
         y: 750,
         pos: "center"
@@ -1541,83 +1556,182 @@ function getMainMenuStatus() {
     return result;
 }
 
-//检测AP
+//检测AP消耗
+function detectQuestDetailInfo() {
+    let questDetailInfo = {questName: null, apCost: null};
+    while (true) {
+        let detectAttempt = 0;
+        log("开始检测关卡信息");
+
+        QDLeft = 0;
+        QDTop = 0;
+        QDBottom = 0;
+        QDRight = 0;
+
+        let QD = id("questDetail").findOnce();
+        if (QD != null) {
+            log("找到questDetail控件");
+            let QDBounds = QD.bounds();
+            QDLeft = QDBounds.left;
+            QDTop = QDBounds.top;
+            QDBottom = QDBounds.bottom;
+            QDRight = QDBounds.right;
+        } else {
+            log("未找到questDetail控件");
+            let knownQDArea = {
+                //[24,485][586,534]
+                topLeft: {x: 24-10, y: 88, pos: "top"},
+                bottomRight: {x: 586+10, y: 1055, pos: "top"}
+            };
+            let convertedQDArea = getConvertedArea(knownQDArea);
+            QDLeft = convertedQDArea.topLeft.x;
+            QDTop = convertedQDArea.topLeft.y;
+            QDRight = convertedQDArea.bottomRight.x;
+            QDBottom = convertedQDArea.bottomRight.y;
+        }
+        log("QDLeft="+QDLeft+" QDTop="+QDTop+" QDRight="+QDRight+" QDBottom="+QDBottom);
+
+        let questName = null;
+        questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).textMatches(/^BATTLE \d+$/).findOnce();
+        if (questName != null) {
+            questDetailInfo.questName = questName.text();
+            log("questName.text()="+questName.text());
+        } else {
+            questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).descMatches(/^BATTLE \d+$/).findOnce();
+            if (questName != null) {
+                questDetailInfo.questName = questName.desc();
+                log("questName.desc()="+questName.desc());
+            }
+        }
+
+        let apCostText = null;
+        apCostText = boundsInside(QDLeft, QDTop, QDRight, QDBottom).text(keywords["apCostText"][currentLang]).findOnce();
+        if (apCostText == null) apCostText = boundsInside(QDLeft, QDTop, QDRight, QDBottom).desc(keywords["apCostText"][currentLang]).findOnce();
+        if (apCostText != null) {
+            let apCTBounds = apCostText.bounds();
+            let apCTTop = apCTBounds.top;
+            let apCTBottom = apCTBounds.bottom;
+            let apCost = boundsInside(QDLeft, apCTTop - 3, QDRight, apCTBottom + 3).textMatches(/^\d+$/).findOnce();
+            if (apCost != null) {
+                questDetailInfo.apCost = parseInt(apCost.text());
+                log("apCost.text()="+apCost.text());
+            } else {
+                apCost = boundsInside(QDLeft, apCTTop - 3, QDRight, apCTBottom + 3).descMatches(/^\d+$/).findOnce();
+                if (apCost != null) {
+                    questDetailInfo.apCost = parseInt(apCost.desc());
+                    log("apCost.desc()="+apCost.desc());
+                }
+            }
+        }
+
+        if (questDetailInfo.questName == null) {
+            log("没有检测到关卡名称 (BATTLE 1/2/3/...)");
+        }
+
+        if (questDetailInfo.apCost == null) {
+            log("没有检测到AP消耗量");
+        }
+
+        if (questDetailInfo.apCost != null) return questDetailInfo;
+
+        log("检测关卡信息失败，等待1秒后重试...");
+        sleep(1000);
+        detectAttempt++;
+        if (detectAttempt > 300) {
+            log("超过5分钟没有成功检测AP，退出");
+            exit();
+        }
+    } //end while
+    throw "detectQuestDetailInfoFail";
+}//end function
+
+//检测AP，非阻塞，检测一次就返回
+function detectAPOnce() {
+    log("开始检测ap");
+    let IDEqualsAP = id("ap").find();
+    if (IDEqualsAP.empty()) {
+        log("没找到resource-id为\"ap\"的控件");
+    } else {
+        log("resource-id为\"ap\"的控件：", IDEqualsAP);
+    }
+
+    let knownApComCoords = {
+        topLeft: {x: 880, y: 0, pos: "top"},
+        bottomRight: {x: 1210, y: 120, pos: "top"}
+    };
+    let convertedApComCoords = getConvertedArea(knownApComCoords);
+    let apComLikes = [];
+
+    let apComLikesRegExp = [];
+    let apComLikesAltRegExp = [];
+    let apCom = null;
+    let useDesc = {no: false, yes: true};
+    for (let whether in useDesc) {
+        log("useDesc:", whether);
+        if (useDesc[whether]) {
+            apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
+            apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
+        } else {
+            apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
+            apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
+        }
+        if (apComLikesRegExp.empty()) {
+            log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
+        } else {
+            log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
+        }
+        if (apComLikesAltRegExp.empty()) {
+            log("备用正则/^\\d+$/未匹配到AP控件");
+        } else {
+            log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
+        }
+
+        let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
+        for (let arrindex in arr) {
+            thisApComLikes = arr[arrindex];
+            apComLikes = [];
+            let sanity = false;
+            let apMin = Number.MAX_SAFE_INTEGER-1;
+            for (let i=0; i<thisApComLikes.length; i++) {
+                let apComLikeTop = thisApComLikes[i].bounds().top;
+                let apComLikeLeft = thisApComLikes[i].bounds().left;
+                let apComLikeBottom = thisApComLikes[i].bounds().bottom;
+                let apComLikeRight = thisApComLikes[i].bounds().right;
+                if (apComLikeTop >= convertedApComCoords.topLeft.y && apComLikeLeft >= convertedApComCoords.topLeft.x &&
+                apComLikeBottom <= convertedApComCoords.bottomRight.y && apComLikeRight <= convertedApComCoords.bottomRight.x) {
+                    apComLikes.push(thisApComLikes[i]);
+                    let apCom = thisApComLikes[i];
+                    let apStr = "";
+                    if (useDesc[whether]) {
+                        apStr = apCom.desc();
+                    } else {
+                        apStr = apCom.text();
+                    }
+                    if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
+    
+                    let apNum = Number.MAX_SAFE_INTEGER;
+                    let ap = apStr.match(/\d+/);
+                    if (ap != null) apNum = parseInt(ap[0]);
+                    if (apNum < apMin) apMin = apNum;
+                } //end if
+            }
+            log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
+            log("apMin", apMin);
+            if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
+        }// end for (iteration)
+    }//end for (useDesc)
+    return null;
+}
+
+//循环反复检测AP，检测不到就一直阻塞
 function detectAP() {
     while (true) {
         let detectAttempt = 0;
-        log("开始检测ap");
-        let IDEqualsAP = id("ap").find();
-        if (IDEqualsAP.empty()) {
-            log("没找到resource-id为\"ap\"的控件");
-        } else {
-            log("resource-id为\"ap\"的控件：", IDEqualsAP);
-        }
 
-        let knownApComCoords = {
-            topLeft: {x: 880, y: 0, pos: "top"},
-            bottomRight: {x: 1210, y: 120, pos: "top"}
-        };
-        let convertedApComCoords = getConvertedArea(knownApComCoords);
-        let apComLikes = [];
+        let apNow = null;
+        apNow = detectAPOnce();
+        if (apNow != null) return apNow;
 
-        let apComLikesRegExp = [];
-        let apComLikesAltRegExp = [];
-        let apCom = null;
-        let useDesc = {no: false, yes: true};
-        for (let whether in useDesc) {
-            log("useDesc:", whether);
-            if (useDesc[whether]) {
-                apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
-                apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
-            } else {
-                apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
-                apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
-            }
-            if (apComLikesRegExp.empty()) {
-                log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
-            } else {
-                log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
-            }
-            if (apComLikesAltRegExp.empty()) {
-                log("备用正则/^\\d+$/未匹配到AP控件");
-            } else {
-                log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
-            }
-
-            let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
-            for (let arrindex in arr) {
-                thisApComLikes = arr[arrindex];
-                apComLikes = [];
-                let sanity = false;
-                let apMin = Number.MAX_SAFE_INTEGER-1;
-                for (let i=0; i<thisApComLikes.length; i++) {
-                    let apComLikeTop = thisApComLikes[i].bounds().top;
-                    let apComLikeLeft = thisApComLikes[i].bounds().left;
-                    let apComLikeBottom = thisApComLikes[i].bounds().bottom;
-                    let apComLikeRight = thisApComLikes[i].bounds().right;
-                    if (apComLikeTop >= convertedApComCoords.topLeft.y && apComLikeLeft >= convertedApComCoords.topLeft.x &&
-                    apComLikeBottom <= convertedApComCoords.bottomRight.y && apComLikeRight <= convertedApComCoords.bottomRight.x) {
-                        apComLikes.push(thisApComLikes[i]);
-                        let apCom = thisApComLikes[i];
-                        let apStr = "";
-                        if (useDesc[whether]) {
-                            apStr = apCom.desc();
-                        } else {
-                            apStr = apCom.text();
-                        }
-                        if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
-        
-                        let apNum = Number.MAX_SAFE_INTEGER;
-                        let ap = apStr.match(/\d+/);
-                        if (ap != null) apNum = parseInt(ap[0]);
-                        if (apNum < apMin) apMin = apNum;
-                    } //end if
-                }
-                log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
-                log("apMin", apMin);
-                if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
-            }// end for (iteration)
-        }//end for (useDesc)
         log("检测AP失败，等待1秒后重试...");
         sleep(1000);
         detectAttempt++;
@@ -1629,8 +1743,87 @@ function detectAP() {
     throw "detectAPFailed" //should never reach here
 }//end function
 
-function refillAP(druglimit) {
-    //嗑药
+//检测一次助战列表是否出现，检测不到就返回false
+function detectCanPickSupportOnce() {
+    if (id("friendWrap").findOnce()) return true;
+    if (text(keywords.pickSupport[currentLang]).findOnce()) return true;
+    if (desc(keywords.pickSupport[currentLang]).findOnce()) return true;
+    return false;
+}
+//等待助战列表控件出现，阻塞到出现为止
+function waitUntilCanPickSupport() {
+    let result = false;
+    log("等待助战列表控件出现...");
+    while (true) {
+        result = detectCanPickSupportOnce();
+        if (result) break;
+        sleep(1000);
+    }
+    log("等待助战列表控件已经出现");
+    return result;
+}
+//选关并等待助战列表出现
+function clickQuest(questDetailInfo) {
+    let result = false;
+
+    let QLL = null;
+    QLL = id("questLinkList").findOnce();
+    if (QLL != null) {
+        if (questDetailInfo.questName == null) {
+            toastLog("不知道要选哪一关");
+            return false;
+        }
+
+        log("将要选关 "+questDetailInfo.questName);
+
+        let QLLBounds = QLL.bounds();
+        let QLLLeft = QLLBounds.left;
+        let QLLTop = QLLBounds.top;
+        let QLLRight = QLLBounds.right;
+        let QLLBottom = QLLBounds.bottom;
+
+        let questEntry = null;
+        questEntry = boundsInside(QLLLeft, QLLTop, QLLRight, QLLBottom).text(questDetailInfo.questName).findOnce();
+        if (questEntry == null) questEntry = boundsInside(QLLLeft, QLLTop, QLLRight, QLLBottom).desc(questDetailInfo.questName).findOnce();
+        if (questEntry != null) {
+            log("点击选关 "+questDetailInfo.questName);
+            let QEBounds = questEntry.bounds();
+            log("compatClick("+QEBounds.centerX()+", "+QEBounds.centerY()+");");
+            compatClick(QEBounds.centerX(), QEBounds.centerY());
+
+            result = true;
+        }
+    }
+
+    //等待助战列表控件出现
+    result = waitUntilCanPickSupport();
+
+    return result;
+}
+
+//检测AP并嗑药
+function refillAP(druglimit, questDetailInfo) {
+    log("refillAP");
+    for (let i=0; i<5; i++) {
+        let apNow = detectAP(); //检测AP
+        log("当前体力 AP=" + apNow);
+        if (apNow >= questDetailInfo.apCost * 2) return true;
+
+        log("嗑药开关", limit.drug1, limit.drug2, limit.drug3);
+        log("嗑药数量", limit.drug1num, limit.drug2num, limit.drug3num);
+        if (!limit.drug1 && !limit.drug2 && !limit.drug3) return false;
+
+        if (!refillAPOnce(druglimit)) {
+            toastLog("设定的AP药已经磕完，结束运行");
+            return false;
+        }
+    }
+    return false;
+}
+
+//嗑药一次
+function refillAPOnce(druglimit) {
+    let drugUsed = false;
     //打开ap面板
     log("开启嗑药面板")
     //确定要嗑药后等3s，打开面板
@@ -1688,6 +1881,7 @@ function refillAP(druglimit) {
             screenutilClick(clickSets.aphui)
             sleep(2000)
         }
+        drugUsed = true;
     } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
         if (druglimit.drug2limit) {
             druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
@@ -1707,8 +1901,8 @@ function refillAP(druglimit) {
             screenutilClick(clickSets.aphui)
             sleep(2000)
         }
-    }
-    else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+        drugUsed = true;
+    } else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
         if (druglimit.drug3limit) {
             druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
         }
@@ -1727,6 +1921,7 @@ function refillAP(druglimit) {
             screenutilClick(clickSets.aphui)
             sleep(2000)
         }
+        drugUsed = true;
     } else {
         //关掉面板继续周回
         log("none")
@@ -1739,6 +1934,7 @@ function refillAP(druglimit) {
         screenutilClick(clickSets.apclose)
         sleep(2000)
     }
+    return drugUsed;
 } //end function
 
 //选择Pt最高的助战
@@ -1799,6 +1995,58 @@ function pickSupportWithTheMostPt() {
     return finalPt;
 }
 
+//等待并点掉结算页面
+function clickResult() {
+    //等待结算页面出现
+    while (!id("ResultWrap").findOnce() && !id("charaWrap").findOnce() &&
+           !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
+        if (detectAPOnce() != null) return;
+        sleep(1000);
+    }
+
+    while (id("ResultWrap").findOnce() || id("charaWrap").findOnce()) {
+        sleep(1000);
+
+        //助战选到路人时，关注
+        if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+            while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+                sleep(1000)
+                screenutilClick(clickSets.yesfocus)
+                sleep(3000)
+            }
+            while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
+                sleep(1000)
+                screenutilClick(clickSets.focusclose)
+                sleep(3000)
+            }
+        }
+        //-----------如果有升级弹窗点击----------------------
+        if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+            while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+                sleep(1000)
+                screenutilClick(clickSets.levelup)
+                sleep(3000)
+            }
+        }
+
+        if (detectAPOnce() != null) return;
+
+        sleep(1000)
+        // 循环点击的位置为断线重连确定按钮
+        screenutilClick(clickSets.reconnectYes);
+        // 点击后需要等一段时间再战按钮才会出现
+        sleep(2500);
+    } // while end
+
+    //点再战按钮
+    while (id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
+        if (detectAPOnce() != null) return;
+        sleep(1000)
+        screenutilClick(clickSets.restart)
+        sleep(2500)
+    }
+}
+
 function autoMain() {
     if (!verifyFiles()) {
         toastLog("更新尚未完成，不能开始");
@@ -1813,23 +2061,19 @@ function autoMain() {
         drug2limit: limit.drug2num,
         drug3limit: limit.drug3num
     }
+
+    //检测当前关卡信息（BATTLE 1/2/3/... 以及 AP消耗量）
+    let questDetailInfo = detectQuestDetailInfo();
+
     while (true) {
         //开始
-        //检测AP
-        let apNow = detectAP();
 
-        log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
-        log("嗑药设置体力：", limit.limitAP)
-        log("当前体力为" + apNow)
-        if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
-            //嗑药
-            refillAP(druglimit);
-        }
+        //检测AP并嗑药
+        if (!refillAP(druglimit, questDetailInfo)) return;
 
-        log("等待好友列表控件出现...");
-        while ((!id("friendWrap").findOnce()) && (!text(keywords.pickSupport[currentLang]).findOnce()) && (!desc(keywords.pickSupport[currentLang]).findOnce())) {
-            sleep(1000);
-        }
+        //选关并等待助战列表出现
+        if (!clickQuest(questDetailInfo)) return;
+
         while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
@@ -1840,13 +2084,23 @@ function autoMain() {
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        while ((!text(keywords.start[currentLang]).findOnce())&&(!desc(keywords.start[currentLang]).findOnce())) {
+        let buttonToClick = "start";
+        if (limit.useAutoRestart) {
+            if (questDetailInfo.questName == null) {
+                toastLog("现在无法自动选关，故不使用游戏内建自动周回\n（活动副本暂不能自动选关）");
+                buttonToClick = "start";
+            } else {
+                log("使用游戏内建自动周回");
+                buttonToClick = "startAutoRestart";
+            }
+        }
+        while ((!text(keywords[buttonToClick][currentLang]).findOnce())&&(!desc(keywords[buttonToClick][currentLang]).findOnce())) {
             sleep(1000);
         }
         log("进入开始")
-        while (text(keywords.start[currentLang]).findOnce()||desc(keywords.start[currentLang]).findOnce()) {
+        while (text(keywords[buttonToClick][currentLang]).findOnce()||desc(keywords[buttonToClick][currentLang]).findOnce()) {
             sleep(1000)
-            screenutilClick(clickSets.start)
+            screenutilClick(clickSets[buttonToClick])
             sleep(3000)
         }
         log("进入战斗")
@@ -1855,52 +2109,14 @@ function autoMain() {
         if (limit.isStable) {
             while ((!id("ResultWrap").findOnce()) && (!id("charaWrap").findOnce())) {
                 sleep(3000)
-                // 循环点击的位置为短线重连确定点
-                screenutilClick(clickSets.reconection)
+                // 循环点击的位置为断线重连确定点
+                screenutilClick(clickSets.reconnectYes)
                 sleep(2000)
             }
         }
-        //------------开始结算-------------------
-        while ((!id("ResultWrap").findOnce()) && (!id("charaWrap").findOnce())) {
-            sleep(1000);
-        }
 
-        while ((!id("retryWrap").findOnce())&&(!id("hasTotalRiche").findOnce())) {
-            //-----------如果有升级弹窗点击----------------------
-            if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
-                while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.yesfocus)
-                    sleep(3000)
-                }
-                while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.focusclose)
-                    sleep(3000)
-                }
-            }
-            if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
-                while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.levelup)
-                    sleep(3000)
-                }
-            }
-            if (id("ap").findOnce()) {
-                return;
-            }
-            sleep(1000)
-            // 循环点击的位置为短线重连确定点
-            screenutilClick(clickSets.reconection)
-            // 点击完毕后 再战不会马上出来，需要等待
-            sleep(2000)
-        }
-        //--------------再战--------------------------
-        while (id("retryWrap").findOnce()||id("hasTotalRiche").findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.restart)
-            sleep(2500)
-        }
+        //等待并点掉结算页面
+        while (detectAPOnce() == null) clickResult();
 
     }
 }
@@ -1920,19 +2136,16 @@ function autoMainver2() {
         drug2limit: limit.drug2num,
         drug3limit: limit.drug3num
     }
+
+    //检测当前关卡信息（BATTLE 1/2/3/... 以及 AP消耗量）
+    let questDetailInfo = detectQuestDetailInfo();
+
     while (true) {
         //开始
 
-        //检测AP
-        let apNow = detectAP();
+        //检测AP并嗑药
+        if (!refillAP(druglimit, questDetailInfo)) return;
 
-        log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
-        log("嗑药设置体力：", limit.limitAP)
-        log("当前体力为" + apNow)
-        if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
-            //嗑药
-            refillAP(druglimit);
-        }
         //----------------------------------
         log(limit.shuix, limit.shuiy)
         while ((!text("确定").findOnce())&&(!desc("确定").findOnce())) {
@@ -1947,10 +2160,9 @@ function autoMainver2() {
             sleep(1500)
         }
 
-        while ((!id("friendWrap").findOnce()) && (!text(keywords.pickSupport[currentLang]).findOnce()) && (!desc(keywords.pickSupport[currentLang]).findOnce())) {
-            log("等待好友列表控件出现...");
-            sleep(1000);
-        }
+        //等待助战列表控件出现
+        waitUntilCanPickSupport();
+
         while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
@@ -1976,8 +2188,8 @@ function autoMainver2() {
         if (limit.isStable) {
             while ((!id("ResultWrap").findOnce())&&(!id("charaWrap").findOnce())) {
                 sleep(3000)
-                // 循环点击的位置为短线重连确定点
-                screenutilClick(clickSets.reconection)
+                // 循环点击的位置为断线重连确定点
+                screenutilClick(clickSets.reconnectYes)
                 sleep(2000)
             }
         }
@@ -2011,8 +2223,8 @@ function autoMainver2() {
                 return;
             }
             sleep(1000)
-            // 循环点击的位置为短线重连确定点
-            screenutilClick(clickSets.reconection)
+            // 循环点击的位置为断线重连确定点
+            screenutilClick(clickSets.reconnectYes)
             // 点击完毕后 再战不会马上出来，需要等待
             sleep(2000)
         }

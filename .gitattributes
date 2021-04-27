@@ -4,3 +4,5 @@ main.js eol=crlf
 floatUI.js eol=crlf
 .gitattributes eol=crlf
 versions/latest.txt eol=crlf
+upload_to_emulator.cmd eol=crlf
+upload_to_device.cmd eol=crlf

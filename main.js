@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.4.6"
+var version = "2.4.7"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -18,11 +18,6 @@ ui.layout(
 
                 <vertical margin="0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <text text="药使用时的AP(大于等于副本ap*2)：" />
-                        <input maxLength="3" id="limitAP" text="" inputType="number|none" />
-                    </linear>
-                    <View h="5" />
-                    <linear>
                         <text text="副本周回 AP回复药使用选择：" />
                     </linear>
                     <View h="5" />
@@ -38,7 +33,7 @@ ui.layout(
                     <View h="5" />
                     <linear>
                         <checkbox id="drug3" text="魔法石" layout_weight="1" />
-                        <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <input maxLength="3" id="drug3num" hint="可设置次数(是次数,不是个数!每次碎5钻)" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
@@ -51,9 +46,9 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
-                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
-                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
-                    {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
+                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗，经常有连接失败弹窗情况下开启）" />
+                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC（不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用其他）" />
+                    <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能（注意！活动副本(包括星期狗粮)请勿启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持活动副本自动选关）" />
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
@@ -150,8 +145,8 @@ floatUI.main()
 
 var storage = storages.create("soha");
 var data = storage.get("data");
-const paramsList = ["limitAP", "shuix", "shuiy"]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "BPAutoRefill"]
+const paramsList = ["shuix", "shuiy"]
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "useAutoRestart", "BPAutoRefill"]
 var paramsMap = {}
 
 
@@ -159,18 +154,11 @@ var paramsMap = {}
 //若没有存储信息进行存储初始化
 if (data == undefined) {
     for (let i = 0; i < paramsList.length; i++) {
-        if (i == 0) {
-            //特殊初始值
-            paramsMap[paramsList[i]] = "20"
-        } else {
-            paramsMap[paramsList[i]] = ""
-        }
-
+        paramsMap[paramsList[i]] = ""
     }
     // log(JSON.stringify(paramsMap))
     storage.put("data", JSON.stringify(paramsMap))
-}
-else {
+} else {
     paramsMap = JSON.parse(data)
 }
 //ui界面赋值
@@ -192,6 +180,7 @@ let checkableItem = {
     key: "",
     value: null
 };
+
 checkableItem.key = "skipStoryUseScreenCapture";
 checkableItem.value = paramsMap[checkableItem.key];
 if (checkableItem.value == null) checkableItem.value = false;
