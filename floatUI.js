@@ -1149,7 +1149,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.7',
+    version: '2.4.8',
     drug1num: '',
     drug2num: '',
     drug3num: '',

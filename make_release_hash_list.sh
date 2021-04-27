@@ -35,7 +35,7 @@ for FILE in project.json main.js floatUI.js; do
     fi
 done
 
-find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version | grep -v ^\\./project.json | sed -e 's/^.\///g' \
+find . | grep -v ^\\./\\.git | grep -v ^\\.$ | grep -v ^\\./version | grep -v ^\\./project.json | grep -v cmd$ | sed -e 's/^.\///g' \
 | while read line; do
     if [ -d "$line" ] ; then
         echo "DIR ${line}/"
