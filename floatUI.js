@@ -1647,12 +1647,13 @@ function detectQuestDetailInfo() {
 
 //检测AP，非阻塞，检测一次就返回
 function detectAPOnce() {
-    log("开始检测ap");
-    let IDEqualsAP = id("ap").find();
-    if (IDEqualsAP.empty()) {
-        log("没找到resource-id为\"ap\"的控件");
+    let logMuted = true;
+
+    let apUiObj = id("ap").find();
+    if (apUiObj.empty()) {
+        if (!logMuted) log("没找到resource-id为\"ap\"的控件");
     } else {
-        log("resource-id为\"ap\"的控件：", IDEqualsAP);
+        if (!logMuted) log("resource-id为\"ap\"的控件：", apUiObj);
     }
 
     let knownApComCoords = {
@@ -1667,7 +1668,7 @@ function detectAPOnce() {
     let apCom = null;
     let useDesc = {no: false, yes: true};
     for (let whether in useDesc) {
-        log("useDesc:", whether);
+        if (!logMuted) log("useDesc:", whether);
         if (useDesc[whether]) {
             apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
             apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
@@ -1676,17 +1677,17 @@ function detectAPOnce() {
             apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
         }
         if (apComLikesRegExp.empty()) {
-            log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
+            if (!logMuted) log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
         } else {
-            log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
+            if (!logMuted) log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
         }
         if (apComLikesAltRegExp.empty()) {
-            log("备用正则/^\\d+$/未匹配到AP控件");
+            if (!logMuted) log("备用正则/^\\d+$/未匹配到AP控件");
         } else {
-            log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
+            if (!logMuted) log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
         }
 
-        let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
+        let arr = [apComLikesRegExp, apComLikesAltRegExp, apUiObj]
         for (let arrindex in arr) {
             thisApComLikes = arr[arrindex];
             apComLikes = [];
@@ -1715,8 +1716,8 @@ function detectAPOnce() {
                     if (apNum < apMin) apMin = apNum;
                 } //end if
             }
-            log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
-            log("apMin", apMin);
+            if (!logMuted) log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
+            if (!logMuted) log("apMin", apMin);
             if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
         }// end for (iteration)
     }//end for (useDesc)
@@ -1725,6 +1726,7 @@ function detectAPOnce() {
 
 //循环反复检测AP，检测不到就一直阻塞
 function detectAP() {
+    log("开始检测ap");
     while (true) {
         let detectAttempt = 0;
 
