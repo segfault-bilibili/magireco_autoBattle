@@ -409,7 +409,8 @@ function compatCaptureScreen() {
 
 
 //在线更新
-let updateURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle";
+let oldUpdateURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle";
+let updateURLBase = oldUpdateURLBase+"@"+limit.version;
 function httpDownload_(url, takeWhat) {
     let response = null;
     try {
@@ -450,6 +451,7 @@ function onlineUpdate() {
         return;
     }
 
+    updateURLBase = oldUpdateURLBase+"@"+downloadedJson.versionName;
     if (updateRootHash()) updateFiles(); //更新成功的情况下不应该继续执行下一句
     if (!verifyFiles()) toastLog("警告: 更新未完成 (onlineUpdate)");
 }
@@ -1149,7 +1151,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.8',
+    version: '2.4.9',
     drug1num: '',
     drug2num: '',
     drug3num: '',
