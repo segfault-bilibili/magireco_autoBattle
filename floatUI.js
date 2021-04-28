@@ -725,7 +725,7 @@ function verifyOrUpdate(versionName, readOnly) {
                 if (updateEntry.fileBytes != null) {
                     files.writeBytes(targetFilePath, updateEntry.fileBytes);
                 } else {
-                    files.writeBytes(targetFilePath, updateEntry.fileString);
+                    files.write(targetFilePath, updateEntry.fileString);
                 }
                 // ------ 20210428 GitHub好像把CRLF都转换成LF了，处理一下 END --------
             }
@@ -1232,7 +1232,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.14',
+    version: '2.4.15',
     drug1num: '',
     drug2num: '',
     drug3num: '',
