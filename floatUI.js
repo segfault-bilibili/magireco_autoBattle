@@ -1232,7 +1232,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.15',
+    version: '2.4.16',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -2038,8 +2038,8 @@ function pickSupportWithTheMostPt() {
     // 15为npc助战  0~14为玩家助战
     // Pt数值控件显示范围
     let knownPtArea = {
-      topLeft: {x: 1680, y: 280, pos: "top"},
-      bottomRight: {x: 1870, y: 1079, pos: "bottom"}
+      topLeft: {x: 1480, y: 210, pos: "top"},
+      bottomRight: {x: 1919, y: 1079, pos: "bottom"}
     };
     let ptArea = getConvertedArea(knownPtArea);
     log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
