@@ -281,21 +281,16 @@ var currentLang = "chs";
 function waitForGameForeground() {
     let isGameFg = false;
     for (let i = 1; i <= 5; i++) {
-        if (packageName("com.aniplex.magireco").findOnce()) {
-            isGameFg = true;
-            log("检测到日服");
-            currentLang = "jp";
+        for (let detectingLang in keywords["gamePkgName"]) {
+            if (packageName(keywords["gamePkgName"][detectingLang]).findOnce()) {
+                isGameFg = true;
+                log("游戏包名: "+keywords["gamePkgName"][detectingLang]);
+                currentLang = detectingLang;
+                break;
+            }
         }
-        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
-            isGameFg = true;
-            log("检测到国服");
-            currentLang = "chs";
-        }
-        if (packageName("com.komoe.madokagp").findOnce()) {
-            isGameFg = true;
-            log("检测到台服");
-            currentLang = "cht";
-        }
+        let FLUIObj = packageName(keywords["gamePkgName"][currentLang]).className("android.widget.FrameLayout").findOnce();
+        log("FLUIObj"); log(FLUIObj);
         if (isGameFg) {
             log("游戏在前台");
             break;
@@ -1129,6 +1124,11 @@ floatUI.main = function () {
 }
 // ------------主要逻辑--------------------
 var keywords = {
+    gamePkgName: {
+        chs: "com.bilibili.madoka.bilibili",
+        jp: "com.aniplex.magireco",
+        cht: "com.komoe.madokagp"
+    },
     confirmRefill: {
         chs: "回复确认",
         jp:   "回復確認",
@@ -1190,7 +1190,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.10',
+    version: '2.4.11',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -1688,8 +1688,15 @@ function detectQuestDetailInfo() {
 
 //检测AP，非阻塞，检测一次就返回
 function detectAPOnce() {
-    let logMuted = true;
-
+    if (arguments.length == 0) {
+        let logMuted = true;
+        return detectAPOnce_(logMuted);
+    } else if (arguments.length == 1) {
+        let logMuted = arguments[0];
+        return detectAPOnce_(logMuted);
+    }
+}
+function detectAPOnce_(logMuted) {
     let apUiObj = id("ap").find();
     if (apUiObj.empty()) {
         if (!logMuted) log("没找到resource-id为\"ap\"的控件");
@@ -1698,8 +1705,9 @@ function detectAPOnce() {
     }
 
     let knownApComCoords = {
-        topLeft: {x: 880, y: 0, pos: "top"},
-        bottomRight: {x: 1210, y: 120, pos: "top"}
+        // [900,0][1181,112]
+        topLeft: {x: 865, y: 0, pos: "top"},
+        bottomRight: {x: 1300, y: 230, pos: "top"}
     };
     let convertedApComCoords = getConvertedArea(knownApComCoords);
     let apComLikes = [];
@@ -1728,7 +1736,7 @@ function detectAPOnce() {
             if (!logMuted) log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
         }
 
-        let arr = [apComLikesRegExp, apComLikesAltRegExp, apUiObj]
+        let arr = [apUiObj, apComLikesRegExp, apComLikesAltRegExp]
         for (let arrindex in arr) {
             thisApComLikes = arr[arrindex];
             apComLikes = [];
@@ -1772,7 +1780,8 @@ function detectAP() {
         let detectAttempt = 0;
 
         let apNow = null;
-        apNow = detectAPOnce();
+        let logMuted = false;
+        apNow = detectAPOnce(logMuted);
         if (apNow != null) return apNow;
 
         log("检测AP失败，等待1秒后重试...");
