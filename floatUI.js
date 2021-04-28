@@ -618,6 +618,7 @@ function verifyOrUpdate(versionName, readOnly) {
 
         let isDir = false;
         let fileBytes = null;
+        let fileString = null;
         if (fileHash == "dir") {
             isDir = true;
             fileBytes = null;
@@ -633,12 +634,44 @@ function verifyOrUpdate(versionName, readOnly) {
                 }
                 let fileHashCalc = $crypto.digest(fileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
                 if (fileHashCalc != fileHash) {
+                    /*
                     toastLog("下载到的文件 "+fileName+" hash值不符");
                     return false;
+                    */
+                    // ------ 20210428 GitHub好像把CRLF都转换成LF了，处理一下 BEGIN ------
+                    log("下载到的文件 "+fileName+" hash值不符");
+                    fileBytes = null;
+                    log("重新下载文件 "+fileName);
+                    fileString = httpDownloadString(updateURLBase+"/"+fileName);
+                    if (fileString == null || fileString == "") {
+                        toastLog("下载文件 "+fileName+" 失败");
+                        return false;
+                    }
+                    log("fileString.length="+fileString.length);
+
+                    log("把文件 "+fileName+" 转换成UNIX LF");
+                    let fileStringLF = fileString.split("\r").join("");
+                    log("fileStringLF.length="+fileStringLF.length);
+                    fileHashCalcLF = $crypto.digest(fileStringLF, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
+                    
+                    log("把文件 "+fileName+" 转换成Windows CRLF");
+                    let fileStringCRLF = fileStringLF.split("\n").join("\r\n");
+                    log("fileStringCRLF.length="+fileStringCRLF.length);
+                    fileHashCalcCRLF = $crypto.digest(fileStringCRLF, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
+
+                    if (fileHashCalcLF != fileHash && fileHashCalcCRLF != fileHash) {
+                        toastLog("下载到的文件 "+fileName+" hash值不符");
+                        return false;
+                    }
+
+                    if (fileHashCalcLF == fileHash) fileString = fileStringLF;
+                    if (fileHashCalcCRLF == fileHash) fileString = fileStringCRLF;
+                    log("fileString.length=", fileString.length);
+                    // ------ 20210428 GitHub好像把CRLF都转换成LF了，处理一下 END --------
                 }
             }
         }
-        updateEntries.push({isDir: isDir, fileName: fileName, fileHash: fileHash, fileBytes: fileBytes});
+        updateEntries.push({isDir: isDir, fileName: fileName, fileHash: fileHash, fileBytes: fileBytes, fileString: fileString});
     }
 
     // 根据当前版本的文件及哈希值列表，验证文件内容，有必要时覆盖更新
@@ -685,7 +718,16 @@ function verifyOrUpdate(versionName, readOnly) {
                 if (readOnly) return false;
                 log("写入文件 "+updateEntry.fileName);
                 files.create(targetFilePath);
+                /*
                 files.writeBytes(targetFilePath, updateEntry.fileBytes);
+                */
+                // ------ 20210428 GitHub好像把CRLF都转换成LF了，处理一下 BEGIN ------
+                if (updateEntry.fileBytes != null) {
+                    files.writeBytes(targetFilePath, updateEntry.fileBytes);
+                } else {
+                    files.writeBytes(targetFilePath, updateEntry.fileString);
+                }
+                // ------ 20210428 GitHub好像把CRLF都转换成LF了，处理一下 END --------
             }
 
             if (updateEntry.fileName.startsWith("bin/")) {
@@ -1190,7 +1232,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.13',
+    version: '2.4.14',
     drug1num: '',
     drug2num: '',
     drug3num: '',
