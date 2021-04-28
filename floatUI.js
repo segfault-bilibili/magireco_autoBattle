@@ -633,34 +633,8 @@ function verifyOrUpdate(versionName, readOnly) {
                 }
                 let fileHashCalc = $crypto.digest(fileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
                 if (fileHashCalc != fileHash) {
-                    //toastLog("下载到的文件 "+fileName+" hash值不符");
-                    //return false;
-
-                    // ------20210428 GitHub好像把行尾给转换了，处理一下 BEGIN------
-                    log("下载到的文件 "+fileName+" hash值不符，重新下载 "+fileName);
-                    let fileString = httpDownloadString(updateURLBase+"/"+fileName);
-                    if (fileString == null || fileString == "") {
-                        toastLog("下载文件 "+fileName+" 失败");
-                        return false;
-                    }
-
-                    log("转换 "+fileName+" 行尾到Unix LF");
-                    fileString.replace("\r\n", "\n");
-
-                    fileHashCalc = $crypto.digest(fileString, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
-                    if (fileHashCalc != fileHash) {
-                        log("文件 "+fileName+" 行尾转换到Unix LF后哈希值仍然不符");
-                        log("转换 "+fileName+" 行尾到Windows CRLF");
-                        fileString.replace("\n", "\r\n");
-
-                        fileHashCalc = $crypto.digest(fileString, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
-                        if (fileHashCalc != fileHash) {
-                            log("文件 "+fileName+" 行尾转换到Windows CRLF后哈希值仍然不符");
-                            toastLog("下载到的文件 "+fileName+" hash值不符");
-                            return false;
-                        }
-                    }
-                    // ------20210428 GitHub好像把行尾给转换了，处理一下 END--------
+                    toastLog("下载到的文件 "+fileName+" hash值不符");
+                    return false;
                 }
             }
         }
