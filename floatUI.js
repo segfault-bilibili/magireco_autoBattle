@@ -289,8 +289,6 @@ function waitForGameForeground() {
                 break;
             }
         }
-        let FLUIObj = packageName(keywords["gamePkgName"][currentLang]).className("android.widget.FrameLayout").findOnce();
-        log("FLUIObj"); log(FLUIObj);
         if (isGameFg) {
             log("游戏在前台");
             break;
@@ -653,7 +651,7 @@ function verifyOrUpdate(versionName, readOnly) {
                     let fileStringLF = fileString.split("\r").join("");
                     log("fileStringLF.length="+fileStringLF.length);
                     fileHashCalcLF = $crypto.digest(fileStringLF, "SHA-256", { input: "string", output: "hex" }).toLowerCase();
-                    
+
                     log("把文件 "+fileName+" 转换成Windows CRLF");
                     let fileStringCRLF = fileStringLF.split("\n").join("\r\n");
                     log("fileStringCRLF.length="+fileStringCRLF.length);
@@ -1232,7 +1230,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.16',
+    version: '2.4.17',
     drug1num: '',
     drug2num: '',
     drug3num: '',
@@ -1365,6 +1363,17 @@ var known = {
 var scr = {
   res: {width: 0, height: 0}, //当前真实屏幕的分辨率
   ratio: {x: 0, y: 0},        //宽高比
+  cutout: {                   //刘海屏参数
+    left: 0, top: 0,          //刘海屏的矩形安全区域
+    right: 0, bottom: 0,
+    insets: {                 //insets分别是矩形安全区域四个边到完整屏幕矩形四个边的距离
+        left: 0, top: 0,      //从完整屏幕矩形减去insets就是矩形安全区域
+        right: 0, bottom: 0
+    },
+    offset: {                 //后面分析出来的偏移量，换算坐标时加上
+      x: 0, y: 0
+    }
+  },
   ref: {                      //ref是假想的16:9参照屏幕，宽或高放缩到和当前屏幕一样
     width: 0, height: 0,
     offset: {
@@ -1386,7 +1395,7 @@ known.ratio.x = 16;
 known.ratio.y = 9;
 
 //获取当前屏幕分辨率
-if(device.height > device.width){
+if (device.height > device.width) {
   //魔纪只能横屏显示
   scr.res.width = device.height;
   scr.res.height = device.width;
@@ -1434,6 +1443,82 @@ if (scr.ratio.x == known.ratio.x && scr.ratio.y == known.ratio.y) {
   }
 }
 
+//获取刘海屏信息
+function setCutoutParams() {
+    scr.cutout.left = 0;
+    scr.cutout.top = 0;
+    scr.cutout.right = scr.res.width - 1;
+    scr.cutout.bottom = scr.res.height - 1;
+
+    let windowInsets = null;
+    let displayCutout = null;
+    try { windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();} catch (e) { log(e); }
+
+    if (windowInsets != null) {
+        if (device.sdkInt >= 28) {//Android 9
+            try { displayCutout = windowInsets.getDisplayCutout(); } catch (e) { log(e); }
+        }
+        log("windowInsets", windowInsets);
+        if (displayCutout != null) {
+            log("displayCutout", displayCutout);
+            try { scr.cutout.insets.left   = displayCutout.getSafeInsetLeft(); } catch (e) { log(e); }
+            try { scr.cutout.insets.top    = displayCutout.getSafeInsetTop(); } catch (e) { log(e); }
+            try { scr.cutout.insets.right  = displayCutout.getSafeInsetRight() } catch (e) { log(e); }
+            try { scr.cutout.insets.bottom = displayCutout.getSafeInsetBottom() } catch (e) { log(e); }
+        } else {
+            try { scr.cutout.insets.left   = windowInsets.getSystemWindowInsetLeft(); } catch (e) { log(e); }
+            try { scr.cutout.insets.top    = windowInsets.getSystemWindowInsetTop(); } catch (e) { log(e); }
+            try { scr.cutout.insets.right  = windowInsets.getSystemWindowInsetRight(); } catch (e) { log(e); }
+            try { scr.cutout.insets.bottom = windowInsets.getSystemWindowInsetBottom(); } catch (e) { log(e); }
+        }
+    }
+
+    scr.cutout.left = scr.cutout.insets.left;
+    scr.cutout.top = scr.cutout.insets.top;
+    scr.cutout.right = device.width - scr.cutout.insets.right - 1;
+    scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
+
+    if (device.height > device.width) {
+        log("device.height > device.width");
+
+        let temp = scr.cutout.insets.top;
+        scr.cutout.insets.top = scr.cutout.insets.left;
+        scr.cutout.insets.left = temp;
+
+        temp = scr.cutout.insets.right;
+        scr.cutout.insets.right = scr.cutout.insets.bottom;
+        scr.cutout.insets.bottom = temp;
+
+        temp = scr.cutout.top;
+        scr.cutout.top = scr.cutout.left;
+        scr.cutout.left = temp;
+
+        temp = scr.cutout.right;
+        scr.cutout.right = scr.cutout.bottom;
+        scr.cutout.bottom = temp;
+    }
+
+    log("刘海屏参数 ["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]");
+
+    //这里认为左右两侧（或者上下两侧）被切掉的像素数相等
+    let cutoutSafeWidth = scr.cutout.right - scr.cutout.left + 1;
+    let cutoutSafeHeight = scr.cutout.bottom - scr.cutout.top + 1;
+
+    let cutoutHalfWidth = 0;
+    if (scr.ref.width > cutoutSafeWidth) cutoutHalfWidth = parseInt((scr.ref.width - cutoutSafeWidth) / 2);
+    let cutoutHalfHeight = 0;
+    if (scr.ref.height > cutoutSafeHeight) cutoutHalfHeight = parseInt((scr.ref.height - cutoutSafeHeight) / 2);
+
+    if (scr.ref.width > cutoutHalfWidth) {
+        scr.cutout.offset.x = scr.cutout.left - cutoutHalfWidth;
+    }
+    if (scr.ref.height > cutoutHalfHeight) {
+        scr.cutout.offset.y = scr.cutout.top - cutoutHalfHeight;
+    }
+}
+
+setCutoutParams();
+
 //换算坐标 1920x1080=>当前屏幕分辨率
 function convertCoords(d)
 {
@@ -1478,6 +1563,15 @@ function convertCoords(d)
     if (verboselog) log("  未知换算方法");
     throw "unknown_conversion_mode"
   }
+
+  //处理刘海屏
+  actual.x += scr.cutout.offset.x;
+  actual.y += scr.cutout.offset.y;
+  if (actual.x <= scr.cutout.left) actual.x = scr.cutout.left;
+  if (actual.y <= scr.cutout.top) actual.y = scr.cutout.top;
+  if (actual.x >= scr.cutout.right) actual.x = scr.cutout.right;
+  if (actual.y >= scr.cutout.bottom) actual.y = scr.cutout.bottom;
+
   actual.x = parseInt(actual.x);
   actual.y = parseInt(actual.y);
   actual.pos = d.pos;
@@ -1748,8 +1842,8 @@ function detectAPOnce_(logMuted) {
 
     let knownApComCoords = {
         // [900,0][1181,112]
-        topLeft: {x: 865, y: 0, pos: "top"},
-        bottomRight: {x: 1300, y: 230, pos: "top"}
+        topLeft: {x: 880, y: 0, pos: "top"},
+        bottomRight: {x: 1210, y: 120, pos: "top"}
     };
     let convertedApComCoords = getConvertedArea(knownApComCoords);
     let apComLikes = [];
@@ -2038,8 +2132,8 @@ function pickSupportWithTheMostPt() {
     // 15为npc助战  0~14为玩家助战
     // Pt数值控件显示范围
     let knownPtArea = {
-      topLeft: {x: 1480, y: 210, pos: "top"},
-      bottomRight: {x: 1919, y: 1079, pos: "bottom"}
+      topLeft: {x: 1680, y: 280, pos: "top"},
+      bottomRight: {x: 1870, y: 1079, pos: "bottom"}
     };
     let ptArea = getConvertedArea(knownPtArea);
     log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
