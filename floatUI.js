@@ -1833,11 +1833,16 @@ function detectAPOnce() {
     }
 }
 function detectAPOnce_(logMuted) {
-    let apUiObj = id("ap").find();
-    if (apUiObj.empty()) {
-        if (!logMuted) log("没找到resource-id为\"ap\"的控件");
-    } else {
+    let apUiObj = id("ap").findOnce();
+    if (apUiObj != null) {
         if (!logMuted) log("resource-id为\"ap\"的控件：", apUiObj);
+        let apStr = "";
+        apStr = apUiObj.text();
+        if (apStr == "") apStr = apUiObj.desc();
+        let apStrMatched = apStr.match(/\d+/);
+        if (apStrMatched != null) return parseInt(apStrMatched[0]);
+    } else {
+        if (!logMuted) log("没找到resource-id为\"ap\"的控件");
     }
 
     let knownApComCoords = {
@@ -1846,66 +1851,53 @@ function detectAPOnce_(logMuted) {
         bottomRight: {x: 1210, y: 120, pos: "top"}
     };
     let convertedApComCoords = getConvertedArea(knownApComCoords);
-    let apComLikes = [];
+    if (!logMuted) log("convertedApComCoords=", convertedApComCoords);
+    let apLeft = convertedApComCoords.topLeft.x;
+    let apTop = convertedApComCoords.topLeft.y;
+    let apRight = convertedApComCoords.bottomRight.x;
+    let apBottom = convertedApComCoords.bottomRight.y;
 
-    let apComLikesRegExp = [];
-    let apComLikesAltRegExp = [];
-    let apCom = null;
-    let useDesc = {no: false, yes: true};
-    for (let whether in useDesc) {
-        if (!logMuted) log("useDesc:", whether);
-        if (useDesc[whether]) {
-            apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
-            apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
-        } else {
-            apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
-            apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
-        }
-        if (apComLikesRegExp.empty()) {
-            if (!logMuted) log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
-        } else {
-            if (!logMuted) log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
-        }
-        if (apComLikesAltRegExp.empty()) {
-            if (!logMuted) log("备用正则/^\\d+$/未匹配到AP控件");
-        } else {
-            if (!logMuted) log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
-        }
+    let apUiObjs = boundsInside(apLeft, apTop, apRight, apBottom).find();
 
-        let arr = [apUiObj, apComLikesRegExp, apComLikesAltRegExp]
-        for (let arrindex in arr) {
-            thisApComLikes = arr[arrindex];
-            apComLikes = [];
-            let sanity = false;
-            let apMin = Number.MAX_SAFE_INTEGER-1;
-            for (let i=0; i<thisApComLikes.length; i++) {
-                let apComLikeTop = thisApComLikes[i].bounds().top;
-                let apComLikeLeft = thisApComLikes[i].bounds().left;
-                let apComLikeBottom = thisApComLikes[i].bounds().bottom;
-                let apComLikeRight = thisApComLikes[i].bounds().right;
-                if (apComLikeTop >= convertedApComCoords.topLeft.y && apComLikeLeft >= convertedApComCoords.topLeft.x &&
-                apComLikeBottom <= convertedApComCoords.bottomRight.y && apComLikeRight <= convertedApComCoords.bottomRight.x) {
-                    apComLikes.push(thisApComLikes[i]);
-                    let apCom = thisApComLikes[i];
-                    let apStr = "";
-                    if (useDesc[whether]) {
-                        apStr = apCom.desc();
-                    } else {
-                        apStr = apCom.text();
-                    }
-                    if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
-    
-                    let apNum = Number.MAX_SAFE_INTEGER;
-                    let ap = apStr.match(/\d+/);
-                    if (ap != null) apNum = parseInt(ap[0]);
-                    if (apNum < apMin) apMin = apNum;
-                } //end if
+    for (let i=0; i<apUiObjs.length-1; i++) {
+        for (let j=i+1; j<apUiObjs.length; j++) {
+            let leftXi = apUiObjs[i].bounds().left;
+            let leftXj = apUiObjs[j].bounds().left;
+            if (leftXj < leftXi) {
+                let temp = apUiObjs[i];
+                apUiObjs[i] = apUiObjs[j];
+                apUiObjs[j] = temp;
             }
-            if (!logMuted) log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
-            if (!logMuted) log("apMin", apMin);
-            if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
-        }// end for (iteration)
-    }//end for (useDesc)
+        }
+    }
+
+    if (!logMuted) log("在坐标范围内的控件 apUiObjs=", apUiObjs);
+
+    let lastNum = null;
+    for (let i=0; i<apUiObjs.length; i++) {
+        if (!logMuted) log("apUiObjs["+i+"].text()", apUiObjs[i].text(), "apUiObjs["+i+"].desc()", apUiObjs[i].desc());
+
+        let apStr = "";
+        apStr = apUiObjs[i].text();
+        if (apStr == "") apStr = apUiObjs[i].desc();
+
+        if (!logMuted) log("apStr", apStr);
+
+        if (apStr.match(/^\d+\/\d+$/)) {
+            return parseInt(apStr.match(/\d+/)[0]);
+        }
+
+        if (apStr.match(/^\/$/)) {
+            if (lastNum != null) return lastNum;
+        }
+
+        if (apStr.match(/^\d+$/)) {
+            lastNum = parseInt(apStr);
+        } else {
+            lastNum = null;
+        }
+    }
+
     return null;
 }
 
