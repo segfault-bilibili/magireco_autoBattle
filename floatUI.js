@@ -1769,12 +1769,12 @@ function detectQuestDetailInfo() {
         log("QDLeft="+QDLeft+" QDTop="+QDTop+" QDRight="+QDRight+" QDBottom="+QDBottom);
 
         let questName = null;
-        questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).textMatches(/^BATTLE \d+$/).findOnce();
+        questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).textMatches(/^BATTLE\s*((\d+)|(.*级))$/).findOnce();
         if (questName != null) {
             questDetailInfo.questName = questName.text();
             log("questName.text()="+questName.text());
         } else {
-            questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).descMatches(/^BATTLE \d+$/).findOnce();
+            questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).descMatches(/^BATTLE\s*((\d+)|(.*级))$/).findOnce();
             if (questName != null) {
                 questDetailInfo.questName = questName.desc();
                 log("questName.desc()="+questName.desc());
