@@ -934,11 +934,14 @@ floatUI.main = function () {
     })
 
     win.id_1_click.on("click", () => {
+        toastLog("功能尚未定义");
+        /*
         toastLog("活动sp启动")
         if (task) {
             task.interrupt()
         }
         task = threads.start(autoMainver2)
+        */
         img_down()
     })
 

@@ -57,6 +57,7 @@ ui.layout(
                     <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能" />
                     <text textColor="#666666" text="注意！活动副本(包括星期狗粮)请勿启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持活动副本自动选关" />
                 </vertical>
+                {/*
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
                         <text text="踩水活动 x，y坐标自定义：" />
@@ -69,6 +70,7 @@ ui.layout(
                         <checkbox id="skipStoryUseScreenCapture" text="点SKIP跳过剧情时，借助截屏识图防止误点MENU（可能不稳定）" layout_weight="1" />
                     </linear>
                 </vertical>
+                */}
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear padding="0 0 0 0" bg="#ffffff">
                         <radiogroup id="mirrorsAutoBattleStrategy">
@@ -152,7 +154,7 @@ floatUI.main()
 
 var storage = storages.create("soha");
 var data = storage.get("data");
-const paramsList = ["shuix", "shuiy"]
+const paramsList = [/*"shuix", "shuiy"*/]
 const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "useAutoRestart", "BPAutoRefill"]
 var paramsMap = {}
 
@@ -188,10 +190,12 @@ let checkableItem = {
     value: null
 };
 
+/*
 checkableItem.key = "skipStoryUseScreenCapture";
 checkableItem.value = paramsMap[checkableItem.key];
 if (checkableItem.value == null) checkableItem.value = false;
 ui[checkableItem.key].attr("checked", checkableItem.value.toString());
+*/
 
 checkableItem.key = "mirrorsUseScreenCapture";
 checkableItem.value = paramsMap[checkableItem.key];
@@ -254,7 +258,9 @@ ui.start.click(() => {
         }
 
     }
+    /*
     paramsMap["skipStoryUseScreenCapture"] = ui["skipStoryUseScreenCapture"].checked;
+    */
     paramsMap["mirrorsUseScreenCapture"] = ui["mirrorsAutoBattleStrategy2"].checked;
     paramsMap["useScreencapShellCmd"] = ui["screenCaptureMethod2"].checked;
     paramsMap["useInputShellCmd"] = ui["clickMethod3"].checked;
