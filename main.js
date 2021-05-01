@@ -22,18 +22,18 @@ ui.layout(
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="drug1" text="AP回复药50（绿药）" layout_weight="1" />
-                        <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <checkbox id="apDrug50" text="AP回复药50（绿药）" layout_weight="1" />
+                        <input maxLength="3" id="apDrug50Num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="drug2" text="AP回复药（红药）" layout_weight="1" />
-                        <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <checkbox id="apDrugFull" text="AP回复药（红药）" layout_weight="1" />
+                        <input maxLength="3" id="apDrugFullNum" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="drug3" text="魔法石" layout_weight="1" />
-                        <input maxLength="3" id="drug3num" hint="可设置次数(是次数,不是个数!每次碎5钻)" text="" textSize="12" inputType="number|none" />
+                        <checkbox id="apMoney" text="魔法石" layout_weight="1" />
+                        <input maxLength="3" id="apMoneyNum" hint="可设置次数(是次数,不是个数!每次碎5钻)" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
@@ -155,7 +155,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = [/*"shuix", "shuiy"*/]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "useAutoRestart", "BPAutoRefill"]
+const paramsNotInitList = ["apDrug50", "apDrugFull", "apMoney", "isStable", "justNPC", "useAutoRestart", "BPAutoRefill"]
 var paramsMap = {}
 
 
@@ -236,9 +236,9 @@ for (let i = 0; i < paramsNotInitList.length; i++) {
 }
 paramsMap["version"] = version
 
-paramsMap["drug1num"] = ""
-paramsMap["drug2num"] = ""
-paramsMap["drug3num"] = ""
+paramsMap["apDrug50Num"] = ""
+paramsMap["apDrugFullNum"] = ""
+paramsMap["apMoneyNum"] = ""
 paramsMap["bpdrugnum"] = ""
 
 //同步值
@@ -272,9 +272,9 @@ ui.start.click(() => {
         paramsMap[paramsNotInitList[i]] = ui[paramsNotInitList[i]].isChecked();
     }
     paramsMap["version"] = version
-    paramsMap["drug1num"] = ui["drug1num"].getText()+""
-    paramsMap["drug2num"] = ui["drug2num"].getText()+""
-    paramsMap["drug3num"] = ui["drug3num"].getText()+""
+    paramsMap["apDrug50Num"] = ui["apDrug50Num"].getText()+""
+    paramsMap["apDrugFullNum"] = ui["apDrugFullNum"].getText()+""
+    paramsMap["apMoneyNum"] = ui["apMoneyNum"].getText()+""
     paramsMap["bpdrugnum"] = ui["bpdrugnum"].getText()+""
     floatUI.adjust(paramsMap)
     toastLog("设置已保存")

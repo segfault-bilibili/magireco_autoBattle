@@ -1216,15 +1216,20 @@ var keywords = {
         chs: "玩家等级",
         jp:  "プレイヤーランク",
         cht: "玩家排名"
+    },
+    drugNum: {
+        chs: /^\d+个$/,
+        jp:  /^\d+個$/,
+        cht: /^\d+個$/
     }
 };
 var currentLang = "chs";
 var limit = {
     shuix: '',
     shuiy: '',
-    drug1: false,
-    drug2: false,
-    drug3: false,
+    apDrug50: false,
+    apDrugFull: false,
+    apMoney: false,
     isStable: false,
     justNPC: false,
     useAutoRestart: false,
@@ -1234,9 +1239,9 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     version: '2.4.17',
-    drug1num: '',
-    drug2num: '',
-    drug3num: '',
+    apDrug50Num: '',
+    apDrugFullNum: '',
+    apMoneyNum: '',
     bpdrugnum: ''
 }
 var clickSets = {
@@ -1245,22 +1250,22 @@ var clickSets = {
         y: 50,
         pos: "top"
     },
-    ap50: {
+    apDrug50: {
         x: 400,
         y: 900,
         pos: "center"
     },
-    apfull: {
+    apDrugFull: {
         x: 900,
         y: 900,
         pos: "center"
     },
-    apjin: {
+    apMoney: {
         x: 1500,
         y: 900,
         pos: "center"
     },
-    aphui: {
+    apConfirm: {
         x: 1160,
         y: 730,
         pos: "center"
@@ -1743,10 +1748,10 @@ function detectQuestDetailInfo() {
         let detectAttempt = 0;
         log("开始检测关卡信息");
 
-        QDLeft = 0;
-        QDTop = 0;
-        QDBottom = 0;
-        QDRight = 0;
+        let QDLeft = 0;
+        let QDTop = 0;
+        let QDBottom = 0;
+        let QDRight = 0;
 
         let QD = id("questDetail").findOnce();
         if (QD != null) {
@@ -1754,8 +1759,8 @@ function detectQuestDetailInfo() {
             let QDBounds = QD.bounds();
             QDLeft = QDBounds.left;
             QDTop = QDBounds.top;
-            QDBottom = QDBounds.bottom;
             QDRight = QDBounds.right;
+            QDBottom = QDBounds.bottom;
         } else {
             log("未找到questDetail控件");
             let knownQDArea = {
@@ -1985,18 +1990,19 @@ function clickQuest(questDetailInfo) {
 }
 
 //检测AP并嗑药
-function refillAP(druglimit, questDetailInfo) {
+function refillAP(drugNumLimit, questDetailInfo) {
     log("refillAP");
     for (let i=0; i<5; i++) {
         let apNow = detectAP(); //检测AP
         log("当前体力 AP=" + apNow);
         if (apNow >= questDetailInfo.apCost * 2) return true;
 
-        log("嗑药开关", limit.drug1, limit.drug2, limit.drug3);
-        log("嗑药数量", limit.drug1num, limit.drug2num, limit.drug3num);
-        if (!limit.drug1 && !limit.drug2 && !limit.drug3) return false;
+        log("嗑药开关", limit.apDrug50, limit.apDrugFull, limit.apMoney);
+        log("嗑药总数限制", limit.apDrug50Num, limit.apDrugFullNum, limit.apMoneyNum);
+        log("还要磕多少药", drugNumLimit.apDrug50, drugNumLimit.apDrugFull, drugNumLimit.apMoney);
+        if (!limit.apDrug50 && !limit.apDrugFull && !limit.apMoney) return false;
 
-        if (!refillAPOnce(druglimit)) {
+        if (!refillAPOnce(drugNumLimit)) {
             toastLog("设定的AP药已经磕完，结束运行");
             return false;
         }
@@ -2005,8 +2011,8 @@ function refillAP(druglimit, questDetailInfo) {
 }
 
 //嗑药一次
-function refillAPOnce(druglimit) {
-    let drugUsed = false;
+function refillAPOnce(drugNumLimit) {
+    let isDrugUsed = false;
     //打开ap面板
     log("开启嗑药面板")
     //确定要嗑药后等3s，打开面板
@@ -2015,109 +2021,67 @@ function refillAPOnce(druglimit) {
         screenutilClick(clickSets.ap)
         sleep(2000)
     }
-    let apDrugNums = textMatches(/^\d+個$/).find()
-    if (apDrugNums.empty()) {
-        apDrugNums = descMatches(/^\d+個$/).find()
-    }
-    if (currentLang == "chs") {
-        apDrugNums = textMatches(/^\d+个$/).find()
-        if (apDrugNums.empty()) {
-            apDrugNums = descMatches(/^\d+个$/).find()
-        }
-    }
+
     //获得回复药水数量
-    let readDesc = false;
-    let apDrug50txt = apDrugNums[0].text();
-    if (apDrug50txt == null) readDesc = true;
-    if (apDrug50txt == "") readDesc = true;
-    let apDrug50Num = 0
-    let apDrugFullNum = 0
-    let apMoneyNum = 0;
-    if (readDesc) {
-        apDrug50Num = getDrugNum(apDrugNums[0].desc())
-        apDrugFullNum = getDrugNum(apDrugNums[1].desc())
-        apMoneyNum = getDrugNum(apDrugNums[2].desc())
-    } else {
-        apDrug50Num = getDrugNum(apDrugNums[0].text())
-        apDrugFullNum = getDrugNum(apDrugNums[1].text())
-        apMoneyNum = getDrugNum(apDrugNums[2].text())
+    let apDrugNums = textMatches(keywords["drugNum"][currentLang]).find()
+    if (apDrugNums.empty()) {
+        apDrugNums = descMatches(keywords["drugNum"][currentLang]).find()
     }
-    log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
+
+    let apDrugNum = {
+        apDrug50: 0,
+        apDrugFull: 0,
+        apMoney: 0
+    };
+
+    apDrugNum["apDrug50"] = uiObjParseInt(apDrugNums[0]);
+    apDrugNum["apDrugFull"] = uiObjParseInt(apDrugNums[1]);
+    apDrugNum["apMoney"] = uiObjParseInt(apDrugNums[2]);
+
+    log("药数量分别为", apDrugNum["apDrug50"], apDrugNum["apDrugFull"], apDrugNum["apMoney"]);
+
+    //红药绿药一次会用掉1瓶；钻一次会碎5个，剩余数量不足就不能回复AP
+    let apDrugCostMin = {
+        apDrug50: 1,
+        apDrugFull: 1,
+        apMoney: 5
+    };
+
     // 根据条件选择药水
+    let apDrugTypesArr = ["apDrug50", "apDrugFull", "apMoney"];
+    
+    for (let i=0; i<apDrugTypesArr.length; i++) {
+        let apDrugType = apDrugTypesArr[i];
 
-    if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
-        if (druglimit.drug1limit) {
-            druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+        if (apDrugNum[apDrugType] >= apDrugCostMin[apDrugType] && limit[apDrugType] && drugNumLimit[apDrugType] > 0) {
+            drugNumLimit[apDrugType] -= 1;
+            while ((!text(keywords["confirmRefill"][currentLang]).findOnce())&&(!desc(keywords["confirmRefill"][currentLang]).findOnce())) {
+                sleep(1000);
+                screenutilClick(clickSets[apDrugType]);
+                sleep(2000);
+            }
+            while ((!text(keywords["refill"][currentLang]).findOnce())&&(!desc(keywords["refill"][currentLang]).findOnce())) {
+                sleep(1000);
+            }
+            sleep(1500)
+            log("确认回复")
+            while (text(keywords["confirmRefill"][currentLang]).findOnce()||desc(keywords["confirmRefill"][currentLang]).findOnce()) {
+                sleep(1000)
+                screenutilClick(clickSets.apConfirm);
+                sleep(2000)
+            }
+            isDrugUsed = true;
         }
-        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
-            sleep(1000)
-            screenutilClick(clickSets.ap50)
-            sleep(2000)
-        }
-        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
-            sleep(1000);
-        }
-        sleep(1500)
-        log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.aphui)
-            sleep(2000)
-        }
-        drugUsed = true;
-    } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
-        if (druglimit.drug2limit) {
-            druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
-        }
-        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
-            sleep(1000)
-            screenutilClick(clickSets.apfull)
-            sleep(2000)
-        }
-        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
-            sleep(1000);
-        }
-        sleep(1500)
-        log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.aphui)
-            sleep(2000)
-        }
-        drugUsed = true;
-    } else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
-        if (druglimit.drug3limit) {
-            druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
-        }
-        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
-            sleep(1000)
-            screenutilClick(clickSets.apjin)
-            sleep(2000)
-        }
-        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
-            sleep(1000);
-        }
-        sleep(1500)
-        log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.aphui)
-            sleep(2000)
-        }
-        drugUsed = true;
-    } else {
-        //关掉面板继续周回
-        log("none")
     }
 
-    //关掉ap面板
-    log("关掉面板")
+    //关掉AP回复面板
+    log("关掉AP回复面板");
     while (id("popupInfoDetailTitle").findOnce()) {
         sleep(1000)
         screenutilClick(clickSets.apclose)
         sleep(2000)
     }
-    return drugUsed;
+    return isDrugUsed;
 } //end function
 
 //选择Pt最高的助战
@@ -2131,28 +2095,27 @@ function pickSupportWithTheMostPt() {
       bottomRight: {x: 1870, y: 1079, pos: "bottom"}
     };
     let ptArea = getConvertedArea(knownPtArea);
-    log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
-    log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
-    let ptCom = textMatches(/^\+{0,1}\d+$/).find();
-    if (ptCom.empty()) ptCom = descMatches(/^\+{0,1}\d+$/).find();
+    log("ptArea.topLeft", ptArea.topLeft);
+    log("ptArea.bottomRight", ptArea.bottomRight);
+    let ptLeft = ptArea.topLeft.x;
+    let ptTop = ptArea.topLeft.y;
+    let ptRight = ptArea.bottomRight.x;
+    let ptBottom = ptArea.bottomRight.y;
+
     //可见的助战列表
-    let ptComVisible = [];
-    let ptComCanClick = [];
-    var highestPt = 0;
-    for (let i = 0; i < ptCom.length; i++) {
-        //在可见范围内
-        if (ptCom[i].bounds().centerX() > ptArea.topLeft.x && ptCom[i].bounds().centerX() < ptArea.bottomRight.x &&
-            ptCom[i].bounds().centerY() > ptArea.topLeft.y && ptCom[i].bounds().centerY() < ptArea.bottomRight.y) {
-            //找到最大pt值
-            if (highestPt < getPt(ptCom[i])) highestPt = getPt(ptCom[i]);
-            ptComVisible.push(ptCom[i])
-            log(ptCom[i].bounds())
-        }
-    }
+    let ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).textMatches(/^\+{0,1}\d+$/).find();
+    if (ptComVisible.empty()) ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).descMatches(/^\+{0,1}\d+$/).find();
     log("可见助战列表", ptComVisible);
+
+    let ptComCanClick = [];
+    let highestPt = 0;
+    for (let i = 0; i < ptComVisible.length; i++) {
+        //找到最高的Pt加成
+        if (highestPt < uiObjParseInt(ptComVisible[i])) highestPt = uiObjParseInt(ptComVisible[i]);
+    }
     log("从可见助战列表中筛选最高Pt的助战，并按照显示位置排序");
     for (let i = 0; i < ptComVisible.length; i++) {
-        if (getPt(ptComVisible[i]) == highestPt) {
+        if (uiObjParseInt(ptComVisible[i]) == highestPt) {
             ptComCanClick.push(ptComVisible[i]);
         }
     }
@@ -2239,10 +2202,12 @@ function autoMain() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
-    let druglimit = {
-        drug1limit: limit.drug1num,
-        drug2limit: limit.drug2num,
-        drug3limit: limit.drug3num
+    //设置AP嗑药总数限制，
+    //记录AP药剩余
+    let drugNumLimit = {
+        apDrug50: parseInt(limit.apDrug50Num) >= 0 ? parseInt(limit.apDrug50Num) : 0,
+        apDrugFull: parseInt(limit.apDrugFullNum) >= 0 ? parseInt(limit.apDrugFullNum) : 0,
+        apMoney: parseInt(limit.apMoneyNum) >= 0 ? parseInt(limit.apMoneyNum) : 0,
     }
 
     //检测当前关卡信息（BATTLE 1/2/3/... 以及 AP消耗量）
@@ -2252,7 +2217,7 @@ function autoMain() {
         //开始
 
         //检测AP并嗑药
-        if (!refillAP(druglimit, questDetailInfo)) return;
+        if (!refillAP(drugNumLimit, questDetailInfo)) return;
 
         //选关并等待助战列表出现
         if (!clickQuest(questDetailInfo)) return;
@@ -2265,8 +2230,6 @@ function autoMain() {
         }
 
         // -----------开始----------------
-        //开始按钮部分手机无法确定位置 需要改
-        //国台服不同
         let buttonToClick = "start";
         if (limit.useAutoRestart) {
             if (questDetailInfo.questName == null) {
@@ -2314,10 +2277,12 @@ function autoMainver2() {
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
-    let druglimit = {
-        drug1limit: limit.drug1num,
-        drug2limit: limit.drug2num,
-        drug3limit: limit.drug3num
+    //设置AP嗑药总数限制，
+    //记录AP药剩余
+    let drugNumLimit = {
+        apDrug50: parseInt(limit.apDrug50Num) >= 0 ? parseInt(limit.apDrug50Num) : 0,
+        apDrugFull: parseInt(limit.apDrugFullNum) >= 0 ? parseInt(limit.apDrugFullNum) : 0,
+        apMoney: parseInt(limit.apMoneyNum) >= 0 ? parseInt(limit.apMoneyNum) : 0,
     }
 
     //检测当前关卡信息（BATTLE 1/2/3/... 以及 AP消耗量）
@@ -2327,7 +2292,7 @@ function autoMainver2() {
         //开始
 
         //检测AP并嗑药
-        if (!refillAP(druglimit, questDetailInfo)) return;
+        if (!refillAP(drugNumLimit, questDetailInfo)) return;
 
         //----------------------------------
         log(limit.shuix, limit.shuiy)
@@ -3866,14 +3831,12 @@ function jingMain() {
 
 }
 
-function getPt(com) {
-    let txt = com.text()
-    if (txt==null) txt = com.desc();
-    if (txt=="") txt = com.desc();
-    return parseInt(txt.match(/\d+/)[0]);
-}
-function getDrugNum(text) {
-    return parseInt(text.match(/\d+/)[0]);
+function uiObjParseInt(uiObj) {
+    let uiText = uiObj.text()
+    if (uiText == "") uiText = uiObj.desc();
+    let matched = uiText.match(/\d+/);
+    let num = parseInt(matched[0]);
+    return num;
 }
 
 shellPrivCheckThread = null;
