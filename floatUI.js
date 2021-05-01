@@ -1831,6 +1831,8 @@ function removeIllegalBounds(uiObjArr) {
     for (let i=0; i<uiObjArr.length; i++) {
         let uiObj = uiObjArr[i];
         let uiObjBounds = uiObj.bounds();
+        if (uiObjBounds.left < 0) continue;
+        if (uiObjBounds.top < 0) continue;
         if (uiObjBounds.right < uiObjBounds.left) continue;
         if (uiObjBounds.bottom < uiObjBounds.top) continue;
         result.push(uiObj);
