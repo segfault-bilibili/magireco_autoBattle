@@ -1238,7 +1238,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.18',
+    version: '2.4.19',
     apDrug50Num: '',
     apDrugFullNum: '',
     apMoneyNum: '',
@@ -1359,6 +1359,11 @@ var clickSets = {
         x: 1423,
         y: 900,
         pos: "center"
+    },
+    back: {
+        x: 100,
+        y: 50,
+        pos: "top"
     }
 }
 
@@ -1820,6 +1825,19 @@ function detectQuestDetailInfo() {
     throw "detectQuestDetailInfoFail";
 }//end function
 
+//有些控件右下角坐标比左上角低，这个函数把这种数值非法的控件从数组里删去
+function removeIllegalBounds(uiObjArr) {
+    let result = [];
+    for (let i=0; i<uiObjArr.length; i++) {
+        let uiObj = uiObjArr[i];
+        let uiObjBounds = uiObj.bounds();
+        if (uiObjBounds.right < uiObjBounds.left) continue;
+        if (uiObjBounds.bottom < uiObjBounds.top) continue;
+        result.push(uiObj);
+    }
+    return result;
+}
+
 //检测AP，非阻塞，检测一次就返回
 function detectAPOnce() {
     if (arguments.length == 0) {
@@ -1854,7 +1872,7 @@ function detectAPOnce_(logMuted) {
     let apRight = convertedApComCoords.bottomRight.x;
     let apBottom = convertedApComCoords.bottomRight.y;
 
-    let apUiObjs = boundsInside(apLeft, apTop, apRight, apBottom).find();
+    let apUiObjs = removeIllegalBounds(boundsInside(apLeft, apTop, apRight, apBottom).find());
 
     for (let i=0; i<apUiObjs.length-1; i++) {
         for (let j=i+1; j<apUiObjs.length; j++) {
@@ -2039,6 +2057,7 @@ function refillAPOnce(drugNumLimit) {
         let apDrugType = apDrugTypesArr[i];
 
         if (apDrugNum[apDrugType] >= apDrugCostMin[apDrugType] && limit[apDrugType] && drugNumLimit[apDrugType] > 0) {
+            log("点击嗑药 apDrugType", apDrugType);
             drugNumLimit[apDrugType] -= 1;
             while ((!text(keywords["confirmRefill"][currentLang]).findOnce())&&(!desc(keywords["confirmRefill"][currentLang]).findOnce())) {
                 sleep(1000);
@@ -2056,6 +2075,7 @@ function refillAPOnce(drugNumLimit) {
                 sleep(2000)
             }
             isDrugUsed = true;
+            break;
         }
     }
 
@@ -2124,6 +2144,17 @@ function pickSupportWithTheMostPt() {
     }
     log("选择", finalPt)
     return finalPt;
+}
+
+//如果选助战时卡顿，可能点击会变成长按，然后就会弹出助战详细信息
+//需要把助战详细信息点掉
+function closeDetailTab() {
+    while (id("detailTab").findOnce()) {
+        log("可能是因为卡顿，助战/角色详细信息面板detailTab出现了，把它点掉");
+        sleep(1000);
+        screenutilClick(clickSets.back);
+        sleep(2000);
+    }
 }
 
 //等待并点掉结算页面
@@ -2207,11 +2238,12 @@ function autoMain() {
         //选关并等待助战列表出现
         if (!clickQuest(questDetailInfo)) return;
 
-        while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
+        while (id("friendWrap").findOnce() || id("detailTab").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
             compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
             sleep(2000)
+            closeDetailTab();
         }
 
         // -----------开始----------------
