@@ -1238,7 +1238,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.17',
+    version: '2.4.18',
     apDrug50Num: '',
     apDrugFullNum: '',
     apMoneyNum: '',
@@ -1778,34 +1778,24 @@ function detectQuestDetailInfo() {
 
         let questName = null;
         questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).textMatches(/^BATTLE\s*((\d+)|(.*级))$/).findOnce();
-        if (questName != null) {
-            questDetailInfo.questName = questName.text();
-            log("questName.text()="+questName.text());
-        } else {
-            questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).descMatches(/^BATTLE\s*((\d+)|(.*级))$/).findOnce();
-            if (questName != null) {
-                questDetailInfo.questName = questName.desc();
-                log("questName.desc()="+questName.desc());
-            }
-        }
+        if (questName == null) questName = boundsInside(QDLeft, QDTop, QDRight, QDBottom).descMatches(/^BATTLE\s*((\d+)|(.*级))$/).findOnce();
 
-        let apCostText = null;
-        apCostText = boundsInside(QDLeft, QDTop, QDRight, QDBottom).text(keywords["apCostText"][currentLang]).findOnce();
-        if (apCostText == null) apCostText = boundsInside(QDLeft, QDTop, QDRight, QDBottom).desc(keywords["apCostText"][currentLang]).findOnce();
-        if (apCostText != null) {
-            let apCTBounds = apCostText.bounds();
+        questDetailInfo.questName = uiObjGetText(questName);
+        log("questDetailInfo.questName="+questDetailInfo.questName);
+
+        let apCostTextUiObj = null;
+        apCostTextUiObj = boundsInside(QDLeft, QDTop, QDRight, QDBottom).text(keywords["apCostText"][currentLang]).findOnce();
+        if (apCostTextUiObj == null) apCostTextUiObj = boundsInside(QDLeft, QDTop, QDRight, QDBottom).desc(keywords["apCostText"][currentLang]).findOnce();
+
+        if (apCostTextUiObj != null) {
+            let apCTBounds = apCostTextUiObj.bounds();
             let apCTTop = apCTBounds.top;
             let apCTBottom = apCTBounds.bottom;
             let apCost = boundsInside(QDLeft, apCTTop - 3, QDRight, apCTBottom + 3).textMatches(/^\d+$/).findOnce();
+            if (apCost == null) apCost = boundsInside(QDLeft, apCTTop - 3, QDRight, apCTBottom + 3).descMatches(/^\d+$/).findOnce();
             if (apCost != null) {
-                questDetailInfo.apCost = parseInt(apCost.text());
-                log("apCost.text()="+apCost.text());
-            } else {
-                apCost = boundsInside(QDLeft, apCTTop - 3, QDRight, apCTBottom + 3).descMatches(/^\d+$/).findOnce();
-                if (apCost != null) {
-                    questDetailInfo.apCost = parseInt(apCost.desc());
-                    log("apCost.desc()="+apCost.desc());
-                }
+                questDetailInfo.apCost = uiObjParseInt(apCost);
+                log("questDetailInfo.apCost="+questDetailInfo.apCost);
             }
         }
 
@@ -1844,11 +1834,10 @@ function detectAPOnce_(logMuted) {
     let apUiObj = id("ap").findOnce();
     if (apUiObj != null) {
         if (!logMuted) log("resource-id为\"ap\"的控件：", apUiObj);
-        let apStr = "";
-        apStr = apUiObj.text();
-        if (apStr == "") apStr = apUiObj.desc();
-        let apStrMatched = apStr.match(/\d+/);
-        if (apStrMatched != null) return parseInt(apStrMatched[0]);
+        let apNum = uiObjParseInt(apUiObj);
+        if (apNum != null) {
+            return apNum;
+        }
     } else {
         if (!logMuted) log("没找到resource-id为\"ap\"的控件");
     }
@@ -1883,13 +1872,9 @@ function detectAPOnce_(logMuted) {
 
     let lastNum = null;
     for (let i=0; i<apUiObjs.length; i++) {
-        if (!logMuted) log("apUiObjs["+i+"].text()", apUiObjs[i].text(), "apUiObjs["+i+"].desc()", apUiObjs[i].desc());
+        let apStr = uiObjGetText(apUiObjs[i]);
 
-        let apStr = "";
-        apStr = apUiObjs[i].text();
-        if (apStr == "") apStr = apUiObjs[i].desc();
-
-        if (!logMuted) log("apStr", apStr);
+        if (!logMuted) log("i", i, "apStr", apStr);
 
         if (apStr.match(/^\d+\/\d+$/)) {
             return parseInt(apStr.match(/\d+/)[0]);
@@ -3831,10 +3816,24 @@ function jingMain() {
 
 }
 
+function uiObjGetText(uiObj) {
+    let uiText = "";
+    try {
+        uiText = uiObj.text();
+    } catch (e) {
+        return "";
+    }
+    if (uiText == null || uiText == "") uiText = uiObj.desc();
+    if (uiText == null) uiText = "";
+    return uiText;
+}
+
 function uiObjParseInt(uiObj) {
-    let uiText = uiObj.text()
-    if (uiText == "") uiText = uiObj.desc();
+    let uiText = uiObjGetText(uiObj);
+
     let matched = uiText.match(/\d+/);
+    if (matched == null) return null;
+
     let num = parseInt(matched[0]);
     return num;
 }
