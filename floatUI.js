@@ -1238,7 +1238,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.19',
+    version: '2.4.20',
     apDrug50Num: '',
     apDrugFullNum: '',
     apMoneyNum: '',
@@ -1463,6 +1463,17 @@ function setCutoutParams() {
     scr.cutout.right = scr.res.width - 1;
     scr.cutout.bottom = scr.res.height - 1;
 
+    let SYSTEM_UI_FLAG_HIDE_NAVIGATION = 0x00000200;
+    let SYSTEM_UI_FLAG_IMMERSIVE_STICKY = 0x00001000;
+    if(device.sdkInt >= 19 || device.sdkInt < 28) { //Android 4.4及以上，8.1及以下
+        //隐藏虚拟导航键
+        //https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
+        let decorView = activity.getWindow().getDecorView();
+        let uiOptions = decorView.getSystemUiVisibility();
+        uiOptions |= SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        decorView.setSystemUiVisibility(uiOptions);
+    }
+
     let windowInsets = null;
     let displayCutout = null;
     try { windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();} catch (e) { log(e); }
@@ -1486,11 +1497,22 @@ function setCutoutParams() {
         }
     }
 
+    if(device.sdkInt >= 19 || device.sdkInt < 28) { //Android 4.4及以上，8.1及以下
+        //重新显示虚拟导航键
+        //https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
+        let decorView = activity.getWindow().getDecorView();
+        let uiOptions = decorView.getSystemUiVisibility();
+        uiOptions &= ~(SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        decorView.setSystemUiVisibility(uiOptions);
+    }
+
     scr.cutout.left = scr.cutout.insets.left;
     scr.cutout.top = scr.cutout.insets.top;
     scr.cutout.right = device.width - scr.cutout.insets.right - 1;
     scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
 
+    //如果脚本在竖屏模式启动，获取到的数据也是竖屏的
+    //魔纪只能横屏显示，所以换算成横屏的
     if (device.height > device.width) {
         log("device.height > device.width");
 
@@ -1513,21 +1535,14 @@ function setCutoutParams() {
 
     log("刘海屏参数 ["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]");
 
-    //这里认为左右两侧（或者上下两侧）被切掉的像素数相等
-    let cutoutSafeWidth = scr.cutout.right - scr.cutout.left + 1;
-    let cutoutSafeHeight = scr.cutout.bottom - scr.cutout.top + 1;
-
-    let cutoutHalfWidth = 0;
-    if (scr.ref.width > cutoutSafeWidth) cutoutHalfWidth = parseInt((scr.ref.width - cutoutSafeWidth) / 2);
-    let cutoutHalfHeight = 0;
-    if (scr.ref.height > cutoutSafeHeight) cutoutHalfHeight = parseInt((scr.ref.height - cutoutSafeHeight) / 2);
-
-    if (scr.ref.width > cutoutHalfWidth) {
-        scr.cutout.offset.x = scr.cutout.left - cutoutHalfWidth;
-    }
-    if (scr.ref.height > cutoutHalfHeight) {
-        scr.cutout.offset.y = scr.cutout.top - cutoutHalfHeight;
-    }
+    //这里认为是先切掉刘海再居中
+    //因为：
+    //最终偏移=左刘海+(屏幕完整宽度-左刘海-右刘海-画面宽度)/2
+    //居中偏移=(屏幕完整宽度-画面宽度)/2
+    //所以：
+    //刘海偏移修正=最终偏移-居中偏移=左刘海-(左刘海+右刘海)/2
+    scr.cutout.offset.x = scr.cutout.left - (scr.cutout.insets.left + scr.cutout.insets.right) / 2;
+    scr.cutout.offset.y = scr.cutout.top - (scr.cutout.insets.top + scr.cutout.insets.bottom) / 2;
 }
 
 setCutoutParams();
