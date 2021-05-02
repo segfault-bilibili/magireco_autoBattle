@@ -466,8 +466,9 @@ function forcedOnlineUpdate() {
     if (!verifyFiles(latestVersionName)) toastLog("警告: 更新未完成 (forcedOnlineUpdate)");
 }
 function verifyAndUpdate() {
+    //这个函数会在脚本启动时被调用
     if (verifyFiles(limit.version)) {
-        resizeKnownImgs();
+        resizeKnownImgs(); //放缩参考图像以适配当前屏幕分辨率
         if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
     } else {
         if (verifyHashListFile(limit.version)) {
@@ -1238,7 +1239,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.20',
+    version: '2.4.21',
     apDrug50Num: '',
     apDrugFullNum: '',
     apMoneyNum: '',
@@ -1456,23 +1457,42 @@ if (scr.ratio.x == known.ratio.x && scr.ratio.y == known.ratio.y) {
   }
 }
 
-//获取刘海屏信息
-function setCutoutParams() {
+//隐藏或显示状态栏和虚拟导航键，换一种方式获取刘海屏信息
+//https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
+function setFullScreenMode(isFullScreen) {
+    log("setFullScreenMode", isFullScreen);
+    let uiFlagMap = {
+        SYSTEM_UI_FLAG_LAYOUT_STABLE: 0x00000100,
+        SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: 0x00000200,
+        SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: 0x00000400,
+        SYSTEM_UI_FLAG_HIDE_NAVIGATION: 0x00000002,
+        SYSTEM_UI_FLAG_FULLSCREEN: 0x00000004,
+        SYSTEM_UI_FLAG_IMMERSIVE: 0x00000800,
+        SYSTEM_UI_FLAG_IMMERSIVE_STICKY: 0x00001000
+    };
+    let uiFlags = 0x00000000;
+    for (let i in uiFlagMap) {
+        uiFlags |= uiFlagMap[i];
+    };
+
+    if(device.sdkInt >= 19 || device.sdkInt < 28) {//Android 4.4及以上，8.1及以下
+        let uiOptions = activity.getWindow().getDecorView().getSystemUiVisibility();
+        if (isFullScreen) {
+            uiOptions |= uiFlags;
+        } else {
+            uiOptions &= ~uiFlags;
+        }
+        uiOptions &= ~uiFlagMap.SYSTEM_UI_FLAG_LAYOUT_STABLE; //好像设置了这个就不能排除虚拟导航键的高度，所以就不设置
+        activity.getWindow().getDecorView().setSystemUiVisibility(uiOptions);
+    }
+}
+
+//获取刘海屏参数
+function detectCutoutParams() {
     scr.cutout.left = 0;
     scr.cutout.top = 0;
     scr.cutout.right = scr.res.width - 1;
     scr.cutout.bottom = scr.res.height - 1;
-
-    let SYSTEM_UI_FLAG_HIDE_NAVIGATION = 0x00000200;
-    let SYSTEM_UI_FLAG_IMMERSIVE_STICKY = 0x00001000;
-    if(device.sdkInt >= 19 || device.sdkInt < 28) { //Android 4.4及以上，8.1及以下
-        //隐藏虚拟导航键
-        //https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
-        let decorView = activity.getWindow().getDecorView();
-        let uiOptions = decorView.getSystemUiVisibility();
-        uiOptions |= SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-        decorView.setSystemUiVisibility(uiOptions);
-    }
 
     let windowInsets = null;
     let displayCutout = null;
@@ -1495,15 +1515,6 @@ function setCutoutParams() {
             try { scr.cutout.insets.right  = windowInsets.getSystemWindowInsetRight(); } catch (e) { log(e); }
             try { scr.cutout.insets.bottom = windowInsets.getSystemWindowInsetBottom(); } catch (e) { log(e); }
         }
-    }
-
-    if(device.sdkInt >= 19 || device.sdkInt < 28) { //Android 4.4及以上，8.1及以下
-        //重新显示虚拟导航键
-        //https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
-        let decorView = activity.getWindow().getDecorView();
-        let uiOptions = decorView.getSystemUiVisibility();
-        uiOptions &= ~(SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-        decorView.setSystemUiVisibility(uiOptions);
     }
 
     scr.cutout.left = scr.cutout.insets.left;
@@ -1533,7 +1544,8 @@ function setCutoutParams() {
         scr.cutout.bottom = temp;
     }
 
-    log("刘海屏参数 ["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]");
+    let cutoutParamsStr = "["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]"
+    log("刘海屏参数", cutoutParamsStr);
 
     //这里认为是先切掉刘海再居中
     //因为：
@@ -1543,9 +1555,55 @@ function setCutoutParams() {
     //刘海偏移修正=最终偏移-居中偏移=左刘海-(左刘海+右刘海)/2
     scr.cutout.offset.x = scr.cutout.left - (scr.cutout.insets.left + scr.cutout.insets.right) / 2;
     scr.cutout.offset.y = scr.cutout.top - (scr.cutout.insets.top + scr.cutout.insets.bottom) / 2;
+
+    return cutoutParamsStr;
 }
 
-setCutoutParams();
+var COPSLock = threads.lock();
+var cutoutParamsStr = detectCutoutParams();
+
+var cutoutDetectThread = null;
+
+if (device.sdkInt < 28) { //Android 9以下没有刘海屏API
+    setFullScreenMode(true);
+    cutoutDetectThread = threads.start(function () {
+        toastLog("正在检测刘海屏参数，请稍候");
+        let lastOutoutParamsStr = cutoutParamsStr;
+        let changed = false;
+        let unchangedCount = 0;
+        for (let i=0; i<30; i++) {
+            ui.run(function (){
+                COPSLock.lock();
+                cutoutParamsStr = detectCutoutParams();
+                COPSLock.unlock();
+            });
+            sleep(500);
+            COPSLock.lock();
+            if (cutoutParamsStr != lastOutoutParamsStr) {
+                changed = true;
+                unchangedCount = 0;
+                lastOutoutParamsStr = cutoutParamsStr;
+            } else {
+                unchangedCount++;
+            }
+            COPSLock.unlock();
+            if (changed && unchangedCount >= 4) break;
+        } // for end
+        ui.run(function () {setFullScreenMode(false)});
+        toastLog("刘海屏参数检测完毕！");
+    }); // threads.start end
+}
+
+function isCutoutDetectionDone() {
+    if (device.sdkInt >= 28) return true;
+    if (cutoutDetectThread != null) {
+        if (cutoutDetectThread.isAlive()) {
+            toastLog("正在检测刘海屏参数，请稍后再试");
+            return false;
+        }
+    }
+    return true;
+}
 
 //换算坐标 1920x1080=>当前屏幕分辨率
 function convertCoords(d)
@@ -1975,7 +2033,12 @@ function clickQuest(questDetailInfo) {
     let result = false;
 
     let QLL = null;
-    QLL = id("questLinkList").findOnce();
+    while (QLL == null) {
+        if (detectCanPickSupportOnce()) return true; //可以选助战了，应该是已经选好关了
+
+        QLL = id("questLinkList").findOnce();
+    }
+
     if (QLL != null) {
         if (questDetailInfo.questName == null) {
             toastLog("不知道要选哪一关");
@@ -2235,6 +2298,9 @@ function autoMain() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
+    //Android 8.1或以下检测刘海屏比较麻烦
+    if (!isCutoutDetectionDone()) return;
+
     //设置AP嗑药总数限制，
     //记录AP药剩余
     let drugNumLimit = {
@@ -2310,6 +2376,9 @@ function autoMainver2() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
+
+    //Android 8.1或以下检测刘海屏比较麻烦
+    if (!isCutoutDetectionDone()) return;
 
     //设置AP嗑药总数限制，
     //记录AP药剩余
@@ -3697,6 +3766,9 @@ function mirrorsSimpleAutoBattleMain() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
+    //Android 8.1或以下检测刘海屏比较麻烦
+    if (!isCutoutDetectionDone()) return;
+
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
         if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
@@ -3727,6 +3799,9 @@ function mirrorsAutoBattleMain() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
+
+    //Android 8.1或以下检测刘海屏比较麻烦
+    if (!isCutoutDetectionDone()) return;
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
@@ -3815,6 +3890,9 @@ function jingMain() {
     if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
     if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
+
+    //Android 8.1或以下检测刘海屏比较麻烦
+    if (!isCutoutDetectionDone()) return;
 
     let usedBPDrugNum = 0;
 
