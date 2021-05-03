@@ -1284,19 +1284,19 @@ var limit = {
     apDrug50: false,
     apDrugFull: false,
     apMoney: false,
+    bpDrug: false,
+    apDrug50Num: '',
+    apDrugFullNum: '',
+    apMoneyNum: '',
+    bpDrugNum: '',
     isStable: false,
     justNPC: false,
     useAutoRestart: false,
     skipStoryUseScreenCapture: false,
-    BPAutoRefill: false,
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.23',
-    apDrug50Num: '',
-    apDrugFullNum: '',
-    apMoneyNum: '',
-    bpdrugnum: ''
+    version: '2.4.23'
 }
 var clickSets = {
     ap: {
@@ -2124,21 +2124,41 @@ function clickQuest(questDetailInfo) {
 //检测AP并嗑药
 function refillAP(drugNumLimit, questDetailInfo) {
     log("refillAP");
-    for (let i=0; i<5; i++) {
+    let drugExausted = false;
+    let drugAllDisabled = false;
+    let drugMax = 5;
+    for (let i=0; i<drugMax+1; i++) {
         let apNow = detectAP(); //检测AP
         log("当前体力 AP=" + apNow);
+
         if (apNow >= questDetailInfo.apCost * 2) return true;
+
+        if (drugExausted || drugAllDisabled) {
+            let str = "";
+            if (!drugAllDisabled) str = "设定的AP药已经磕完，";
+            if (apNow >= questDetailInfo.apCost) {
+                toastLog(str+"进行最后一轮战斗");
+                return true;
+            } else {
+                toastLog(str+"结束运行");
+                return false;
+            }
+        }
+
+        if (i == drugMax) break; //一般不会出现磕5次药还不够2轮战斗的情况
 
         log("嗑药开关", limit.apDrug50, limit.apDrugFull, limit.apMoney);
         log("嗑药总数限制", limit.apDrug50Num, limit.apDrugFullNum, limit.apMoneyNum);
         log("还要磕多少药", drugNumLimit.apDrug50, drugNumLimit.apDrugFull, drugNumLimit.apMoney);
-        if (!limit.apDrug50 && !limit.apDrugFull && !limit.apMoney) return false;
-
-        if (!refillAPOnce(drugNumLimit)) {
-            toastLog("设定的AP药已经磕完，结束运行");
-            return false;
+        if (limit.apDrug50 || limit.apDrugFull || limit.apMoney) {
+            if (!refillAPOnce(drugNumLimit)) {
+                drugExausted = true;
+            }
+        } else {
+            drugAllDisabled = true;
         }
     }
+    log("refillAP: return false");
     return false;
 }
 
@@ -2350,8 +2370,7 @@ function autoMain() {
     //Android 8.1或以下检测刘海屏比较麻烦
     if (!isCutoutDetectionDone()) return;
 
-    //设置AP嗑药总数限制，
-    //记录AP药剩余
+    //设置AP嗑药总数限制
     let drugNumLimit = {
         apDrug50: parseInt(limit.apDrug50Num) >= 0 ? parseInt(limit.apDrug50Num) : 0,
         apDrugFull: parseInt(limit.apDrugFullNum) >= 0 ? parseInt(limit.apDrugFullNum) : 0,
@@ -2379,24 +2398,40 @@ function autoMain() {
         }
 
         // -----------开始----------------
-        let buttonToClick = "start";
-        if (limit.useAutoRestart) {
-            if (questDetailInfo.questName == null) {
-                toastLog("现在无法自动选关，故不使用游戏内建自动周回\n（活动副本暂不能自动选关）");
-                buttonToClick = "start";
-            } else {
-                log("使用游戏内建自动周回");
-                buttonToClick = "startAutoRestart";
-            }
-        }
-        while ((!text(keywords[buttonToClick][currentLang]).findOnce())&&(!desc(keywords[buttonToClick][currentLang]).findOnce())) {
+        //等待开始（或自动续战）按钮出现
+        while (true) {
+            if (text(keywords["start"][currentLang]).findOnce()) break;
+            if (desc(keywords["start"][currentLang]).findOnce()) break;
+            if (text(keywords["startAutoRestart"][currentLang]).findOnce()) break;
+            if (desc(keywords["startAutoRestart"][currentLang]).findOnce()) break;
             sleep(1000);
         }
         log("进入开始")
-        while (text(keywords[buttonToClick][currentLang]).findOnce()||desc(keywords[buttonToClick][currentLang]).findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets[buttonToClick])
-            sleep(3000)
+        while (true) {
+            let isBtnExist = {start: false, startAutoRestart: false};
+            if (text(keywords["start"][currentLang]).findOnce()) isBtnExist["start"] = true;
+            if (desc(keywords["start"][currentLang]).findOnce()) isBtnExist["start"] = true;
+            if (text(keywords["startAutoRestart"][currentLang]).findOnce()) isBtnExist["startAutoRestart"] = true;
+            if (desc(keywords["startAutoRestart"][currentLang]).findOnce()) isBtnExist["startAutoRestart"] = true;
+
+            //前面已经等到了开始或自动续战按钮出现，所以如果这里两个按钮都没出现，一定是因为点击已经生效、要进入战斗了
+            if (!isBtnExist["start"] && !isBtnExist["startAutoRestart"]) break;
+
+            let buttonToClick = "start";
+            if (limit.useAutoRestart) {
+                if (questDetailInfo.questName == null) {
+                    toastLog("现在无法自动选关，故不使用游戏内建自动周回\n（除铃音外活动副本暂不能自动选关）");
+                    buttonToClick = "start";
+                } else if (!isBtnExist["startAutoRestart"]) {
+                    toastLog("自动续战按钮没有出现，只能点开始按钮");
+                    buttonToClick = "start";
+                } else {
+                    log("使用游戏内建自动周回");
+                    buttonToClick = "startAutoRestart";
+                }
+            }
+            screenutilClick(clickSets[buttonToClick]);
+            sleep(1000);
         }
         log("进入战斗")
         //---------战斗------------------
@@ -2429,8 +2464,7 @@ function autoMainver2() {
     //Android 8.1或以下检测刘海屏比较麻烦
     if (!isCutoutDetectionDone()) return;
 
-    //设置AP嗑药总数限制，
-    //记录AP药剩余
+    //设置AP嗑药总数限制
     let drugNumLimit = {
         apDrug50: parseInt(limit.apDrug50Num) >= 0 ? parseInt(limit.apDrug50Num) : 0,
         apDrugFull: parseInt(limit.apDrugFullNum) >= 0 ? parseInt(limit.apDrugFullNum) : 0,
@@ -3954,7 +3988,7 @@ function jingMain() {
             screenutilClick(clickSets.mirrorsStartBtn);
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.BPAutoRefill && usedBPDrugNum < limit.bpdrugnum) {
+                if (limit.bpDrug && usedBPDrugNum < limit.bpDrugNum) {
                     while (!id("bpTextWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)

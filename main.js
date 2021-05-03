@@ -23,17 +23,17 @@ ui.layout(
                     <View h="5" />
                     <linear>
                         <checkbox id="apDrug50" text="AP回复药50（绿药）" layout_weight="1" />
-                        <input maxLength="3" id="apDrug50Num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <input maxLength="3" id="apDrug50Num" hint="设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="apDrugFull" text="AP回复药（红药）" layout_weight="1" />
-                        <input maxLength="3" id="apDrugFullNum" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <input maxLength="3" id="apDrugFullNum" hint="设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="apMoney" text="魔法石" layout_weight="1" />
-                        <input maxLength="3" id="apMoneyNum" hint="可设置次数(是次数,不是个数!每次碎5钻)" text="" textSize="12" inputType="number|none" />
+                        <input maxLength="3" id="apMoneyNum" hint="设置次数(是次数,不是个数!每次碎5钻)" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
@@ -41,8 +41,8 @@ ui.layout(
                     </linear>
                     <View h="5" />
                     <linear>
-                        <checkbox id="BPAutoRefill" text="BP回复药（蓝药）" layout_weight="1" />
-                        <input maxLength="3" id="bpdrugnum" hint="可设置次数" text="" textSize="12" inputType="number|none" />
+                        <checkbox id="bpDrug" text="BP回复药（蓝药）" layout_weight="1" />
+                        <input maxLength="3" id="bpDrugNum" hint="设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
@@ -51,11 +51,11 @@ ui.layout(
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC" />
-                    <text textColor="#666666" text="不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用其他" />
+                    <text textColor="#666666" text="不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用路人。注意：没有NPC时会把第一个助战当作NPC来点击" />
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能" />
-                    <text textColor="#666666" text="注意！活动副本(包括星期狗粮)请勿启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持活动副本自动选关" />
+                    <text textColor="#666666" text="注意！部分活动副本(包括星期狗粮，但不包括铃音)不能启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持部分活动副本自动选关" />
                 </vertical>
                 {/*
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
@@ -148,6 +148,54 @@ ui.emitter.on("resume", () => {
     ui.autoService.checked = auto.service != null;
 });
 
+var drugTypes = {
+    apDrug50: "AP回复药50（绿药）",
+    apDrugFull: "AP回复药（红药）",
+    apMoney: "魔法石",
+    bpDrug: "BP回复药（蓝药）"
+};
+//监控嗑药复选框，不勾选时嗑药数量输入框不能输入
+ui["apDrug50"].setOnCheckedChangeListener(function (widget, checked) {
+    if (checked) {
+        ui["apDrug50Num"].setEnabled(true);
+        ui["apDrug50Num"].setText("1");
+    } else {
+        ui["apDrug50Num"].setText("");
+        ui["apDrug50Num"].setEnabled(false);
+    }
+});
+ui["apDrugFull"].setOnCheckedChangeListener(function (widget, checked) {
+    if (checked) {
+        ui["apDrugFullNum"].setEnabled(true);
+        ui["apDrugFullNum"].setText("1");
+    } else {
+        ui["apDrugFullNum"].setText("");
+        ui["apDrugFullNum"].setEnabled(false);
+    }
+});
+ui["apMoney"].setOnCheckedChangeListener(function (widget, checked) {
+    if (checked) {
+        ui["apMoneyNum"].setEnabled(true);
+        ui["apMoneyNum"].setText("1");
+    } else {
+        ui["apMoneyNum"].setText("");
+        ui["apMoneyNum"].setEnabled(false);
+    }
+});
+ui["bpDrug"].setOnCheckedChangeListener(function (widget, checked) {
+    if (checked) {
+        ui["bpDrugNum"].setEnabled(true);
+        ui["bpDrugNum"].setText("1");
+    } else {
+        ui["bpDrugNum"].setText("");
+        ui["bpDrugNum"].setEnabled(false);
+    }
+});
+//嗑药设置不会被长久保存，所以每次启动时嗑药复选框都是没勾选的状态，嗑药数量输入框也应该是禁用状态
+for (let type in drugTypes) {
+    ui[type+"Num"].setEnabled(false);
+}
+
 //-----------------自定义逻辑-------------------------------------------
 var floatUI = require('floatUI.js');
 floatUI.main()
@@ -155,7 +203,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = [/*"shuix", "shuiy"*/]
-const paramsNotInitList = ["apDrug50", "apDrugFull", "apMoney", "isStable", "justNPC", "useAutoRestart", "BPAutoRefill"]
+const paramsNotInitList = ["apDrug50", "apDrugFull", "apMoney", "isStable", "justNPC", "useAutoRestart", "bpDrug"]
 var paramsMap = {}
 
 
@@ -239,7 +287,7 @@ paramsMap["version"] = version
 paramsMap["apDrug50Num"] = ""
 paramsMap["apDrugFullNum"] = ""
 paramsMap["apMoneyNum"] = ""
-paramsMap["bpdrugnum"] = ""
+paramsMap["bpDrugNum"] = ""
 
 //同步值
 floatUI.adjust(paramsMap)
@@ -272,10 +320,11 @@ ui.start.click(() => {
         paramsMap[paramsNotInitList[i]] = ui[paramsNotInitList[i]].isChecked();
     }
     paramsMap["version"] = version
+
     paramsMap["apDrug50Num"] = ui["apDrug50Num"].getText()+""
     paramsMap["apDrugFullNum"] = ui["apDrugFullNum"].getText()+""
     paramsMap["apMoneyNum"] = ui["apMoneyNum"].getText()+""
-    paramsMap["bpdrugnum"] = ui["bpdrugnum"].getText()+""
+    paramsMap["bpDrugNum"] = ui["bpDrugNum"].getText()+""
     floatUI.adjust(paramsMap)
     toastLog("设置已保存")
 });
