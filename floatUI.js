@@ -364,6 +364,59 @@ function findListenPort() {
     log("找不到可用监听端口");
     throw "cannotFindAvailablePort"
 }
+
+//每次更新图片，就把旧图片回收
+var imgRecycleMap = {};
+function renewImage() {
+    let imageObj = null;
+    let tag = "";
+    let key = "";
+
+    switch (arguments.length) {
+    case 2:
+        tag = "TAG"+arguments[1];
+    case 1:
+        imageObj = arguments[0];
+        break;
+    default:
+        throw "renewImageIncorrectArgc"
+    }
+
+    try { throw new Error(""); } catch (e) {
+        Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
+        let splitted = e.stack.toString().split("\n");
+        for (let i=0; i<splitted.length; i++) {
+            if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
+                //含有行号，且不是renewImage
+                key += splitted[i];
+            }
+        }
+    }
+
+    if (key == null || key == "") throw "renewImageNullKey";
+
+    key += tag;
+
+    if (imgRecycleMap[key] != null) {
+        try {imgRecycleMap[key].recycle();} catch (e) {log("renewImage", e)};
+        imgRecycleMap[key] = null;
+    }
+
+    imgRecycleMap[key] = imageObj;
+
+    return imageObj;
+}
+//回收所有图片
+function recycleAllImages() {
+    for (let i in imgRecycleMap) {
+        if (imgRecycleMap[i] != null) {
+            renewImage(null);
+            log("recycleAllImages: recycled image used at:")
+            log(i);
+        }
+    }
+}
+
 function compatCaptureScreen() {
     if (limit.useScreencapShellCmd) {
         //使用shell命令 screencap 截图
@@ -393,7 +446,7 @@ function compatCaptureScreen() {
         }
         screencapShellCmdLock.unlock();
         if (screenshot == null) log("截图失败");
-        return screenshot;
+        return renewImage(screenshot); //回收旧图片
     } else {
         //使用AutoJS默认提供的录屏API截图
         return captureScreen.apply(this, arguments);
@@ -1239,7 +1292,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.22',
+    version: '2.4.23',
     apDrug50Num: '',
     apDrugFullNum: '',
     apMoneyNum: '',
@@ -1771,12 +1824,10 @@ function isSkipButtonCovered() {
     for (let i = 0; i < buttons.length; i++) {
         var converted = convertCoords(buttons[i].coords);
         if (!images.detectsColor(screenshot, buttons[i].color, converted.x, converted.y, threshold, "diff")) {
-            screenshot.recycle();
             log("看不清SKIP按钮，可能被遮挡了");
             return true;
         }
     }
-    screenshot.recycle();
     log("可以看到SKIP按钮");
     return false;
 }
@@ -1797,14 +1848,12 @@ function getMainMenuStatus() {
             log("主菜单处于打开状态");
             result.covered = false;
             result.open = true;
-            screenshot.recycle();
         } else {
             converted = convertCoords(knownPx.mainMenuClosed.coords);
             if (images.detectsColor(screenshot, knownPx.mainMenuClosed.color, converted.x, converted.y, threshold, "diff")) {
                 log("主菜单处于关闭状态");
                 result.covered = false;
                 result.open = false;
-                screenshot.recycle();
             } else {
                 log("看不清主菜单是否打开，可能被遮挡了");
                 result.covered = true;
@@ -2712,7 +2761,7 @@ function getStandPointArea(whichSide, rowNum, columnNum, part) {
 //截取指定站位所需部分的图像
 function getStandPointImg(screenshot, whichSide, rowNum, columnNum, part) {
     let area = getStandPointArea(whichSide, rowNum, columnNum, part);
-    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
 }
 
 //识别指定站位的属性
@@ -2728,8 +2777,8 @@ function getStandPointAttrib(screenshot, whichSide, rowNum, columnNum) {
         if (gaussianX % 2 == 0) gaussianX += 1;
         if (gaussianY % 2 == 0) gaussianY += 1;
         let gaussianSize = [gaussianX, gaussianY];
-        imgBlur = images.gaussianBlur(img, gaussianSize);
-        refImgBlur = images.gaussianBlur(refImg, gaussianSize);
+        let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
         similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
         if (similarity > 2.1) {
             log("第", rowNum+1, "行，第", columnNum+1, "列站位【有人】 属性", testAttrib, "MSSIM=", similarity);
@@ -2759,7 +2808,6 @@ function scanBattleField(whichSide)
             whichStandPoint.charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
         }
     }
-    screenshot.recycle();
 }
 
 
@@ -2930,7 +2978,11 @@ function getDiskArea(diskPos, part) {
 //截取行动盘所需部位的图像
 function getDiskImg(screenshot, diskPos, part) {
     let area = getDiskArea(diskPos, part);
-    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+}
+function getDiskImgWithTag(screenshot, diskPos, part, tag) {
+    let area = getDiskArea(diskPos, part);
+    return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)), tag);
 }
 
 //识别ABC盘或属性
@@ -2972,8 +3024,8 @@ function recognizeDisk_(capturedImg, recogWhat, threshold) {
         if (gaussianX % 2 == 0) gaussianX += 1;
         if (gaussianY % 2 == 0) gaussianY += 1;
         let gaussianSize = [gaussianX, gaussianY];
-        let capturedImgBlur = images.gaussianBlur(capturedImg, gaussianSize);
-        let refImgBlur = images.gaussianBlur(refImg, gaussianSize);
+        let capturedImgBlur = renewImage(images.gaussianBlur(capturedImg, gaussianSize));
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
         let similarity = images.getSimilarity(refImgBlur, capturedImgBlur, {"type": "MSSIM"});
         log("与", possibilities[i], "盘的相似度 MSSIM=", similarity);
         if (similarity > maxSimilarity) {
@@ -3090,7 +3142,8 @@ function isDiskDown(screenshot, diskPos) {
 
 //截取盘上的角色头像
 function getDiskCharaImg(screenshot, diskPos) {
-    return getDiskImg(screenshot, diskPos, "charaImg");
+    let tag = ""+diskPos;
+    return getDiskImgWithTag(screenshot, diskPos, "charaImg", tag);
 }
 
 //判断盘是否可以连携
@@ -3103,8 +3156,8 @@ function isDiskConnectableDown(screenshot, diskPos) {
     if (gaussianX % 2 == 0) gaussianX += 1;
     if (gaussianY % 2 == 0) gaussianY += 1;
     let gaussianSize = [gaussianX, gaussianY];
-    let refImgBlur = images.gaussianBlur(refImg, gaussianSize);
-    let imgBlur = images.gaussianBlur(img, gaussianSize);
+    let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
+    let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
     let similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
     let result = {connectable: false, down: false};
     if (similarity > 2.1) {
@@ -3114,7 +3167,7 @@ function isDiskConnectableDown(screenshot, diskPos) {
         return result;
     }
     let refImgBtnDown = knownImgs.connectIndicatorBtnDown;
-    let refImgBtnDownBlur = images.gaussianBlur(refImgBtnDown, gaussianSize);
+    let refImgBtnDownBlur = renewImage(images.gaussianBlur(refImgBtnDown, gaussianSize));
     similarity = images.getSimilarity(refImgBtnDownBlur, imgBlur, {"type": "MSSIM"});
     if (similarity > 2.1) {
         // 这里还无法分辨到底是盘已经按下了，还是因为没有其他人可以连携而灰掉
@@ -3142,8 +3195,8 @@ function areDisksSimilar(screenshot, diskAPos, diskBPos) {
     if (gaussianX % 2 == 0) gaussianX += 1;
     if (gaussianY % 2 == 0) gaussianY += 1;
     let gaussianSize = [gaussianX, gaussianY];
-    let imgABlur = images.gaussianBlur(imgA, gaussianSize);
-    let imgBBlur = images.gaussianBlur(imgB, gaussianSize);
+    let imgABlur = renewImage(images.gaussianBlur(imgA, gaussianSize));
+    let imgBBlur = renewImage(images.gaussianBlur(imgB, gaussianSize));
     let similarity = images.getSimilarity(imgABlur, imgBBlur, {"type": "MSSIM"});
     if (similarity > 2.4) { //有属性克制时的闪光可能会干扰判断，会造成假阴性，实际上是同一个角色，却被误识别为不同的角色
         log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
@@ -3193,7 +3246,6 @@ function scanDisks() {
             }
         }
     }
-    screenshot.recycle();
 
     log("行动盘扫描结果：");
     for (let i=0; i<allActionDisks.length; i++) {
@@ -3431,7 +3483,6 @@ function connectDisk(fromDisk) {
                 let screenshot = compatCaptureScreen();
                 let isConnectableDown = isDiskConnectableDown(screenshot, fromDisk.position);
                 if (isConnectableDown.down) {
-                    screenshot.recycle();
                     log("连携动作完成");
                     fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk); //判断接连携的角色是谁
                     thisStandPoint.charaID = fromDisk.connectedTo;
@@ -3439,7 +3490,6 @@ function connectDisk(fromDisk) {
                     isConnectDone = true;
                     break;
                 } else {
-                    screenshot.recycle();
                     log("连携动作失败，可能是因为连携到了自己身上");
                     //以后也许可以改成根据按下连携盘后地板是否发亮来排除自己
                 }
@@ -3477,7 +3527,6 @@ function clickDisk(disk) {
                 disk.down = false;
             }
         }
-        screenshot.recycle();
         if (disk.down) break;
     }
     if (!disk.down) {
@@ -3526,7 +3575,7 @@ function getFirstSelectedConnectedDiskArea() {
 //截取行动盘所需部位的图像
 function getFirstSelectedConnectedDiskImg(screenshot) {
     var area = getFirstSelectedConnectedDiskArea();
-    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
 }
 
 //返回接到连携的角色
@@ -3540,14 +3589,14 @@ function getConnectAcceptorCharaID(fromDisk) {
     if (gaussianX % 2 == 0) gaussianX += 1;
     if (gaussianY % 2 == 0) gaussianY += 1;
     let gaussianSize = [gaussianX, gaussianY];
-    let imgABlur = images.gaussianBlur(imgA, gaussianSize);
+    let imgABlur = renewImage(images.gaussianBlur(imgA, gaussianSize));
 
     let max = 0;
     let maxSimilarity = -1.0;
     for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
         let imgB = getDiskImg(screenshot, diskPos, "charaImg");
-        let imgBShrunk = images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]);
-        let imgBShrunkBlur = images.gaussianBlur(imgBShrunk, gaussianSize);
+        let imgBShrunk = renewImage(images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]));
+        let imgBShrunkBlur = renewImage(images.gaussianBlur(imgBShrunk, gaussianSize));
         let similarity = images.getSimilarity(imgABlur, imgBShrunkBlur, {"type": "MSSIM"});
         log("比对第", diskPos+1, "号盘与屏幕上方的第一个盘的连携接受者 MSSIM=", similarity);
         if (similarity > maxSimilarity) {
@@ -3555,7 +3604,6 @@ function getConnectAcceptorCharaID(fromDisk) {
             max = diskPos;
         }
     }
-    screenshot.recycle();
     log("比对结束，与第", max+1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
     if (allActionDisks[max].charaID == fromDisk.charaID) {
         log("识图比对结果有误，和连携发出角色相同");
@@ -3580,14 +3628,12 @@ function waitForOurTurn() {
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
             result = false;
-            screenshot.recycle();
             break;
         }
 
         //如果有技能可用，会先闪过我方行动盘，然后闪过技能面板，最后回到显示我方行动盘
         //所以，必须是连续多次看到我方行动盘，这样才能排除还在闪烁式切换界面的情况
         let img = getDiskImg(screenshot, 0, "action");
-        screenshot.recycle();
         if (img != null) {
             log("已截取第一个盘的动作图片");
         } else {
@@ -3600,7 +3646,6 @@ function waitForOurTurn() {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             diskAppeared = false;
         }
-        img.recycle();
         if (diskAppeared) {
             log("出现我方行动盘");
             diskAppearedCount++;
@@ -3662,7 +3707,7 @@ function getMirrorsWinLoseCoords(winOrLose, corner) {
 }
 function getMirrorsWinLoseImg(screenshot, winOrLose) {
     let area = getMirrorsWinLoseArea(winOrLose);
-    return images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area));
+    return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
 }
 function didWeWinOrLose(screenshot, winOrLose) {
     //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
@@ -3710,7 +3755,6 @@ function clickMirrorsBattleResult() {
             failedCount++;
             failedCount = failedCount % 5;
         }
-        screenshot.recycle();
         log("即将点击屏幕以退出结算界面...");
         screenutilClick(screenCenter);
         sleep(1000);
@@ -3878,6 +3922,9 @@ function mirrorsAutoBattleMain() {
     //        log("done. saved: "+filename);
     //    }
     //}
+
+    //回收所有图片
+    recycleAllImages();
 }
 
 
