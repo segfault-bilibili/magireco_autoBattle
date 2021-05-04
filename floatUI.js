@@ -1301,7 +1301,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.24'
+    version: '2.4.25'
 }
 var clickSets = {
     ap: {
@@ -1515,38 +1515,13 @@ if (scr.ratio.x == known.ratio.x && scr.ratio.y == known.ratio.y) {
   }
 }
 
-//隐藏或显示状态栏和虚拟导航键，换一种方式获取刘海屏信息
-//https://stackoverflow.com/questions/21724420/how-to-hide-navigation-bar-permanently-in-android-activity
-function setFullScreenMode(isFullScreen) {
-    log("setFullScreenMode", isFullScreen);
-    let uiFlagMap = {
-        SYSTEM_UI_FLAG_LAYOUT_STABLE: 0x00000100,
-        SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: 0x00000200,
-        SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: 0x00000400,
-        SYSTEM_UI_FLAG_HIDE_NAVIGATION: 0x00000002,
-        SYSTEM_UI_FLAG_FULLSCREEN: 0x00000004,
-        SYSTEM_UI_FLAG_IMMERSIVE: 0x00000800,
-        SYSTEM_UI_FLAG_IMMERSIVE_STICKY: 0x00001000
-    };
-    let uiFlags = 0x00000000;
-    for (let i in uiFlagMap) {
-        uiFlags |= uiFlagMap[i];
-    };
-
-    if(device.sdkInt >= 19 || device.sdkInt < 28) {//Android 4.4及以上，8.1及以下
-        let uiOptions = activity.getWindow().getDecorView().getSystemUiVisibility();
-        if (isFullScreen) {
-            uiOptions |= uiFlags;
-        } else {
-            uiOptions &= ~uiFlags;
-        }
-        uiOptions &= ~uiFlagMap.SYSTEM_UI_FLAG_LAYOUT_STABLE; //好像设置了这个就不能排除虚拟导航键的高度，所以就不设置
-        activity.getWindow().getDecorView().setSystemUiVisibility(uiOptions);
-    }
-}
-
 //获取刘海屏参数
 function detectCutoutParams() {
+    if (cutoutParamsStr != null && cutoutParamsStr != "") {
+        log("已经检测过刘海屏参数", cutoutParamsStr);
+        return cutoutParamsStr;
+    }
+
     scr.cutout.left = 0;
     scr.cutout.top = 0;
     scr.cutout.right = scr.res.width - 1;
@@ -1554,31 +1529,63 @@ function detectCutoutParams() {
 
     let windowInsets = null;
     let displayCutout = null;
-    try { windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();} catch (e) { log(e); }
 
-    if (windowInsets != null) {
-        if (device.sdkInt >= 28) {//Android 9
-            try { displayCutout = windowInsets.getDisplayCutout(); } catch (e) { log(e); }
+    windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
+    log("windowInsets", windowInsets);
+
+    if (windowInsets == null) return null;
+
+    if (device.sdkInt >= 28) {//只有Android 9及以上才有刘海屏API
+        displayCutout = windowInsets.getDisplayCutout();
+        log("displayCutout", displayCutout);
+
+        if (displayCutout == null) return null;
+
+        scr.cutout.insets.left   = displayCutout.getSafeInsetLeft();
+        scr.cutout.insets.top    = displayCutout.getSafeInsetTop();
+        scr.cutout.insets.right  = displayCutout.getSafeInsetRight();
+        scr.cutout.insets.bottom = displayCutout.getSafeInsetBottom();
+        scr.cutout.left   = scr.cutout.insets.left;
+        scr.cutout.top    = scr.cutout.insets.top;
+        scr.cutout.right  = device.width - scr.cutout.insets.right - 1;
+        scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
+    } else {
+        //mRect只能获取到刘海宽度信息
+        let mRect = new android.graphics.Rect();
+        activity.getWindowManager().getDefaultDisplay().getRectSize(mRect);
+        mRect.right -= 1;
+        mRect.bottom -= 1;
+        log("mRect (right/bottom -1)", mRect);
+
+        if (!waitForGameForeground()) return null;
+
+        //mRect里没有左刘海偏移量，只能变相获取
+        let uiObjBounds = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce().bounds();
+        log("uiObjBounds", uiObjBounds);
+        let uiObjLeft = uiObjBounds.left;
+        let uiObjTop = uiObjBounds.top;
+        if (device.height > device.width) {
+            log("device.height > device.width");
+            let temp = uiObjLeft;
+            uiObjLeft = uiObjTop;
+            uiObjTop = temp;
         }
-        log("windowInsets", windowInsets);
-        if (displayCutout != null) {
-            log("displayCutout", displayCutout);
-            try { scr.cutout.insets.left   = displayCutout.getSafeInsetLeft(); } catch (e) { log(e); }
-            try { scr.cutout.insets.top    = displayCutout.getSafeInsetTop(); } catch (e) { log(e); }
-            try { scr.cutout.insets.right  = displayCutout.getSafeInsetRight() } catch (e) { log(e); }
-            try { scr.cutout.insets.bottom = displayCutout.getSafeInsetBottom() } catch (e) { log(e); }
-        } else {
-            try { scr.cutout.insets.left   = windowInsets.getSystemWindowInsetLeft(); } catch (e) { log(e); }
-            try { scr.cutout.insets.top    = windowInsets.getSystemWindowInsetTop(); } catch (e) { log(e); }
-            try { scr.cutout.insets.right  = windowInsets.getSystemWindowInsetRight(); } catch (e) { log(e); }
-            try { scr.cutout.insets.bottom = windowInsets.getSystemWindowInsetBottom(); } catch (e) { log(e); }
-        }
+
+        mRect.left += uiObjLeft;
+        mRect.top += uiObjTop;
+        mRect.right += uiObjLeft;
+        mRect.bottom += uiObjTop;
+        log("mRect (right/bottom -1; left/top/right/bottom += uiObjLeft/Top)", mRect);
+
+        scr.cutout.left   =  + mRect.left;
+        scr.cutout.top    =  + mRect.top; //可能竖屏启动，也可能横屏启动
+        scr.cutout.right  =  + mRect.right;
+        scr.cutout.bottom =  + mRect.bottom;
+        scr.cutout.insets.left   = scr.cutout.left;
+        scr.cutout.insets.top    = scr.cutout.top;
+        scr.cutout.insets.right  = device.width - scr.cutout.right - 1;
+        scr.cutout.insets.bottom = device.height - scr.cutout.bottom - 1;
     }
-
-    scr.cutout.left = scr.cutout.insets.left;
-    scr.cutout.top = scr.cutout.insets.top;
-    scr.cutout.right = device.width - scr.cutout.insets.right - 1;
-    scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
 
     //如果脚本在竖屏模式启动，获取到的数据也是竖屏的
     //魔纪只能横屏显示，所以换算成横屏的
@@ -1617,51 +1624,10 @@ function detectCutoutParams() {
     return cutoutParamsStr;
 }
 
-var COPSLock = threads.lock();
-var cutoutParamsStr = detectCutoutParams();
-
-var cutoutDetectThread = null;
-
-if (device.sdkInt < 28) { //Android 9以下没有刘海屏API
-    setFullScreenMode(true);
-    cutoutDetectThread = threads.start(function () {
-        toastLog("正在检测刘海屏参数，请稍候");
-        let lastOutoutParamsStr = cutoutParamsStr;
-        let changed = false;
-        let unchangedCount = 0;
-        for (let i=0; i<30; i++) {
-            ui.run(function (){
-                COPSLock.lock();
-                cutoutParamsStr = detectCutoutParams();
-                COPSLock.unlock();
-            });
-            sleep(500);
-            COPSLock.lock();
-            if (cutoutParamsStr != lastOutoutParamsStr) {
-                changed = true;
-                unchangedCount = 0;
-                lastOutoutParamsStr = cutoutParamsStr;
-            } else {
-                unchangedCount++;
-            }
-            COPSLock.unlock();
-            if (changed && unchangedCount >= 4) break;
-        } // for end
-        ui.run(function () {setFullScreenMode(false)});
-        toastLog("刘海屏参数检测完毕！");
-    }); // threads.start end
-}
-
-function isCutoutDetectionDone() {
-    if (device.sdkInt >= 28) return true;
-    if (cutoutDetectThread != null) {
-        if (cutoutDetectThread.isAlive()) {
-            toastLog("正在检测刘海屏参数，请稍后再试");
-            return false;
-        }
-    }
-    return true;
-}
+var cutoutParamsStr = null;
+//Android 8.1或以下只能在游戏在前台时通过TextEdit控件得知左刘海宽度
+//所以只有Android 9或以上才能不管游戏有没有在前台运行直接进行刘海参数检测
+if (device.sdkInt >= 28) cutoutParamsStr = detectCutoutParams();
 
 //换算坐标 1920x1080=>当前屏幕分辨率
 function convertCoords(d)
@@ -2373,7 +2339,7 @@ function autoMain() {
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (!isCutoutDetectionDone()) return;
+    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
 
     //设置AP嗑药总数限制
     let drugNumLimit = {
@@ -2467,7 +2433,7 @@ function autoMainver2() {
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (!isCutoutDetectionDone()) return;
+    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
 
     //设置AP嗑药总数限制
     let drugNumLimit = {
@@ -3850,7 +3816,7 @@ function mirrorsSimpleAutoBattleMain() {
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (!isCutoutDetectionDone()) return;
+    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
@@ -3884,7 +3850,7 @@ function mirrorsAutoBattleMain() {
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (!isCutoutDetectionDone()) return;
+    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
@@ -3978,7 +3944,7 @@ function jingMain() {
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (!isCutoutDetectionDone()) return;
+    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
 
     let usedBPDrugNum = 0;
 
