@@ -370,9 +370,12 @@ var imgRecycleMap = {};
 function renewImage() {
     let imageObj = null;
     let tag = "";
+    let tagOnly = false;
     let key = "";
 
     switch (arguments.length) {
+    case 3:
+        tagOnly = arguments[2];
     case 2:
         tag = "TAG"+arguments[1];
     case 1:
@@ -382,18 +385,19 @@ function renewImage() {
         throw "renewImageIncorrectArgc"
     }
 
-    try { throw new Error(""); } catch (e) {
-        Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
-        let splitted = e.stack.toString().split("\n");
-        for (let i=0; i<splitted.length; i++) {
-            if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
-                //含有行号，且不是renewImage
-                key += splitted[i];
+    if (!tagOnly) {
+        try { throw new Error(""); } catch (e) {
+            Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
+            let splitted = e.stack.toString().split("\n");
+            for (let i=0; i<splitted.length; i++) {
+                if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
+                    //含有行号，且不是renewImage
+                    key += splitted[i];
+                }
             }
         }
+        if (key == null || key == "") throw "renewImageNullKey";
     }
-
-    if (key == null || key == "") throw "renewImageNullKey";
 
     key += tag;
 
@@ -446,7 +450,8 @@ function compatCaptureScreen() {
         }
         screencapShellCmdLock.unlock();
         if (screenshot == null) log("截图失败");
-        return renewImage(screenshot); //回收旧图片
+        let tagOnly = true;
+        return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
     } else {
         //使用AutoJS默认提供的录屏API截图
         return captureScreen.apply(this, arguments);
@@ -1296,7 +1301,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.23'
+    version: '2.4.24'
 }
 var clickSets = {
     ap: {

@@ -19,7 +19,7 @@ fi
 
 sed -i "s/\"versionName\": \"[^\"]*\"/\"versionName\": \"${NEWVERSION}\"/g" project.json
 sed -i "s/var version = \"[^\"]*\"/var version = \"${NEWVERSION}\"/g" main.js
-sed -i "s/ version: '[^']*',/ version: '${NEWVERSION}',/g" floatUI.js
+sed -i "s/ version: '[^']*'/ version: '${NEWVERSION}'/g" floatUI.js
 
 for FILE in project.json main.js floatUI.js; do
     sed -i 's/\r$//g' "${FILE}"
