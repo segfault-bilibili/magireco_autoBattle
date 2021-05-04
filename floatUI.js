@@ -4097,8 +4097,9 @@ function getMirrorsAverageScore(totalScore) {
 function mirrorsPickWeakestOpponent() {
     let lowestTotalScore = Number.MAX_SAFE_INTEGER;
     let lowestAvgScore = Number.MAX_SAFE_INTEGER;
-    let totalScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
-    let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+    //数组第1个元素（下标0）仅用来占位
+    let totalScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+    let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
     let lowestScorePosition = 3;
 
     while (!id("matchingWrap").findOnce()) sleep(1000); //等待
@@ -4113,20 +4114,20 @@ function mirrorsPickWeakestOpponent() {
     let selfScore = getMirrorsSelfScore();
 
     for (let position=1; position<=3; position++) {
-        totalScore[position-1] = getMirrorsScoreAt(position);
-        if (totalScore[position-1] < lowestTotalScore) {
-            lowestTotalScore = totalScore[position-1];
+        totalScore[position] = getMirrorsScoreAt(position);
+        if (totalScore[position] < lowestTotalScore) {
+            lowestTotalScore = totalScore[position];
             lowestScorePosition = position;
         }
     }
 
     //福利队
     if (lowestTotalScore < selfScore / 5) {
-        log("找到了战力低于我方五分之一的对手", lowestScorePosition, totalScore[lowestScorePosition-1]);
+        log("找到了战力低于我方五分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
             sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
-            if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) > 0) break;
+            if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
         }
         return;
     }
@@ -4136,10 +4137,10 @@ function mirrorsPickWeakestOpponent() {
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             screenutilClick(clickSets["mirrorsOpponent"+position]);
             sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
-            let avgScore[position-1] = getMirrorsAverageScore(totalScore[position-1]);
-            if (avgScore[position-1] > 0) {
-                if (avgScore[position-1] < lowestAvgScore) {
-                    lowestAvgScore = avgScore[position-1];
+            let avgScore[position] = getMirrorsAverageScore(totalScore[position]);
+            if (avgScore[position] > 0) {
+                if (avgScore[position] < lowestAvgScore) {
+                    lowestAvgScore = avgScore[position];
                     lowestScorePosition = position;
                 }
                 break;
@@ -4151,11 +4152,11 @@ function mirrorsPickWeakestOpponent() {
             if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
             screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
             sleep(1000);
-            if (getMirrorsAverageScore(totalScore[position-1]) <= 0) break;
+            if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
         }
     }
 
-    log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition-1], avgScore[lowestScorePosition-1]);
+    log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition], avgScore[lowestScorePosition]);
 
     if (lowestScorePosition == 3) return; //最弱的就是第3个对手
 
@@ -4163,16 +4164,17 @@ function mirrorsPickWeakestOpponent() {
     while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
         screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
         sleep(1000);
-        if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) <= 0) break;
+        if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
     }
 
     //重新打开平均战力最低队伍的队伍信息面板
     while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
         screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
         sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
-        if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) > 0) break;
+        if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
     }
 }
+
 
 function mirrorsCycleMain() {
     if (!verifyFiles(limit.version)) {
