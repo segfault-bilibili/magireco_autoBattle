@@ -96,7 +96,7 @@ ui.layout(
                         <radiogroup id="clickMethod">
                             <text layout_weight="1" size="19" color="#222222" text="模拟屏幕点击/拖动方法：" />
                             <radio id="clickMethod1" text="无障碍服务 （低于Android 7，不可用）"  color="#808080" clickable="false" focused="false" focusable="false" checked="false" visibility="gone"/>
-                            <radio id="clickMethod2" text="无障碍服务 （只有Android 7或更高可用）" checked="true" />
+                            <radio id="clickMethod2" text="无障碍服务 （当前Android版本是7或更高，可用，推荐）" checked="true" />
                             <radio id="clickMethod3" text="shell命令 input tap|swipe（需要root或adb权限）" />
                         </radiogroup>
                     </linear>

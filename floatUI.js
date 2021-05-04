@@ -526,7 +526,6 @@ function forcedOnlineUpdate() {
 function verifyAndUpdate() {
     //这个函数会在脚本启动时被调用
     if (verifyFiles(limit.version)) {
-        resizeKnownImgs(); //放缩参考图像以适配当前屏幕分辨率
         if (limit.useScreencapShellCmd || limit.useInputShellCmd) checkShellPrivilege();
     } else {
         if (verifyHashListFile(limit.version)) {
@@ -988,7 +987,7 @@ floatUI.main = function () {
         if (task) {
             task.interrupt()
         }
-        task = threads.start(jingMain)
+        task = threads.start(mirrorsCycleMain)
         img_down()
     })
 
@@ -1359,12 +1358,12 @@ var clickSets = {
         y: 750,
         pos: "center"
     },
-    yesfocus: {
+    followConfirm: {
         x: 1220,
         y: 860,
         pos: "center"
     },
-    focusclose: {
+    followClose: {
         x: 950,
         y: 820,
         pos: "center"
@@ -1379,22 +1378,22 @@ var clickSets = {
         y: 800,
         pos: "center"
     },
-    bphui: {
+    bpExhaustToBpDrug: {
         x: 1180,
         y: 830,
         pos: "center"
     },
-    bphui2: {
+    bpDrugConfirm: {
         x: 960,
         y: 880,
         pos: "center"
     },
-    bphuiok: {
+    bpDrugRefilledOK: {
         x: 960,
         y: 900,
         pos: "center"
     },
-    bpclose: {
+    bpClose: {
         x: 750,
         y: 830,
         pos: "center"
@@ -1417,6 +1416,26 @@ var clickSets = {
     mirrorsStartBtn: {
         x: 1423,
         y: 900,
+        pos: "center"
+    },
+    mirrorsOpponent1: {
+        x: 1113,
+        y: 303,
+        pos: "center"
+    },
+    mirrorsOpponent2: {
+        x: 1113,
+        y: 585,
+        pos: "center"
+    },
+    mirrorsOpponent3: {
+        x: 1113,
+        y: 866,
+        pos: "center"
+    },
+    mirrorsCloseOpponentInfo: {
+        x: 1858,
+        y: 65,
         pos: "center"
     },
     back: {
@@ -1521,6 +1540,7 @@ function detectCutoutParams() {
         log("已经检测过刘海屏参数", cutoutParamsStr);
         return cutoutParamsStr;
     }
+    if (!ui.isUiThread()) return cutoutParamsStr;
 
     scr.cutout.left = 0;
     scr.cutout.top = 0;
@@ -1533,13 +1553,19 @@ function detectCutoutParams() {
     windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
     log("windowInsets", windowInsets);
 
-    if (windowInsets == null) return null;
+    if (windowInsets == null) {
+        cutoutParamsStr = null;
+        return null;
+    }
 
     if (device.sdkInt >= 28) {//只有Android 9及以上才有刘海屏API
         displayCutout = windowInsets.getDisplayCutout();
         log("displayCutout", displayCutout);
 
-        if (displayCutout == null) return null;
+        if (displayCutout == null) {
+            cutoutParamsStr = null;
+            return null;
+        }
 
         scr.cutout.insets.left   = displayCutout.getSafeInsetLeft();
         scr.cutout.insets.top    = displayCutout.getSafeInsetTop();
@@ -1557,7 +1583,10 @@ function detectCutoutParams() {
         mRect.bottom -= 1;
         log("mRect (right/bottom -1)", mRect);
 
-        if (!waitForGameForeground()) return null;
+        if (!waitForGameForeground()) {
+            cutoutParamsStr = null;
+            return null;
+        }
 
         //mRect里没有左刘海偏移量，只能变相获取
         let uiObjBounds = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce().bounds();
@@ -1609,8 +1638,8 @@ function detectCutoutParams() {
         scr.cutout.bottom = temp;
     }
 
-    let cutoutParamsStr = "["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]"
-    log("刘海屏参数", cutoutParamsStr);
+    let newCutoutParamsStr = "["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]"
+    log("刘海屏参数", newCutoutParamsStr);
 
     //这里认为是先切掉刘海再居中
     //因为：
@@ -1621,77 +1650,102 @@ function detectCutoutParams() {
     scr.cutout.offset.x = scr.cutout.left - (scr.cutout.insets.left + scr.cutout.insets.right) / 2;
     scr.cutout.offset.y = scr.cutout.top - (scr.cutout.insets.top + scr.cutout.insets.bottom) / 2;
 
-    return cutoutParamsStr;
+    cutoutParamsStr = newCutoutParamsStr;
+    resizeKnownImgs();
+    return newCutoutParamsStr;
 }
 
 var cutoutParamsStr = null;
 //Android 8.1或以下只能在游戏在前台时通过TextEdit控件得知左刘海宽度
 //所以只有Android 9或以上才能不管游戏有没有在前台运行直接进行刘海参数检测
-if (device.sdkInt >= 28) cutoutParamsStr = detectCutoutParams();
+if (device.sdkInt >= 28) ui.run(detectCutoutParams);
 
 //换算坐标 1920x1080=>当前屏幕分辨率
-function convertCoords(d)
+function convertCoords()
 {
-  var verboselog = false
-  if (verboselog) log("换算前的坐标: x=", d.x, " y=", d.y, " pos=", d.pos);
-  var actual = {
-    x:   0,
-    y:   0,
-    pos: 0
-  };
-  var pos = d.pos;
-  //输入的X、Y是1920x1080下测得的
-  //想象一个放大过的16:9的参照屏幕，覆盖在当前的真实屏幕上
-  actual.x = d.x * scr.ref.width / known.res.width;
-  actual.y = d.y * scr.ref.height / known.res.height;
-  if (conversion_mode == "simple_scaling") {
-    //简单缩放，参照屏幕完全覆盖真实屏幕，无需进一步处理
-  if (verboselog) log("  换算方法：简单缩放");
-  } else if (conversion_mode == "wider_screen") {
-    //左右黑边，参照屏幕在Y轴方向正好完全覆盖，在X轴方向不能完全覆盖，所以需要右移
-    if (verboselog) log("  换算方法：放缩后跳过左右黑边");
-    actual.x += scr.ref.offset.wider.x;
-  } else if (conversion_mode == "higher_screen") {
-    //最麻烦的方块屏
-    if (verboselog) log("  换算方法：放缩后下移居中和底端控件");
-    if (pos == "top") {
-      //顶端控件无需进一步处理
-      if (verboselog) log("    顶端控件");
-    } else if (pos == "center") {
-      //居中控件，想象一个放大过的16:9的参照屏幕，覆盖在当前这个方块屏的正中央，X轴正好完全覆盖，Y轴只覆盖了中间部分，所以需要下移
-      if (verboselog) log("    居中控件");
-      actual.y += scr.ref.offset.higher.center.y;
-    } else if (pos == "bottom") {
-      //底端控件同理，只是参照屏幕位于底端，需要下移更远
-      if (verboselog) log("    底端控件");
-      actual.y += scr.ref.offset.higher.bottom.y;
-    } else {
-      if (verboselog) log("    未知控件类型");
-      throw "unknown_pos_value";
+    let NoCutout = false;
+    let d = null;
+
+    switch (arguments.length) {
+    case 2:
+        NoCutout = arguments[1];
+    case 1:
+        d = arguments[0];
+        break;
+    default:
+        throw "convertCoordsIncorrectArgc";
     }
-  } else {
-    if (verboselog) log("  未知换算方法");
-    throw "unknown_conversion_mode"
-  }
 
-  //处理刘海屏
-  actual.x += scr.cutout.offset.x;
-  actual.y += scr.cutout.offset.y;
-  if (actual.x <= scr.cutout.left) actual.x = scr.cutout.left;
-  if (actual.y <= scr.cutout.top) actual.y = scr.cutout.top;
-  if (actual.x >= scr.cutout.right) actual.x = scr.cutout.right;
-  if (actual.y >= scr.cutout.bottom) actual.y = scr.cutout.bottom;
+    var verboselog = false
+    if (verboselog) log("换算前的坐标: x=", d.x, " y=", d.y, " pos=", d.pos);
+    var actual = {
+        x:   0,
+        y:   0,
+        pos: 0
+    };
+    var pos = d.pos;
+    //输入的X、Y是1920x1080下测得的
+    //想象一个放大过的16:9的参照屏幕，覆盖在当前的真实屏幕上
+    actual.x = d.x * scr.ref.width / known.res.width;
+    actual.y = d.y * scr.ref.height / known.res.height;
+    if (conversion_mode == "simple_scaling") {
+        //简单缩放，参照屏幕完全覆盖真实屏幕，无需进一步处理
+        if (verboselog) log("  换算方法：简单缩放");
+    } else if (conversion_mode == "wider_screen") {
+        //左右黑边，参照屏幕在Y轴方向正好完全覆盖，在X轴方向不能完全覆盖，所以需要右移
+        if (verboselog) log("  换算方法：放缩后跳过左右黑边");
+        actual.x += scr.ref.offset.wider.x;
+    } else if (conversion_mode == "higher_screen") {
+        //最麻烦的方块屏
+        if (verboselog) log("  换算方法：放缩后下移居中和底端控件");
+        if (pos == "top") {
+            //顶端控件无需进一步处理
+            if (verboselog) log("    顶端控件");
+        } else if (pos == "center") {
+            //居中控件，想象一个放大过的16:9的参照屏幕，覆盖在当前这个方块屏的正中央，X轴正好完全覆盖，Y轴只覆盖了中间部分，所以需要下移
+            if (verboselog) log("    居中控件");
+            actual.y += scr.ref.offset.higher.center.y;
+        } else if (pos == "bottom") {
+            //底端控件同理，只是参照屏幕位于底端，需要下移更远
+            if (verboselog) log("    底端控件");
+            actual.y += scr.ref.offset.higher.bottom.y;
+        } else {
+            if (verboselog) log("    未知控件类型");
+            throw "unknown_pos_value";
+        }
+    } else {
+        if (verboselog) log("  未知换算方法");
+        throw "unknown_conversion_mode"
+    }
 
-  actual.x = parseInt(actual.x);
-  actual.y = parseInt(actual.y);
-  actual.pos = d.pos;
-  if (verboselog) log("换算后的坐标", " x=", actual.x, " y=", actual.y);
-  return actual;
+    if (!NoCutout) {
+        //处理刘海屏
+        actual.x += scr.cutout.offset.x;
+        actual.y += scr.cutout.offset.y;
+        if (actual.x <= scr.cutout.left) actual.x = scr.cutout.left;
+        if (actual.y <= scr.cutout.top) actual.y = scr.cutout.top;
+        if (actual.x >= scr.cutout.right) actual.x = scr.cutout.right;
+        if (actual.y >= scr.cutout.bottom) actual.y = scr.cutout.bottom;
+    }
+
+    actual.x = parseInt(actual.x);
+    actual.y = parseInt(actual.y);
+    actual.pos = d.pos;
+    if (verboselog) log("换算后的坐标", " x=", actual.x, " y=", actual.y);
+    return actual;
 }
 function getConvertedArea(area) {
     let convertedArea = {
         topLeft: convertCoords(area.topLeft),
         bottomRight: convertCoords(area.bottomRight)
+    };
+    return convertedArea;
+}
+function getConvertedAreaNoCutout(area) {
+    let NoCutout = true;
+    let convertedArea = {
+        topLeft: convertCoords(area.topLeft, NoCutout),
+        bottomRight: convertCoords(area.bottomRight, NoCutout)
     };
     return convertedArea;
 }
@@ -2293,12 +2347,12 @@ function clickResult() {
         if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
             while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.yesfocus)
+                screenutilClick(clickSets.followConfirm)
                 sleep(3000)
             }
             while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.focusclose)
+                screenutilClick(clickSets.followClose)
                 sleep(3000)
             }
         }
@@ -2339,7 +2393,7 @@ function autoMain() {
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
+    if (device.sdkInt < 28) ui.run(detectCutoutParams);
 
     //设置AP嗑药总数限制
     let drugNumLimit = {
@@ -2433,7 +2487,7 @@ function autoMainver2() {
     if (limit.skipStoryUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
+    if (device.sdkInt < 28) ui.run(detectCutoutParams);
 
     //设置AP嗑药总数限制
     let drugNumLimit = {
@@ -2508,12 +2562,12 @@ function autoMainver2() {
             if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                 while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
                     sleep(1000)
-                    screenutilClick(clickSets.yesfocus)
+                    screenutilClick(clickSets.followConfirm)
                     sleep(3000)
                 }
                 while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
                     sleep(1000)
-                    screenutilClick(clickSets.focusclose)
+                    screenutilClick(clickSets.followClose)
                     sleep(3000)
                 }
             }
@@ -3599,7 +3653,7 @@ function getConnectAcceptorCharaID(fromDisk) {
     let max = 0;
     let maxSimilarity = -1.0;
     for (let diskPos = 0; diskPos < allActionDisks.length; diskPos++) {
-        let imgB = getDiskImg(screenshot, diskPos, "charaImg");
+        let imgB = getDiskImg(screenshot, diskPos, "charaImg"); //这里还没考虑侧边刘海屏可能切掉画面的问题，不过除非侧边特别宽否则应该不会有影响
         let imgBShrunk = renewImage(images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]));
         let imgBShrunkBlur = renewImage(images.gaussianBlur(imgBShrunk, gaussianSize));
         let similarity = images.getSimilarity(imgABlur, imgBShrunkBlur, {"type": "MSSIM"});
@@ -3770,6 +3824,7 @@ function clickMirrorsBattleResult() {
 //放缩参考图像以适配当前屏幕分辨率
 var resizeKnownImgsDone = false;
 function resizeKnownImgs() {
+    if (!ui.isUiThread()) return;
     if (resizeKnownImgsDone) return;
     let hasError = false;
     for (let imgName in knownImgs) {
@@ -3787,7 +3842,7 @@ function resizeKnownImgs() {
             if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
         }
         if (knownArea != null) {
-            let convertedArea = getConvertedArea(knownArea);
+            let convertedArea = getConvertedAreaNoCutout(knownArea); //刘海屏的坐标转换会把左上角的0,0加上刘海宽度，用在缩放图片这里会出错，所以要避免这个问题
             log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
             if (knownImgs[imgName] == null) {
                 hasError = true;
@@ -3795,6 +3850,7 @@ function resizeKnownImgs() {
                 break;
             }
             let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
+            knownImgs[imgName].recycle();
             knownImgs[imgName] = resizedImg;
         } else {
             hasError = true;
@@ -3804,6 +3860,7 @@ function resizeKnownImgs() {
     }
     resizeKnownImgsDone = !hasError;
 }
+
 
 
 function mirrorsSimpleAutoBattleMain() {
@@ -3816,7 +3873,7 @@ function mirrorsSimpleAutoBattleMain() {
     if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
+    if (device.sdkInt < 28) ui.run(detectCutoutParams);
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
@@ -3850,7 +3907,7 @@ function mirrorsAutoBattleMain() {
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
+    if (device.sdkInt < 28) ui.run(detectCutoutParams);
 
     //利用截屏识图进行稍复杂的自动战斗（比如连携）
     //开始一次镜界自动战斗
@@ -3911,7 +3968,12 @@ function mirrorsAutoBattleMain() {
 
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
         for (let i=clickedDisksCount; i<3; i++) {
-            clickDisk(getDiskByPriority(allActionDisks, ordinalWord[i]));
+            let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
+            if (diskToClick.connectable) {
+                connectDisk(diskToClick); //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
+            } else {
+                clickDisk(diskToClick);
+            }
         }
     }
 
@@ -3933,7 +3995,186 @@ function mirrorsAutoBattleMain() {
 }
 
 
-function jingMain() {
+
+var knownFirstMirrorsOpponentScoreCoords = {
+    //[1246,375][1357,425]
+    //[1246,656][1357,706]
+    //[1246,937][1357,988]
+    topLeft: {x: 1236, y: 370, pos: "center"},
+    bottomRight: {x: 1400, y: 430, pos: "center"},
+    distance: 281
+}
+//在匹配到的三个对手中，获取指定的其中一个（1/2/3）的战力值
+function getMirrorsScoreAt(position) {
+    let distance = knownFirstMirrorsOpponentScoreCoords.distance * (position - 1);
+    let knownArea = {
+        topLeft: {x: 0, y: distance, pos: "center"},
+        bottomRight: {x: 0, y: distance, pos: "center"}
+    }
+    for (point in knownArea) {
+        for (key in knownArea.topLeft) {
+            knownArea[point][key] += knownFirstMirrorsOpponentScoreCoords[point][key];
+        }
+    }
+    let convertedArea = getConvertedArea(knownArea);
+    let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+    for (let i=0; i<uiObjArr.length; i++) {
+        let uiObj = uiObjArr[i];
+        let score = uiObjParseInt(uiObj);
+        log("getMirrorsScoreAt position", position, "score", score);
+        return score;
+    }
+    return 0;
+}
+
+var knownMirrorsSelfScoreCoords = {
+    //[0,804][712,856]
+    topLeft: {x: 0, y: 799, pos: "bottom"},
+    bottomRight: {x: 717, y: 861, pos: "bottom"}
+}
+//获取自己的战力值
+function getMirrorsSelfScore() {
+    let convertedArea = getConvertedArea(knownMirrorsSelfScoreCoords);
+    let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+    for (let i=0; i<uiObjArr.length; i++) {
+        let uiObj = uiObjArr[i];
+        let score = uiObjParseInt(uiObj);
+        if (score != null) {
+            log("getMirrorsSelfScore score", score);
+            return score;
+        }
+    }
+    return 0;
+}
+
+var knownFirstMirrorsLvCoords = {
+    //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
+    //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
+    topLeft: {x: 227, y: 223, pos: "center"},
+    bottomRight: {x: 306, y: 265, pos: "center"},
+    distancex: 226,
+    distancey: 226
+}
+//点开某个对手后会显示队伍信息。获取显示出来的角色等级
+function getMirrorsLvAt(rowNum, columnNum) {
+    let distancex = knownFirstMirrorsLvCoords.distancex * (columnNum - 1);
+    let distancey = knownFirstMirrorsLvCoords.distancey * (rowNum - 1);
+    let knownArea = {
+        topLeft: {x: distancex, y: distancey, pos: "center"},
+        bottomRight: {x: distancex, y: distancey, pos: "center"}
+    }
+    for (point in knownArea) {
+        for (key in knownArea.topLeft) {
+            knownArea[point][key] += knownFirstMirrorsLvCoords[point][key];
+        }
+    }
+    let convertedArea = getConvertedArea(knownArea);
+    let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+    for (let i=0; i<uiObjArr.length; i++) {
+        let uiObj = uiObjArr[i];
+        let lv = uiObjParseInt(uiObj);
+        if (lv != null) {
+            log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
+            return lv;
+        }
+    }
+    return 0;
+}
+function getMirrorsAverageScore(totalScore) {
+    let totalLv = 0;
+    for (let rowNum=1; rowNum<=3; rowNum++) {
+        for (let columnNum=1; columnNum<=3; columnNum++) {
+            totalLv += getMirrorsLvAt(rowNum, columnNum);
+        }
+    }
+    log("getMirrorsAverageScore totalLv", totalLv);
+    if (totalLv == 0) return 0; //对手队伍信息还没出现
+    let avgScore = totalScore / totalLv * 100;
+    log("getMirrorsAverageScore avgScore", avgScore);
+    return avgScore; //按照满级100估算人均战力
+}
+
+function mirrorsPickWeakestOpponent() {
+    let lowestTotalScore = Number.MAX_SAFE_INTEGER;
+    let lowestAvgScore = Number.MAX_SAFE_INTEGER;
+    let totalScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+    let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+    let lowestScorePosition = 3;
+
+    while (!id("matchingWrap").findOnce()) sleep(1000); //等待
+
+    //如果已经打开了信息面板，先关掉
+    while (id("matchingWrap").findOnce()) {
+        screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+        sleep(1000);
+        if (getMirrorsAverageScore(99999999) <= 0) break;
+    }
+
+    let selfScore = getMirrorsSelfScore();
+
+    for (let position=1; position<=3; position++) {
+        totalScore[position-1] = getMirrorsScoreAt(position);
+        if (totalScore[position-1] < lowestTotalScore) {
+            lowestTotalScore = totalScore[position-1];
+            lowestScorePosition = position;
+        }
+    }
+
+    //福利队
+    if (lowestTotalScore < selfScore / 5) {
+        log("找到了战力低于我方五分之一的对手", lowestScorePosition, totalScore[lowestScorePosition-1]);
+        while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
+            sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
+            if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) > 0) break;
+        }
+        return;
+    }
+
+    //找平均战力最低的
+    for (let position=1; position<=3; position++) {
+        while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            screenutilClick(clickSets["mirrorsOpponent"+position]);
+            sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
+            let avgScore[position-1] = getMirrorsAverageScore(totalScore[position-1]);
+            if (avgScore[position-1] > 0) {
+                if (avgScore[position-1] < lowestAvgScore) {
+                    lowestAvgScore = avgScore[position-1];
+                    lowestScorePosition = position;
+                }
+                break;
+            }
+        }
+
+        //关闭信息面板
+        while (id("matchingWrap").findOnce()) {
+            if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
+            screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+            sleep(1000);
+            if (getMirrorsAverageScore(totalScore[position-1]) <= 0) break;
+        }
+    }
+
+    log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition-1], avgScore[lowestScorePosition-1]);
+
+    if (lowestScorePosition == 3) return; //最弱的就是第3个对手
+
+    //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
+    while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+        screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+        sleep(1000);
+        if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) <= 0) break;
+    }
+
+    //重新打开平均战力最低队伍的队伍信息面板
+    while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+        screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
+        sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
+        if (getMirrorsAverageScore(totalScore[lowestScorePosition-1]) > 0) break;
+    }
+}
+
+function mirrorsCycleMain() {
     if (!verifyFiles(limit.version)) {
         toastLog("更新尚未完成，不能开始");
         return;
@@ -3944,16 +4185,14 @@ function jingMain() {
     if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
     //Android 8.1或以下检测刘海屏比较麻烦
-    if (device.sdkInt < 28) cutoutParamsStr = detectCutoutParams();
+    if (device.sdkInt < 28) ui.run(detectCutoutParams);
 
     let usedBPDrugNum = 0;
 
     while (true) {
-        while (!id("matchingWrap").findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.mirrorsStartBtn);
-            sleep(2000)
-        }
+        //挑选最弱的对手
+        mirrorsPickWeakestOpponent();
+
         while (id("matchingWrap").findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.mirrorsStartBtn);
@@ -3961,19 +4200,20 @@ function jingMain() {
             if (id("popupInfoDetailTitle").findOnce()) {
                 if (limit.bpDrug && usedBPDrugNum < limit.bpDrugNum) {
                     while (!id("bpTextWrap").findOnce()) {
-                        screenutilClick(clickSets.bphui)
+                        screenutilClick(clickSets.bpExhaustToBpDrug)
                         sleep(1500)
                     }
                     while (id("bpTextWrap").findOnce()) {
-                        screenutilClick(clickSets.bphui2)
+                        screenutilClick(clickSets.bpDrugConfirm)
                         sleep(1500)
                     }
                     while (id("popupInfoDetailTitle").findOnce()) {
-                        screenutilClick(clickSets.bphuiok)
+                        screenutilClick(clickSets.bpDrugRefilledOK)
                         sleep(1500)
                     }
+                    usedBPDrugNum++;
                 } else {
-                    screenutilClick(clickSets.bpclose)
+                    screenutilClick(clickSets.bpClose)
                     log("镜层周回结束")
                     return;
                 }
@@ -3990,9 +4230,7 @@ function jingMain() {
             log("镜层周回 - 自动战斗开始：简单自动战斗");
             mirrorsSimpleAutoBattleMain();
         }
-        usedBPDrugNum++;
     }
-
 }
 
 function uiObjGetText(uiObj) {
