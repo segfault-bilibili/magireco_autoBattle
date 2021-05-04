@@ -3543,9 +3543,9 @@ function connectDisk(fromDisk) {
                 let isConnectableDown = isDiskConnectableDown(screenshot, fromDisk.position);
                 if (isConnectableDown.down) {
                     log("连携动作完成");
-                    fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk); //判断接连携的角色是谁
-                    thisStandPoint.charaID = fromDisk.connectedTo;
                     clickedDisksCount++;
+                    fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk, clickedDisksCount); //判断接连携的角色是谁
+                    thisStandPoint.charaID = fromDisk.connectedTo;
                     isConnectDone = true;
                     break;
                 } else {
@@ -3611,38 +3611,39 @@ var knownFirstSelectedConnectedDiskCoords = {
         x:   825,
         y:   133,
         pos: "top"
-    }
+    },
+    distance: 187.5
 };
 
 //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
-function getFirstSelectedConnectedDiskCoords(corner) {
+function getSelectedConnectedDiskCoords(corner, which) {
     var convertedCoords = { x: 0, y: 0, pos: "bottom" };
     var knownCoords = knownFirstSelectedConnectedDiskCoords[corner];
-    convertedCoords.x = knownCoords.x;
+    convertedCoords.x = knownCoords.x + knownFirstSelectedConnectedDiskCoords.distance * (which - 1);
     convertedCoords.y = knownCoords.y;
     convertedCoords.pos = knownCoords.pos;
     return convertCoords(convertedCoords);
 }
-function getFirstSelectedConnectedDiskArea() {
+function getSelectedConnectedDiskArea(which) {
     var result = {
-        topLeft:     getFirstSelectedConnectedDiskCoords("topLeft"),
-        bottomRight: getFirstSelectedConnectedDiskCoords("bottomRight"),
+        topLeft:     getSelectedConnectedDiskCoords("topLeft", which),
+        bottomRight: getSelectedConnectedDiskCoords("bottomRight", which),
     };
     return result;
 }
 
 //截取行动盘所需部位的图像
-function getFirstSelectedConnectedDiskImg(screenshot) {
-    var area = getFirstSelectedConnectedDiskArea();
+function getSelectedConnectedDiskImg(screenshot, which) {
+    var area = getSelectedConnectedDiskArea(which);
     return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
 }
 
 //返回接到连携的角色
-function getConnectAcceptorCharaID(fromDisk) {
+function getConnectAcceptorCharaID(fromDisk, which) {
     let screenshot = compatCaptureScreen();
-    let imgA = getFirstSelectedConnectedDiskImg(screenshot);
+    let imgA = getSelectedConnectedDiskImg(screenshot, which);
 
-    let area = getFirstSelectedConnectedDiskArea();
+    let area = getSelectedConnectedDiskArea(which);
     let gaussianX = parseInt(getAreaWidth(area) / 5);
     let gaussianY = parseInt(getAreaHeight(area) / 5);
     if (gaussianX % 2 == 0) gaussianX += 1;
@@ -3969,8 +3970,15 @@ function mirrorsAutoBattleMain() {
         //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
         for (let i=clickedDisksCount; i<3; i++) {
             let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
+            //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
             if (diskToClick.connectable) {
-                connectDisk(diskToClick); //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
+                //重新识别盘是否可以连携
+                //（比如两人互相连携，A=>B后，A本来可以连携的盘现在已经不能连携了，然后B=>A后又会用A的盘，这时很显然需要重新识别）
+                let isConnectableDown = isDiskConnectableDown(compatCaptureScreen(), diskToClick.position); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
+                diskToClick.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
+            }
+            if (diskToClick.connectable) {
+                connectDisk(diskToClick);
             } else {
                 clickDisk(diskToClick);
             }
@@ -4081,17 +4089,36 @@ function getMirrorsLvAt(rowNum, columnNum) {
     return 0;
 }
 function getMirrorsAverageScore(totalScore) {
+    if (totalScore == null) return 0;
+    log("getMirrorsAverageScore totalScore", totalScore);
+    let totalSqrtLv = 0;
     let totalLv = 0;
+    let charaCount = 0;
+    let highestLv = 0;
+
+    let attemptMax = 5;
     for (let rowNum=1; rowNum<=3; rowNum++) {
         for (let columnNum=1; columnNum<=3; columnNum++) {
-            totalLv += getMirrorsLvAt(rowNum, columnNum);
+            let Lv = 0;
+            for (let attempt=0; attempt<attemptMax; attempt++) {
+                Lv = getMirrorsLvAt(rowNum, columnNum);
+                if (Lv > 0) {
+                    if (Lv > highestLv) highestLv = Lv;
+                    totalLv += Lv;
+                    totalSqrtLv += Math.sqrt(Lv);
+                    charaCount += 1;
+                    break;
+                }
+                if (attempt < attemptMax - 1) sleep(100);
+            }
+            attemptMax = 1;
         }
     }
-    log("getMirrorsAverageScore totalLv", totalLv);
-    if (totalLv == 0) return 0; //对手队伍信息还没出现
-    let avgScore = totalScore / totalLv * 100;
+    log("getMirrorsAverageScore charaCount", charaCount, "highestLv", highestLv, "totalLv", totalLv, "totalSqrtLv", totalSqrtLv);
+    if (charaCount == 0) return 0; //对手队伍信息还没出现
+    let avgScore = totalScore / totalSqrtLv * Math.sqrt(highestLv); //按队伍里的最高等级进行估计（往高了估，避免错把强队当作弱队）
     log("getMirrorsAverageScore avgScore", avgScore);
-    return avgScore; //按照满级100估算人均战力
+    return avgScore;
 }
 
 function mirrorsPickWeakestOpponent() {
@@ -4105,16 +4132,20 @@ function mirrorsPickWeakestOpponent() {
     while (!id("matchingWrap").findOnce()) sleep(1000); //等待
 
     //如果已经打开了信息面板，先关掉
-    while (id("matchingWrap").findOnce()) {
-        screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+    for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+        if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
+        if (attempt % 5 == 0) screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
         sleep(1000);
-        if (getMirrorsAverageScore(99999999) <= 0) break;
     }
 
     let selfScore = getMirrorsSelfScore();
 
     for (let position=1; position<=3; position++) {
-        totalScore[position] = getMirrorsScoreAt(position);
+        for (let attempt=0; attempt<10; attempt++) {
+            totalScore[position] = getMirrorsScoreAt(position);
+            if (totalScore[position] > 0) break;
+            sleep(100);
+        }
         if (totalScore[position] < lowestTotalScore) {
             lowestTotalScore = totalScore[position];
             lowestScorePosition = position;
@@ -4122,8 +4153,9 @@ function mirrorsPickWeakestOpponent() {
     }
 
     //福利队
-    if (lowestTotalScore < selfScore / 5) {
-        log("找到了战力低于我方五分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
+    //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
+    if (lowestTotalScore < selfScore / 6) {
+        log("找到了战力低于我方六分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
             sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
@@ -4137,7 +4169,7 @@ function mirrorsPickWeakestOpponent() {
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             screenutilClick(clickSets["mirrorsOpponent"+position]);
             sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
-            let avgScore[position] = getMirrorsAverageScore(totalScore[position]);
+            avgScore[position] = getMirrorsAverageScore(totalScore[position]);
             if (avgScore[position] > 0) {
                 if (avgScore[position] < lowestAvgScore) {
                     lowestAvgScore = avgScore[position];
@@ -4148,9 +4180,9 @@ function mirrorsPickWeakestOpponent() {
         }
 
         //关闭信息面板
-        while (id("matchingWrap").findOnce()) {
+        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
-            screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+            if (attempt % 5 == 0) screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
         }
@@ -4161,8 +4193,8 @@ function mirrorsPickWeakestOpponent() {
     if (lowestScorePosition == 3) return; //最弱的就是第3个对手
 
     //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
-    while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-        screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
+    for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+        if (attempt % 5 == 0) screenutilClick(clickSets["mirrorsCloseOpponentInfo"]);
         sleep(1000);
         if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
     }
@@ -4170,7 +4202,7 @@ function mirrorsPickWeakestOpponent() {
     //重新打开平均战力最低队伍的队伍信息面板
     while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
         screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
-        sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
+        sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
         if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
     }
 }
