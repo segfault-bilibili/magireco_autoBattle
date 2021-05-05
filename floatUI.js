@@ -1300,7 +1300,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.25'
+    version: '2.4.26'
 }
 var clickSets = {
     ap: {
@@ -3683,7 +3683,10 @@ function waitForOurTurn() {
     while(true) {
         cycles++;
         let screenshot = compatCaptureScreen();
+        /*
         if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
+        */
+        if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
         //不再通过识图判断战斗是否结束
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
@@ -3796,7 +3799,10 @@ function clickMirrorsBattleResult() {
         pos: "center"
     };
     let failedCount = 0; //调查无法判定镜层战斗输赢的问题
+    /* 演习模式没有rankMark
     while (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
+    */
+    while (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
         log("匹配到镜层战斗结算控件");
         let screenshot = compatCaptureScreen();
         //调查无法判定镜层战斗输赢的问题
@@ -3878,19 +3884,22 @@ function mirrorsSimpleAutoBattleMain() {
 
     //简单镜层自动战斗
     while (!id("matchingWrap").findOnce()) {
+        /*
         if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
+        */
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
             screenutilClick(clickSets.battlePan1)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
             screenutilClick(clickSets.battlePan2)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
             screenutilClick(clickSets.battlePan3)
             sleep(1000)
         }
-        if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
+        if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
             screenutilClick(clickSets.levelup)
         }
         sleep(3000)
@@ -4088,6 +4097,7 @@ function getMirrorsLvAt(rowNum, columnNum) {
     }
     return 0;
 }
+//在对手队伍信息中获取等级信息，用来计算人均战力
 function getMirrorsAverageScore(totalScore) {
     if (totalScore == null) return 0;
     log("getMirrorsAverageScore totalScore", totalScore);
@@ -4121,6 +4131,7 @@ function getMirrorsAverageScore(totalScore) {
     return avgScore;
 }
 
+//在镜层自动挑选最弱的对手
 function mirrorsPickWeakestOpponent() {
     let lowestTotalScore = Number.MAX_SAFE_INTEGER;
     let lowestAvgScore = Number.MAX_SAFE_INTEGER;
@@ -4129,7 +4140,18 @@ function mirrorsPickWeakestOpponent() {
     let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
     let lowestScorePosition = 3;
 
-    while (!id("matchingWrap").findOnce()) sleep(1000); //等待
+    while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) sleep(1000); //等待
+
+    if (id("matchingList").findOnce()) {
+        log("当前处于演习模式");
+        //演习模式下直接点最上面第一个对手
+        while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
+            screenutilClick(clickSets["mirrorsOpponent"+"1"]);
+            sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
+        }
+        return;
+    }
 
     //如果已经打开了信息面板，先关掉
     for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
@@ -4140,6 +4162,7 @@ function mirrorsPickWeakestOpponent() {
 
     let selfScore = getMirrorsSelfScore();
 
+    //获取每个对手的总战力
     for (let position=1; position<=3; position++) {
         for (let attempt=0; attempt<10; attempt++) {
             totalScore[position] = getMirrorsScoreAt(position);
@@ -4227,12 +4250,17 @@ function mirrorsCycleMain() {
         //挑选最弱的对手
         mirrorsPickWeakestOpponent();
 
-        while (id("matchingWrap").findOnce()) {
+        while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.mirrorsStartBtn);
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.bpDrug && usedBPDrugNum < limit.bpDrugNum) {
+                if (id("matchingList").findOnce()) {
+                    log("镜层演习模式不嗑药");
+                    log("不过，开始镜层演习需要至少有1BP");
+                    log("镜层周回结束");
+                    return;
+                } else if(limit.bpDrug && usedBPDrugNum < limit.bpDrugNum) {
                     while (!id("bpTextWrap").findOnce()) {
                         screenutilClick(clickSets.bpExhaustToBpDrug)
                         sleep(1500)
