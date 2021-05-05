@@ -1300,7 +1300,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.27'
+    version: '2.4.28'
 }
 var clickSets = {
     ap: {
@@ -1607,6 +1607,10 @@ function detectCutoutParams() {
         mRect.right += uiObjLeft;
         mRect.bottom += uiObjTop;
         log("mRect (right/bottom -1; left/top/right/bottom += uiObjLeft/Top)", mRect);
+
+        if (mRect.right > device.width - 1) mRect.right = device.width - 1;
+        if (mRect.bottom > device.height - 1) mRect.bottom = device.height - 1;
+        log("mRect (right/bottom -1; left/top/right/bottom += uiObjLeft/Top; truncated)", mRect);
 
         scr.cutout.left   =  + mRect.left;
         scr.cutout.top    =  + mRect.top; //可能竖屏启动，也可能横屏启动
