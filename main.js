@@ -332,7 +332,7 @@ ui.start.click(() => {
 http.__okhttp__.setTimeout(5000);
 //版本获取
 try {
-    let res = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle/project.json");
+    let res = http.get("https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@latest/project.json");
     if (res.statusCode != 200) {
         log("请求失败: " + res.statusCode + " " + res.statusMessage);
         ui.run(function () {

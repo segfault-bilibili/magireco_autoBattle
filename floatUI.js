@@ -1227,12 +1227,12 @@ floatUI.main = function () {
 var keywords = {
     gamePkgName: {
         chs: "com.bilibili.madoka.bilibili",
-        jp: "com.aniplex.magireco",
+        jp:  "com.aniplex.magireco",
         cht: "com.komoe.madokagp"
     },
     confirmRefill: {
         chs: "回复确认",
-        jp:   "回復確認",
+        jp:  "回復確認",
         cht: "回復確認"
     },
     refill: {
@@ -2086,8 +2086,8 @@ function detectAP() {
 //检测一次助战列表是否出现，检测不到就返回false
 function detectCanPickSupportOnce() {
     if (id("friendWrap").findOnce()) return true;
-    if (text(keywords.pickSupport[currentLang]).findOnce()) return true;
-    if (desc(keywords.pickSupport[currentLang]).findOnce()) return true;
+    if (text(keywords["pickSupport"][currentLang]).findOnce()) return true;
+    if (desc(keywords["pickSupport"][currentLang]).findOnce()) return true;
     return false;
 }
 //等待助战列表控件出现，阻塞到出现为止
@@ -2344,21 +2344,21 @@ function clickResult() {
         sleep(1000);
 
         //助战选到路人时，关注
-        if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
-            while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+        if (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
+            while (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.followConfirm)
                 sleep(3000)
             }
-            while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
+            while (text(keywords["appendFollow"][currentLang]).findOnce()||desc(keywords["appendFollow"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.followClose)
                 sleep(3000)
             }
         }
         //-----------如果有升级弹窗点击----------------------
-        if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
-            while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+        if (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
+            while (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.levelup)
                 sleep(3000)
@@ -2414,7 +2414,7 @@ function autoMain() {
         //选关并等待助战列表出现
         if (!clickQuest(questDetailInfo)) return;
 
-        while (id("friendWrap").findOnce() || id("detailTab").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
+        while (id("friendWrap").findOnce() || id("detailTab").findOnce() || text(keywords["pickSupport"][currentLang]).findOnce() || desc(keywords["pickSupport"][currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
             compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
@@ -2522,7 +2522,7 @@ function autoMainver2() {
         //等待助战列表控件出现
         waitUntilCanPickSupport();
 
-        while (id("friendWrap").findOnce() || text(keywords.pickSupport[currentLang]).findOnce() || desc(keywords.pickSupport[currentLang]).findOnce()) {
+        while (id("friendWrap").findOnce() || text(keywords["pickSupport"][currentLang]).findOnce() || desc(keywords["pickSupport"][currentLang]).findOnce()) {
             //选择Pt最高的助战点击
             finalPt = pickSupportWithTheMostPt();
             compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
@@ -2532,11 +2532,11 @@ function autoMainver2() {
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        while ((!text(keywords.start[currentLang]).findOnce())&&(!desc(keywords.start[currentLang]).findOnce())){
+        while ((!text(keywords["start"][currentLang]).findOnce())&&(!desc(keywords["start"][currentLang]).findOnce())){
             sleep(1000);
         }
         log("进入开始")
-        while (text(keywords.start[currentLang]).findOnce()||desc(keywords.start[currentLang]).findOnce()) {
+        while (text(keywords["start"][currentLang]).findOnce()||desc(keywords["start"][currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.start)
             sleep(3000)
@@ -2559,20 +2559,20 @@ function autoMainver2() {
 
         while (id("ResultWrap").findOnce()||id("charaWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
-            if (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
-                while (text(keywords.follow[currentLang]).findOnce()||desc(keywords.follow[currentLang]).findOnce()) {
+            if (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
+                while (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.followConfirm)
                     sleep(3000)
                 }
-                while (text(keywords.appendFollow[currentLang]).findOnce()||desc(keywords.appendFollow[currentLang]).findOnce()) {
+                while (text(keywords["appendFollow"][currentLang]).findOnce()||desc(keywords["appendFollow"][currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.followClose)
                     sleep(3000)
                 }
             }
-            if (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
-                while (id("rankUpWrap").findOnce() || text(keywords.playerRank[currentLang]).findOnce() || desc(keywords.playerRank[currentLang]).findOnce()) {
+            if (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
+                while (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.levelup)
                     sleep(3000)
