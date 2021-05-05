@@ -1300,7 +1300,7 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.26'
+    version: '2.4.27'
 }
 var clickSets = {
     ap: {
@@ -1547,18 +1547,18 @@ function detectCutoutParams() {
     scr.cutout.right = scr.res.width - 1;
     scr.cutout.bottom = scr.res.height - 1;
 
-    let windowInsets = null;
-    let displayCutout = null;
-
-    windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
-    log("windowInsets", windowInsets);
-
-    if (windowInsets == null) {
-        cutoutParamsStr = null;
-        return null;
-    }
-
     if (device.sdkInt >= 28) {//只有Android 9及以上才有刘海屏API
+        let windowInsets = null;
+        let displayCutout = null;
+
+        windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
+        log("windowInsets", windowInsets);
+
+        if (windowInsets == null) {
+            cutoutParamsStr = null;
+            return null;
+        }
+
         displayCutout = windowInsets.getDisplayCutout();
         log("displayCutout", displayCutout);
 
@@ -1593,6 +1593,8 @@ function detectCutoutParams() {
         log("uiObjBounds", uiObjBounds);
         let uiObjLeft = uiObjBounds.left;
         let uiObjTop = uiObjBounds.top;
+
+        //这里获取的数据是横屏的。如果脚本在竖屏模式启动，这里也暂时先转换成竖屏的数据，后面会跟着一起转换回横屏
         if (device.height > device.width) {
             log("device.height > device.width");
             let temp = uiObjLeft;
