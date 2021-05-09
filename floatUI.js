@@ -1576,11 +1576,29 @@ function detectCutoutParams() {
         scr.cutout.right  = device.width - scr.cutout.insets.right - 1;
         scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
     } else {
-        //mRect只能获取到刘海宽度信息
+        //在Android 10无刘海真机上开启模拟刘海，发现mRect只能获取到刘海宽度信息（除去刘海后屏幕尺寸信息）
+        //实测vivo Y93s并没有在这里获取到除去刘海后屏幕尺寸信息，只获取到完整屏幕分辨率
         let mRect = new android.graphics.Rect();
         activity.getWindowManager().getDefaultDisplay().getRectSize(mRect);
-        mRect.right -= 1;
-        mRect.bottom -= 1;
+        log("getDefaultDisplay().getRectSize(mRect)", mRect);
+
+        //让这里获得的除去刘海后屏幕尺寸信息的横竖屏状态与device.width/height同步
+        //这里还有一种极端情况我不知道怎么处理：接近正方形的屏幕，宽度大于高度；去掉刘海后，高度就反过来大于宽度，反之亦然
+        if ((mRect.bottom > mRect.right) != (device.height > device.width)) {
+            let temp = mRect.top;
+            mRect.top = mRect.left;
+            mRect.left = temp;
+
+            temp = mRect.bottom;
+            mRect.bottom = mRect.right;
+            mRect.right = temp;
+
+            log("mRect (rotated)", mRect);
+        }
+
+        //屏幕右下角的XY坐标是屏幕宽度和长度各自减1
+        if (mRect.right == device.width) mRect.right -= 1;
+        if (mRect.bottom == device.height) mRect.bottom -= 1;
         log("mRect (right/bottom -1)", mRect);
 
         if (!waitForGameForeground()) {
@@ -1590,7 +1608,7 @@ function detectCutoutParams() {
 
         //mRect里没有左刘海偏移量，只能变相获取
         let uiObjBounds = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce().bounds();
-        log("uiObjBounds", uiObjBounds);
+        log("EditText bounds", uiObjBounds);
         let uiObjLeft = uiObjBounds.left;
         let uiObjTop = uiObjBounds.top;
 
@@ -1606,11 +1624,11 @@ function detectCutoutParams() {
         mRect.top += uiObjTop;
         mRect.right += uiObjLeft;
         mRect.bottom += uiObjTop;
-        log("mRect (right/bottom -1; left/top/right/bottom += uiObjLeft/Top)", mRect);
+        log("mRect (+= uiObjLeft/Top)", mRect);
 
         if (mRect.right > device.width - 1) mRect.right = device.width - 1;
         if (mRect.bottom > device.height - 1) mRect.bottom = device.height - 1;
-        log("mRect (right/bottom -1; left/top/right/bottom += uiObjLeft/Top; truncated)", mRect);
+        log("mRect (truncated)", mRect);
 
         scr.cutout.left   =  + mRect.left;
         scr.cutout.top    =  + mRect.top; //可能竖屏启动，也可能横屏启动
@@ -2272,9 +2290,6 @@ function refillAPOnce(drugNumLimit) {
 //选择Pt最高的助战
 function pickSupportWithTheMostPt() {
     log("选择助战")
-    // -----------选援助----------------
-    // 15为npc助战  0~14为玩家助战
-    // Pt数值控件显示范围
     let knownPtArea = {
       topLeft: {x: 1680, y: 280, pos: "top"},
       bottomRight: {x: 1870, y: 1079, pos: "bottom"}
@@ -3486,6 +3501,7 @@ function avoidAimAtEnemies(enemiesToAvoid) {
             if (thisEnemy.rowNum == enemyToAvoid.rowNum && thisEnemy.columnNum == enemyToAvoid.columnNum) {
                 //绕开的指定要避免的敌人本身
                 remainingEnemies.splice(i, 1);
+                i--;
             }
         }
     }
@@ -3500,6 +3516,7 @@ function avoidAimAtEnemies(enemiesToAvoid) {
             if (thisEnemy.rowNum == enemyToAvoid.rowNum || thisEnemy.columnNum == enemyToAvoid.columnNum) {
                 //绕开与指定敌人同一行或同一列的其他敌人，如果可能的话
                 remainingEnemies.splice(i, 1);
+                i--;
             }
         }
     }
