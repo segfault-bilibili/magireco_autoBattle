@@ -1281,9 +1281,9 @@ var keywords = {
         cht: /^\d+個$/
     },
     lastLoginRegEx: {
-        chs: /^最终登录 \d+.*前$/,
-        jp:  /^最終ログイン \d+.*前$/,
-        cht: /^最終登入 \d+.*前$/
+        chs: /^最终登录 \d+/,
+        jp:  /^最終ログイン \d+/,
+        cht: /^最終登入 \d+/
     }
 };
 var currentLang = "chs";
@@ -1306,7 +1306,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.29'
+    version: '2.4.30'
 }
 var clickSets = {
     ap: {
@@ -2383,16 +2383,22 @@ function pickSupportWithTheMostPtByGuessing() {
     //NPC没有上次登录时间，可以根据这个特征来分辨
     let lvComNpcIndices = [];
     for (let i=0; i<=lvComPlayerIndices.length-1; i++) {
+        log("判断第", i+1+lvComNpcIndices.length, "个助战是否为NPC...");
+
         let thisIndex = lvComPlayerIndices[i];
+        log("thisIndex", thisIndex, "allUiObjs[thisIndex]", allUiObjs[thisIndex]);
+
         let nextIndex = (i<=lvComPlayerIndices.length-2) ? lvComPlayerIndices[i+1] : allUiObjs.length-1;
+        log("nextIndex", nextIndex, "allUiObjs.length-1", allUiObjs.length-1);
+
         let lastLoginIndex = findNextNeighborIndex(thisIndex, "textOrDesc", keywords["lastLoginRegEx"][currentLang], nextIndex-thisIndex);
         if (lastLoginIndex < 0) {
-            log("第", i+1, "个助战是NPC", thisIndex, allUiObjs[thisIndex]);
+            log("是NPC", "lastLoginIndex", lastLoginIndex);
             lvComNpcIndices.push(thisIndex);
             lvComPlayerIndices.splice(i, 1);
             i--;
         } else {
-            log("第", i+1, "个助战不是NPC");
+            log("不是NPC", "lastLoginIndex", lastLoginIndex, "allUiObjs[lastLoginIndex]", allUiObjs[lastLoginIndex]);
         }
     }
     log("玩家助战数量", lvComPlayerIndices.length);
