@@ -1034,10 +1034,10 @@ floatUI.main = function () {
             task.interrupt()
         }
         if (limit.mirrorsUseScreenCapture) {
-            toastLog("自动完成本次镜界战斗 - 复杂策略")
+            toastLog("自动完成本局战斗 - 复杂策略")
             task = threads.start(mirrorsAutoBattleMain);
         } else {
-            toastLog("自动完成本次镜界战斗 - 简单策略")
+            toastLog("自动完成本局战斗 - 简单策略")
             task = threads.start(mirrorsSimpleAutoBattleMain);
         }
         img_down()
@@ -3925,7 +3925,9 @@ function waitForOurTurn() {
         /*
         if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         */
-        if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
+        if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
+            id("ResultWrap").findOnce() || id("charaWrap").findOnce() || /*副本结算*/
+            id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
         //不再通过识图判断战斗是否结束
         //if (didWeWin(screenshot) || didWeLose(screenshot)) {
             log("战斗已经结束，不再等待我方回合");
@@ -4064,6 +4066,13 @@ function clickMirrorsBattleResult() {
         screenutilClick(screenCenter);
         sleep(1000);
     }
+
+    //用到副本而不是镜层的时候
+    if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+        id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
+        log("匹配到副本结算控件");
+        clickResult();
+    }
 }
 
 
@@ -4126,22 +4135,36 @@ function mirrorsSimpleAutoBattleMain() {
         /*
         if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
         */
-        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
+            !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
+            !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
             screenutilClick(clickSets.battlePan1)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
+            !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
+            !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
             screenutilClick(clickSets.battlePan2)
             sleep(1000)
         }
-        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce()) {
+        if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
+            !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
+            !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
             screenutilClick(clickSets.battlePan3)
             sleep(1000)
         }
+
+        //点掉镜层结算页面
         if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
             screenutilClick(clickSets.levelup)
         }
         sleep(3000)
+
+        //点掉副本结算页面（如果用在副本而不是镜层中）
+        if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+            id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
+            clickResult();
+        }
     }
 }
 
