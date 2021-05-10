@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.4.28"
+var version = "2.4.29"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -51,7 +51,7 @@ ui.layout(
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC" />
-                    <text textColor="#666666" text="不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用路人。注意：没有NPC时会把第一个助战当作NPC来点击" />
+                    <text textColor="#666666" text="不启用此项，默认每次是优先用互关好友，没有互关好友就用NPC，没有NPC就用路人。注意：如果“助战选择方法”被设为“直接读取控件坐标”，没有NPC时，也会把第一个助战当作NPC来点击" />
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能" />
@@ -98,6 +98,17 @@ ui.layout(
                             <radio id="clickMethod1" text="无障碍服务 （低于Android 7，不可用）"  color="#808080" clickable="false" focused="false" focusable="false" checked="false" visibility="gone"/>
                             <radio id="clickMethod2" text="无障碍服务 （当前Android版本是7或更高，可用，推荐）" checked="true" />
                             <radio id="clickMethod3" text="shell命令 input tap|swipe（需要root或adb权限）" />
+                        </radiogroup>
+                    </linear>
+                </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    <linear padding="0 0 0 0" bg="#ffffff">
+                        <radiogroup id="pickSupportMethod">
+                            <text layout_weight="1" size="19" color="#222222" text="助战选择方法：" />
+                            <radio id="pickSupportMethod1" text="直接读取控件坐标" checked="true" />
+                            <radio id="pickSupportMethod2" text="间接推算坐标" />
+                            <text layout_weight="1" size="12" color="#222222" text="“间接推算坐标”仅用于“直接读取控件坐标”无法正确选择助战的情况" />
+                            <text layout_weight="1" size="12" color="#222222" text="选择“间接推算坐标”后，请勿手动拖动助战列表，否则会错点到其他助战身上，甚至点空" />
                         </radiogroup>
                     </linear>
                 </vertical>
@@ -277,6 +288,12 @@ if (device.sdkInt >= 24 ) {
     paramsMap[checkableItem.key] = true; checkableItem.value = true;
 }
 
+checkableItem.key = "guessSupportCoords";
+checkableItem.value = paramsMap[checkableItem.key];
+if (checkableItem.value == null) checkableItem.value = false;
+ui.pickSupportMethod1.attr("checked", (!checkableItem.value).toString());
+ui.pickSupportMethod2.attr("checked", checkableItem.value.toString());
+
 
 //不被保存（保存后会被忽略、重置）、无需UI赋值的属性
 for (let i = 0; i < paramsNotInitList.length; i++) {
@@ -312,6 +329,7 @@ ui.start.click(() => {
     paramsMap["mirrorsUseScreenCapture"] = ui["mirrorsAutoBattleStrategy2"].checked;
     paramsMap["useScreencapShellCmd"] = ui["screenCaptureMethod2"].checked;
     paramsMap["useInputShellCmd"] = ui["clickMethod3"].checked;
+    paramsMap["guessSupportCoords"] = ui["pickSupportMethod2"].checked;
     // log(paramsMap)
     // log(JSON.stringify(paramsMap))
     storage.remove("data")

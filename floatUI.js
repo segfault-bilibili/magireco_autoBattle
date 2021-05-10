@@ -1279,6 +1279,11 @@ var keywords = {
         chs: /^\d+个$/,
         jp:  /^\d+個$/,
         cht: /^\d+個$/
+    },
+    lastLoginRegEx: {
+        chs: /^最终登录 \d+.*前$/,
+        jp:  /^最終ログイン \d+.*前$/,
+        cht: /^最終登入 \d+.*前$/
     }
 };
 var currentLang = "chs";
@@ -1300,7 +1305,8 @@ var limit = {
     mirrorsUseScreenCapture: false,
     useScreencapShellCmd: false,
     useInputShellCmd: false,
-    version: '2.4.28'
+    guessSupportCoords: false,
+    version: '2.4.29'
 }
 var clickSets = {
     ap: {
@@ -1688,9 +1694,12 @@ if (device.sdkInt >= 28) ui.run(detectCutoutParams);
 function convertCoords()
 {
     let NoCutout = false;
+    let NoTrunc = false;
     let d = null;
 
     switch (arguments.length) {
+    case 3:
+        NoTrunc = arguments[2];
     case 2:
         NoCutout = arguments[1];
     case 1:
@@ -1746,10 +1755,12 @@ function convertCoords()
         //处理刘海屏
         actual.x += scr.cutout.offset.x;
         actual.y += scr.cutout.offset.y;
-        if (actual.x <= scr.cutout.left) actual.x = scr.cutout.left;
-        if (actual.y <= scr.cutout.top) actual.y = scr.cutout.top;
-        if (actual.x >= scr.cutout.right) actual.x = scr.cutout.right;
-        if (actual.y >= scr.cutout.bottom) actual.y = scr.cutout.bottom;
+        if (!NoTrunc) {
+            if (actual.x <= scr.cutout.left) actual.x = scr.cutout.left;
+            if (actual.y <= scr.cutout.top) actual.y = scr.cutout.top;
+            if (actual.x >= scr.cutout.right) actual.x = scr.cutout.right;
+            if (actual.y >= scr.cutout.bottom) actual.y = scr.cutout.bottom;
+        }
     }
 
     actual.x = parseInt(actual.x);
@@ -1996,19 +2007,9 @@ function detectQuestDetailInfo() {
     throw "detectQuestDetailInfoFail";
 }//end function
 
-//有些控件右下角坐标比左上角低，这个函数把这种数值非法的控件从数组里删去
-function removeIllegalBounds(uiObjArr) {
-    let result = [];
-    for (let i=0; i<uiObjArr.length; i++) {
-        let uiObj = uiObjArr[i];
-        let uiObjBounds = uiObj.bounds();
-        if (uiObjBounds.left < 0) continue;
-        if (uiObjBounds.top < 0) continue;
-        if (uiObjBounds.right < uiObjBounds.left) continue;
-        if (uiObjBounds.bottom < uiObjBounds.top) continue;
-        result.push(uiObj);
-    }
-    return result;
+var allUiObjs = [];
+function takeUiSnapshot() {
+    allUiObjs = packageName(keywords["gamePkgName"][currentLang]).find();
 }
 
 //检测AP，非阻塞，检测一次就返回
@@ -2045,25 +2046,31 @@ function detectAPOnce_(logMuted) {
     let apRight = convertedApComCoords.bottomRight.x;
     let apBottom = convertedApComCoords.bottomRight.y;
 
-    let apUiObjs = removeIllegalBounds(boundsInside(apLeft, apTop, apRight, apBottom).find());
+    takeUiSnapshot();
 
-    for (let i=0; i<apUiObjs.length-1; i++) {
-        for (let j=i+1; j<apUiObjs.length; j++) {
-            let leftXi = apUiObjs[i].bounds().left;
-            let leftXj = apUiObjs[j].bounds().left;
-            if (leftXj < leftXi) {
-                let temp = apUiObjs[i];
-                apUiObjs[i] = apUiObjs[j];
-                apUiObjs[j] = temp;
-            }
-        }
+    let apUiObjIndices = [];
+    for (let i=0; i<= allUiObjs.length-1; i++) {
+        let uiObj = allUiObjs[i];
+        let bounds = uiObj.bounds();
+
+        //排除右下角坐标值大于或等于左上角的控件（大于则意味着数值不合理；等于则意味着宽度或高度为0）
+        if (bounds.left >= bounds.right) continue;
+        if (bounds.top >= bounds.bottom) continue;
+
+        //排除坐标范围之外的控件
+        if (bounds.left < apLeft) continue;
+        if (bounds.right > apRight) continue;
+        if (bounds.top < apTop) continue;
+        if (bounds.bottom > apBottom) continue;
+
+        log("加入疑似AP控件", i, uiObj);
+        apUiObjIndices.push(i);
     }
 
-    if (!logMuted) log("在坐标范围内的控件 apUiObjs=", apUiObjs);
-
-    let lastNum = null;
-    for (let i=0; i<apUiObjs.length; i++) {
-        let apStr = uiObjGetText(apUiObjs[i]);
+    for (let i=apUiObjIndices.length-1; i>=0; i--) {
+        //从末尾倒着往前搜寻可以尽量避开与AP字符串相似的恶搞玩家名
+        let uiObj = allUiObjs[apUiObjIndices[i]];
+        let apStr = uiObjGetText(uiObj);
 
         if (!logMuted) log("i", i, "apStr", apStr);
 
@@ -2072,13 +2079,19 @@ function detectAPOnce_(logMuted) {
         }
 
         if (apStr.match(/^\/$/)) {
-            if (lastNum != null) return lastNum;
-        }
-
-        if (apStr.match(/^\d+$/)) {
-            lastNum = parseInt(apStr);
-        } else {
-            lastNum = null;
+            if (!logMuted) log("apStr.match(/^\/$/)", apStr.match(/^\/$/), apStr);
+            if (i > 0 && i < apUiObjIndices.length-1) {
+                let prevUiObj = allUiObjs[apUiObjIndices[i-1]];
+                let nextUiObj = allUiObjs[apUiObjIndices[i+1]];
+                let prevStr = uiObjGetText(prevUiObj);
+                let nextStr = uiObjGetText(nextUiObj);
+                if (prevStr.match(/^\d+$/) && nextStr.match(/^\d+$/)) {
+                    if (!logMuted) log("prevStr", prevStr, "nextStr", nextStr);
+                    let apNow = parseInt(prevStr);
+                    if (!logMuted) log("apNow", apNow);
+                    return apNow;
+                }
+            }
         }
     }
 
@@ -2289,11 +2302,210 @@ function refillAPOnce(drugNumLimit) {
 
 //选择Pt最高的助战
 function pickSupportWithTheMostPt() {
-    log("选择助战")
-    let knownPtArea = {
-      topLeft: {x: 1680, y: 280, pos: "top"},
-      bottomRight: {x: 1870, y: 1079, pos: "bottom"}
-    };
+    log("选择助战");
+    if (limit.guessSupportCoords) {
+        let point = pickSupportWithTheMostPtByGuessing();
+        if (point == null) {
+            log("选择助战失败");
+            exit();
+        }
+        compatClick(point.x, point.y);
+    } else {
+        let finalPt = pickSupportWithTheMostPtDirectly();
+        compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY());
+    }
+}
+
+var knownPtArea = {
+  topLeft: {x: 1680, y: 280, pos: "top"},
+  bottomRight: {x: 1870, y: 1079, pos: "bottom"}
+};
+var ptRegEx = /^\+{0,1}\d+$/;
+var knownFirstPtPoint = {
+    x: 1808,
+    y: 325,
+    pos: "top"
+}
+var ptDistanceY = 243.75;
+
+function findPrevNeighborIndex(start, field, regex, range) {
+    for (let i=start-1; i>=start-range&&i>=0; i--) {
+        let uiObj = allUiObjs[i];
+        let value = null;
+        if (field == "textOrDesc") {
+            value = uiObjGetText(uiObj);
+        } else {
+            value = uiObj[field]();
+            if (value == null) value = "";
+        }
+        value = ""+value;
+        if (value.match(regex)) return i;
+    }
+    return -1;
+}
+function findNextNeighborIndex(start, field, regex, range) {
+    for (let i=start+1; i<=start+range&&i<allUiObjs.length; i++) {
+        let uiObj = allUiObjs[i];
+        let value = null;
+        if (field == "textOrDesc") {
+            value = uiObjGetText(uiObj);
+        } else {
+            value = uiObj[field]();
+            if (value == null) value = "";
+        }
+        value = ""+value;
+        if (value.match(regex)) return i;
+    }
+    return -1;
+}
+
+//选择Pt最高的助战 - 间接推算坐标
+function pickSupportWithTheMostPtByGuessing() {
+    log("选择助战 - 间接推算坐标");
+    takeUiSnapshot();
+
+    //找到类似Lv和100两个控件，NPC和玩家都有
+    let lvComPlayerIndices = [];
+    for (let i=0; i<=allUiObjs.length-2; i++) {
+        let uiObj = allUiObjs[i];
+        let nextUiObj = allUiObjs[i+1];
+        let str = uiObjGetText(uiObj);
+        let nextStr = uiObjGetText(nextUiObj);
+        let matched = str.match(/^Lv$/);
+        let nextMatched = nextStr.match(/^\d+$/);
+        //Lv紧跟着100这个数字，这个特征除了助战，其他控件应该都没有
+        if (matched == null || nextMatched == null) continue;
+        lvComPlayerIndices.push(i);
+        log("加入Lv控件", i, uiObj);
+    }
+    log("助战总数", lvComPlayerIndices.length);
+
+    //NPC没有上次登录时间，可以根据这个特征来分辨
+    let lvComNpcIndices = [];
+    for (let i=0; i<=lvComPlayerIndices.length-1; i++) {
+        let thisIndex = lvComPlayerIndices[i];
+        let nextIndex = (i<=lvComPlayerIndices.length-2) ? lvComPlayerIndices[i+1] : allUiObjs.length-1;
+        let lastLoginIndex = findNextNeighborIndex(thisIndex, "textOrDesc", keywords["lastLoginRegEx"][currentLang], nextIndex-thisIndex);
+        if (lastLoginIndex < 0) {
+            log("第", i+1, "个助战是NPC", thisIndex, allUiObjs[thisIndex]);
+            lvComNpcIndices.push(thisIndex);
+            lvComPlayerIndices.splice(i, 1);
+            i--;
+        } else {
+            log("第", i+1, "个助战不是NPC");
+        }
+    }
+    log("玩家助战数量", lvComPlayerIndices.length);
+    log("NPC助战数量", lvComNpcIndices.length);
+
+    //找到最高的Pt加成
+    let highestPt = 0;
+    let arrays = [lvComNpcIndices, lvComPlayerIndices];
+    for (let i in arrays) {
+        let arr = arrays[i];
+        for (let j=0; j<=arr.length-1; j++) {
+            let thisIndex = arr[j];
+
+            //Pt加成控件应该在Lv控件后的第一个图片对象（应该是Magia或Doppel类型）之前
+            let nextIndex = findNextNeighborIndex(thisIndex, "className", /^android\.widget\.Image$/, allUiObjs.length-1-thisIndex);
+
+            //排除日服的称号控件
+            let nextUiObj = allUiObjs[nextIndex];
+            if (nextUiObj.id() == "targetTitleBg") {
+                nextIndex = findNextNeighborIndex(nextIndex, "className", /^android\.widget\.Image$/, allUiObjs.length-1-nextIndex);
+            }
+
+            //倒着往前搜寻，防止碰到恶搞玩家名
+            let ptIndex = findPrevNeighborIndex(nextIndex, "textOrDesc", ptRegEx, nextIndex - thisIndex);
+
+            if (ptIndex < 0) {log(j);throw new Error("ptIndex < 0");}
+            let uiObj = allUiObjs[ptIndex];
+            let pt = uiObjParseInt(uiObj);
+            if (pt > highestPt) {
+                highestPt = pt;
+                log("找到了更高的Pt加成", pt, "thisIndex", thisIndex, "ptIndex", ptIndex, uiObj);
+            }
+        }
+    }
+    log("最高Pt加成", highestPt);
+
+    //排除单向关注好友和路人
+    lvComLowPtPlayerIndices = [];
+    for (let i=0; i<=lvComPlayerIndices.length-1; i++) {
+        let thisIndex = lvComPlayerIndices[i];
+
+        //Pt加成控件应该在Lv控件后的第一个图片对象（应该是Magia或Doppel类型）之前
+        let nextIndex = findNextNeighborIndex(thisIndex, "className", /^android\.widget\.Image$/, allUiObjs.length-1-thisIndex);
+
+        //排除日服的称号控件
+        let nextUiObj = allUiObjs[nextIndex];
+        if (nextUiObj.id() == "targetTitleBg") {
+            nextIndex = findNextNeighborIndex(nextIndex, "className", /^android\.widget\.Image$/, allUiObjs.length-1-nextIndex);
+        }
+
+        //倒着往前搜寻，防止碰到恶搞玩家名
+        let ptIndex = findPrevNeighborIndex(nextIndex, "textOrDesc", ptRegEx, nextIndex - thisIndex);
+
+        if (ptIndex < 0) {log(i);throw new Error("ptIndex < 0");}
+        let uiObj = allUiObjs[ptIndex];
+        let pt = uiObjParseInt(uiObj);
+        if (pt < highestPt) {
+            log("thisIndex", thisIndex, "ptIndex", ptIndex, uiObj, "Pt", pt, "低于最高");
+            lvComLowPtPlayerIndices.push(thisIndex);
+            lvComPlayerIndices.splice(i, 1);
+            i--;
+        }
+    }
+    log("互相关注好友数量", lvComPlayerIndices.length);
+    log("单向好友或路人数量", lvComLowPtPlayerIndices.length);
+
+    //仅使用NPC
+    if (limit.justNPC) {
+        if (lvComNpcIndices.length > 0) {
+            log("仅使用NPC（第一个NPC）");
+            let convertedPoint = convertCoords(knownFirstPtPoint);
+            return convertedPoint;
+        } else {
+            //没有NPC
+            log("仅使用NPC，但没有NPC可供使用");
+            return null;
+        }
+    }
+
+    //优先用互关好友，其次NPC
+    let highPtCount = lvComPlayerIndices.length+lvComNpcIndices.length;
+    for (let i=highPtCount; i>=1; i--) {
+        let point = {
+            x: knownFirstPtPoint.x,
+            y: knownFirstPtPoint.y,
+            pos: knownFirstPtPoint.pos
+        };
+        point.y += ptDistanceY * (i - 1);
+        let convertedPoint = convertCoords(point, false, true);//NoCutout = false, NoTrunc = true
+        if (convertedPoint.y <= scr.cutout.bottom) {
+            log("选择第", i, "个助战");
+            return convertedPoint;
+        }
+    }
+
+    //走到这里时应该是互关和NPC数量均为0的情况
+    if (highPtCount > 0) throw new Error("highPtCount > 0");
+
+    if (lvComLowPtPlayerIndices.length > 0) {
+        log("没有互关好友，也没有NPC。选择第一个助战（单向好友或路人）");
+        let convertedPoint = convertCoords(knownFirstPtPoint);
+        return convertedPoint;
+    } else {
+        log("没有助战可供选择");
+        return null;
+    }
+
+    return null;
+}
+
+//选择Pt最高的助战 - 直接读取控件坐标
+function pickSupportWithTheMostPtDirectly() {
+    log("选择助战 - 直接读取控件坐标");
     let ptArea = getConvertedArea(knownPtArea);
     log("ptArea.topLeft", ptArea.topLeft);
     log("ptArea.bottomRight", ptArea.bottomRight);
@@ -2303,8 +2515,8 @@ function pickSupportWithTheMostPt() {
     let ptBottom = ptArea.bottomRight.y;
 
     //可见的助战列表
-    let ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).textMatches(/^\+{0,1}\d+$/).find();
-    if (ptComVisible.empty()) ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).descMatches(/^\+{0,1}\d+$/).find();
+    let ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).textMatches(ptRegEx).find();
+    if (ptComVisible.empty()) ptComVisible = boundsInside(ptLeft, ptTop, ptRight, ptBottom).descMatches(ptRegEx).find();
     log("可见助战列表", ptComVisible);
 
     let ptComCanClick = [];
@@ -2437,8 +2649,7 @@ function autoMain() {
 
         while (id("friendWrap").findOnce() || id("detailTab").findOnce() || text(keywords["pickSupport"][currentLang]).findOnce() || desc(keywords["pickSupport"][currentLang]).findOnce()) {
             //选择Pt最高的助战点击
-            finalPt = pickSupportWithTheMostPt();
-            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            pickSupportWithTheMostPt();
             sleep(2000)
             closeDetailTab();
         }
@@ -2545,8 +2756,7 @@ function autoMainver2() {
 
         while (id("friendWrap").findOnce() || text(keywords["pickSupport"][currentLang]).findOnce() || desc(keywords["pickSupport"][currentLang]).findOnce()) {
             //选择Pt最高的助战点击
-            finalPt = pickSupportWithTheMostPt();
-            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            pickSupportWithTheMostPt();
             sleep(2000)
         }
 
