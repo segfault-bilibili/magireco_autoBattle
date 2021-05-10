@@ -2389,7 +2389,7 @@ function pickSupportWithTheMostPtByGuessing() {
         log("thisIndex", thisIndex, "allUiObjs[thisIndex]", allUiObjs[thisIndex]);
 
         let nextIndex = (i<=lvComPlayerIndices.length-2) ? lvComPlayerIndices[i+1] : allUiObjs.length-1;
-        log("nextIndex", nextIndex, "allUiObjs.length-1", allUiObjs.length-1);
+        log("nextIndex", nextIndex, "allUiObjs.length-1", allUiObjs.length-1, "allUiObjs[nextIndex]", allUiObjs[nextIndex]);
 
         let lastLoginIndex = findNextNeighborIndex(thisIndex, "textOrDesc", keywords["lastLoginRegEx"][currentLang], nextIndex-thisIndex);
         if (lastLoginIndex < 0) {
