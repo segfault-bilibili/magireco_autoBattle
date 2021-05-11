@@ -37,38 +37,41 @@ var binarySetupDone = false;
 var dataDir = files.cwd();
 var pkgName = dataDir.match(/[^\/]+(?=\/files\/project)/)[0];
 
-function shellCmd_() {
-//                 cmd, useRoot, useShizuku, logEnabled
+function shellCmd_(/*shellCmd, useRoot, useShizuku, logEnabled*/) {
+    let shellCmd = "";
     let useRoot = false;
     let useShizuku = false;
     let logEnabled = true;
-    let argc = 0;
+
     switch (arguments.length) {
     case 4:
-        argc = arguments.length;
-
-        useRoot = arguments[1];
-        useShizuku = arguments[2];
         logEnabled = arguments[3];
-        if (useRoot) {
-            if (logEnabled) log("useRoot is true, not using Shizuku this time");
-            useShizuku = false;
-        }
-
-        if (useShizuku) {
-            $shell.setDefaultOptions({adb: true});
-        } else {
-            $shell.setDefaultOptions({adb: false});
-        }
-        let shellcmd = arguments[0];
-        if (logEnabled) log("shellCmd: \""+shellcmd+"\"", "useRoot:", useRoot, "useShizuku:", useShizuku);
-        let result = $shell(shellcmd, useRoot);
-        if (logEnabled) log("result", result);
-        return result;
+    case 3:
+        useShizuku = arguments[2];
+    case 2:
+        useRoot = arguments[1];
+    case 1:
+        shellCmd = arguments[0];
         break;
     default:
-        throw "privilegedShellCmdIncorrectArgc"
+        throw new Error("privilegedShellCmdIncorrectArgc");
     }
+
+    if (useRoot) {
+        if (logEnabled) log("useRoot is true, not using Shizuku this time");
+        useShizuku = false;
+    }
+
+    if (useShizuku) {
+        $shell.setDefaultOptions({adb: true});
+    } else {
+        $shell.setDefaultOptions({adb: false});
+    }
+
+    if (logEnabled) log("shellCmd: \""+shellCmd+"\"", "useRoot:", useRoot, "useShizuku:", useShizuku);
+    let result = $shell(shellCmd, useRoot);
+    if (logEnabled) log("result", result);
+    return result;
 }
 function normalShellCmd() {
     switch (arguments.length) {
@@ -148,7 +151,7 @@ function checkShellPrivilege() {
     if (shellHasPrivilege) {
         log("已经获取到root或adb权限了");
     } else {
-        let shellcmd = "id -u";
+        let shellcmd = "cat /proc/self/status";
         let result = null;
         try {
             result = privilegedShellCmd(shellcmd);
@@ -158,7 +161,15 @@ function checkShellPrivilege() {
         }
         let euid = -1;
         if (result.code == 0) {
-            euid = parseInt(result.result.match(/\d+/));
+            let matched = result.result.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+            if (matched != null) {
+                matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
+            }
+            if (matched != null) {
+                euid = parseInt(matched[0]);
+            } else {
+                euid = -1;
+            }
             switch (euid) {
             case 0:
                 log("Shizuku有root权限");
@@ -1306,7 +1317,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.30'
+    version: '2.4.31'
 }
 var clickSets = {
     ap: {
@@ -1493,12 +1504,13 @@ known.ratio.y = 9;
 
 //获取当前屏幕分辨率
 if (device.height > device.width) {
-  //魔纪只能横屏显示
-  scr.res.width = device.height;
-  scr.res.height = device.width;
+    log("device.height > device.width");
+    //魔纪只能横屏显示
+    scr.res.width = device.height;
+    scr.res.height = device.width;
 } else {
-  scr.res.width = device.width;
-  scr.res.height = device.height;
+    scr.res.width = device.width;
+    scr.res.height = device.height;
 }
 
 //判断当前屏幕的宽高比
@@ -1581,95 +1593,59 @@ function detectCutoutParams() {
         scr.cutout.top    = scr.cutout.insets.top;
         scr.cutout.right  = device.width - scr.cutout.insets.right - 1;
         scr.cutout.bottom = device.height - scr.cutout.insets.bottom - 1;
-    } else {
-        //在Android 10无刘海真机上开启模拟刘海，发现mRect只能获取到刘海宽度信息（除去刘海后屏幕尺寸信息）
-        //实测vivo Y93s并没有在这里获取到除去刘海后屏幕尺寸信息，只获取到完整屏幕分辨率
-        let mRect = new android.graphics.Rect();
-        activity.getWindowManager().getDefaultDisplay().getRectSize(mRect);
-        log("getDefaultDisplay().getRectSize(mRect)", mRect);
 
-        //让这里获得的除去刘海后屏幕尺寸信息的横竖屏状态与device.width/height同步
-        //这里还有一种极端情况我不知道怎么处理：接近正方形的屏幕，宽度大于高度；去掉刘海后，高度就反过来大于宽度，反之亦然
-        if ((mRect.bottom > mRect.right) != (device.height > device.width)) {
-            let temp = mRect.top;
-            mRect.top = mRect.left;
-            mRect.left = temp;
+        //如果脚本在竖屏模式启动，获取到的数据也是竖屏的
+        //魔纪只能横屏显示，所以换算成横屏的
+        if (device.height > device.width) {
+            log("device.height > device.width");
 
-            temp = mRect.bottom;
-            mRect.bottom = mRect.right;
-            mRect.right = temp;
+            let temp = scr.cutout.insets.top;
+            scr.cutout.insets.top = scr.cutout.insets.left;
+            scr.cutout.insets.left = temp;
 
-            log("mRect (rotated)", mRect);
+            temp = scr.cutout.insets.right;
+            scr.cutout.insets.right = scr.cutout.insets.bottom;
+            scr.cutout.insets.bottom = temp;
+
+            temp = scr.cutout.top;
+            scr.cutout.top = scr.cutout.left;
+            scr.cutout.left = temp;
+
+            temp = scr.cutout.right;
+            scr.cutout.right = scr.cutout.bottom;
+            scr.cutout.bottom = temp;
         }
-
-        //屏幕右下角的XY坐标是屏幕宽度和长度各自减1
-        if (mRect.right == device.width) mRect.right -= 1;
-        if (mRect.bottom == device.height) mRect.bottom -= 1;
-        log("mRect (right/bottom -1)", mRect);
-
+    } else {//Android 8.1及以下
         if (!waitForGameForeground()) {
             cutoutParamsStr = null;
             return null;
         }
 
-        //mRect里没有左刘海偏移量，只能变相获取
-        let uiObjBounds = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce().bounds();
-        log("EditText bounds", uiObjBounds);
+        //通过EditText父级控件（类名应该是android.widget.FrameLayout）来得知游戏画面实际大小
+        //模拟器测试发现有的时候（尤其是刘海太宽、发生裁切时）FrameLayout的大小不等于游戏画面实际大小，这个问题暂时无解
+        let editText = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce();
+        log("EditText", editText);
+        let frameLayout = editText.parent();
+        log("FrameLayout", frameLayout);
+        let uiObjBounds = frameLayout.bounds();
         let uiObjLeft = uiObjBounds.left;
         let uiObjTop = uiObjBounds.top;
+        let uiObjRight = uiObjBounds.right - 1; //Rect不包含右边缘和下边缘，所以减一
+        let uiObjBottom = uiObjBounds.bottom - 1; //同理，减一
 
-        //这里获取的数据是横屏的。如果脚本在竖屏模式启动，这里也暂时先转换成竖屏的数据，后面会跟着一起转换回横屏
-        if (device.height > device.width) {
-            log("device.height > device.width");
-            let temp = uiObjLeft;
-            uiObjLeft = uiObjTop;
-            uiObjTop = temp;
-        }
+        scr.cutout.left   =  + uiObjLeft;
+        scr.cutout.top    =  + uiObjTop;
+        scr.cutout.right  =  + uiObjRight;
+        scr.cutout.bottom =  + uiObjBottom;
 
-        mRect.left += uiObjLeft;
-        mRect.top += uiObjTop;
-        mRect.right += uiObjLeft;
-        mRect.bottom += uiObjTop;
-        log("mRect (+= uiObjLeft/Top)", mRect);
-
-        if (mRect.right > device.width - 1) mRect.right = device.width - 1;
-        if (mRect.bottom > device.height - 1) mRect.bottom = device.height - 1;
-        log("mRect (truncated)", mRect);
-
-        scr.cutout.left   =  + mRect.left;
-        scr.cutout.top    =  + mRect.top; //可能竖屏启动，也可能横屏启动
-        scr.cutout.right  =  + mRect.right;
-        scr.cutout.bottom =  + mRect.bottom;
         scr.cutout.insets.left   = scr.cutout.left;
         scr.cutout.insets.top    = scr.cutout.top;
-        scr.cutout.insets.right  = device.width - scr.cutout.right - 1;
-        scr.cutout.insets.bottom = device.height - scr.cutout.bottom - 1;
-    }
-
-    //如果脚本在竖屏模式启动，获取到的数据也是竖屏的
-    //魔纪只能横屏显示，所以换算成横屏的
-    if (device.height > device.width) {
-        log("device.height > device.width");
-
-        let temp = scr.cutout.insets.top;
-        scr.cutout.insets.top = scr.cutout.insets.left;
-        scr.cutout.insets.left = temp;
-
-        temp = scr.cutout.insets.right;
-        scr.cutout.insets.right = scr.cutout.insets.bottom;
-        scr.cutout.insets.bottom = temp;
-
-        temp = scr.cutout.top;
-        scr.cutout.top = scr.cutout.left;
-        scr.cutout.left = temp;
-
-        temp = scr.cutout.right;
-        scr.cutout.right = scr.cutout.bottom;
-        scr.cutout.bottom = temp;
+        scr.cutout.insets.right  = scr.res.width - scr.cutout.right - 1;
+        scr.cutout.insets.bottom = scr.res.height - scr.cutout.bottom - 1;
     }
 
     let newCutoutParamsStr = "["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]"
-    log("刘海屏参数", newCutoutParamsStr);
+    log("刘海屏参数（包含右边缘和下边缘，不像Rect那样不包含）", newCutoutParamsStr);
 
     //这里认为是先切掉刘海再居中
     //因为：
@@ -3711,29 +3687,40 @@ function avoidAimAtEnemies(enemiesToAvoid) {
     let remainingEnemies = [];
     for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
     for (let i=0; i<remainingEnemies.length; i++) {
-        let thisEnemy = allEnemies[i];
-        for (let j=0; j<enemiesToAvoid.length; j++) {
-            let enemyToAvoid = enemiesToAvoid[j];
-            if (thisEnemy.rowNum == enemyToAvoid.rowNum && thisEnemy.columnNum == enemyToAvoid.columnNum) {
-                //绕开的指定要避免的敌人本身
-                remainingEnemies.splice(i, 1);
-                i--;
-            }
-        }
-    }
-    if (remainingEnemies.length > 0) aimAtEnemy(remainingEnemies[0]);
-
-    remainingEnemies = [];
-    for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
-    for (let i=0; i<remainingEnemies.length; i++) {
-        let thisEnemy = allEnemies[i];
+        let thisEnemy = remainingEnemies[i];
+        let deleted = false;
         for (let j=0; j<enemiesToAvoid.length; j++) {
             let enemyToAvoid = enemiesToAvoid[j];
             if (thisEnemy.rowNum == enemyToAvoid.rowNum || thisEnemy.columnNum == enemyToAvoid.columnNum) {
                 //绕开与指定敌人同一行或同一列的其他敌人，如果可能的话
-                remainingEnemies.splice(i, 1);
-                i--;
+                deleted = true;
             }
+        }
+        if (deleted) {
+            remainingEnemies.splice(i, 1);
+            i--;
+        }
+    }
+    if (remainingEnemies.length > 0) {
+        aimAtEnemy(remainingEnemies[0]);
+        return;//如果能绕开同一行或者同一列的其他敌人，那肯定就已经绕开了指定敌人本身
+    }
+
+    remainingEnemies = [];
+    for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
+    for (let i=0; i<remainingEnemies.length; i++) {
+        let thisEnemy = remainingEnemies[i];
+        let deleted = false;
+        for (let j=0; j<enemiesToAvoid.length; j++) {
+            let enemyToAvoid = enemiesToAvoid[j];
+            if (thisEnemy.rowNum == enemyToAvoid.rowNum && thisEnemy.columnNum == enemyToAvoid.columnNum) {
+                //绕开的指定要避免的敌人本身
+                deleted = true;
+            }
+        }
+        if (deleted) {
+            remainingEnemies.splice(i, 1);
+            i--;
         }
     }
     if (remainingEnemies.length > 0) aimAtEnemy(remainingEnemies[0]);
