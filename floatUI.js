@@ -1317,7 +1317,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.31'
+    version: '2.4.32'
 }
 var clickSets = {
     ap: {
@@ -2039,7 +2039,7 @@ function detectAPOnce_(logMuted) {
         if (bounds.top < apTop) continue;
         if (bounds.bottom > apBottom) continue;
 
-        log("加入疑似AP控件", i, uiObj);
+        if (!logMuted) log("加入疑似AP控件", i, uiObj);
         apUiObjIndices.push(i);
     }
 
@@ -2548,39 +2548,52 @@ function closeDetailTab() {
 
 //等待并点掉结算页面
 function clickResult() {
-    //等待结算页面出现
+    log("等待结算页面出现...");
     while (!id("ResultWrap").findOnce() && !id("charaWrap").findOnce() &&
            !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-        if (detectAPOnce() != null) return;
+        if (detectAPOnce() != null) {
+            log("检测到AP控件，应该已经不在战斗中了");
+            return;
+        }
         sleep(1000);
     }
+    log("结算页面出现了");
 
     while (id("ResultWrap").findOnce() || id("charaWrap").findOnce()) {
+        log("点掉结算页面第一页（经验值、篇章点）");
         sleep(1000);
 
         //助战选到路人时，关注
         if (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
+            log("出现关注弹窗，应该是助战选到了路人。点击关注");
             while (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.followConfirm)
                 sleep(3000)
             }
+            log("确认关注");
             while (text(keywords["appendFollow"][currentLang]).findOnce()||desc(keywords["appendFollow"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.followClose)
                 sleep(3000)
             }
+            log("关注完成");
         }
         //-----------如果有升级弹窗点击----------------------
         if (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
+            log("出现升级弹窗");
             while (id("rankUpWrap").findOnce() || text(keywords["playerRank"][currentLang]).findOnce() || desc(keywords["playerRank"][currentLang]).findOnce()) {
                 sleep(1000)
                 screenutilClick(clickSets.levelup)
                 sleep(3000)
             }
+            log("升级弹窗已经消失");
         }
 
-        if (detectAPOnce() != null) return;
+        if (detectAPOnce() != null) {
+            log("检测到AP控件，应该已经不在战斗中了");
+            return;
+        }
 
         sleep(1000)
         // 循环点击的位置为断线重连确定按钮
@@ -2588,14 +2601,21 @@ function clickResult() {
         // 点击后需要等一段时间再战按钮才会出现
         sleep(2500);
     } // while end
+    log("结算页面第一页已经消失");
 
     //点再战按钮
     while (id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-        if (detectAPOnce() != null) return;
+        log("点掉结算页面第二页（掉落物品、CC等等）");
+        if (detectAPOnce() != null) {
+            log("检测到AP控件，应该已经不在战斗中了");
+            return;
+        }
         sleep(1000)
+        log("点击位置为“再战”按钮（但不知道实际上有没有再战按钮）");
         screenutilClick(clickSets.restart)
         sleep(2500)
     }
+    log("结算页面第二页已经消失");
 }
 
 function autoMain() {
@@ -2676,16 +2696,23 @@ function autoMain() {
         //---------战斗------------------
         // 断线重连位置
         if (limit.isStable) {
-            while ((!id("ResultWrap").findOnce()) && (!id("charaWrap").findOnce())) {
+            log("已启用防断线模式");
+            while (!id("ResultWrap").findOnce() && !id("charaWrap").findOnce() &&
+                   !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
                 sleep(3000)
                 // 循环点击的位置为断线重连确定点
                 screenutilClick(clickSets.reconnectYes)
                 sleep(2000)
             }
+            log("结算页面已经出现");
         }
 
         //等待并点掉结算页面
+        //这里使用while循环的原因：
+        //使用游戏内建自动续战时，结算页面会出现多次；
+        //虽然使用游戏内建自动续战时，点击结算页面的动作没有意义，但仍然可以判断这次周回有没有在耗尽AP后结束
         while (detectAPOnce() == null) clickResult();
+        log("检测到AP控件");
 
     }
 }

@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.4.31"
+var version = "2.4.32"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -46,7 +46,7 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
-                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式" />
+                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="防断线模式" />
                     <text textColor="#666666" text="战斗中会不断点击，去除网络连接失败弹窗，经常有连接失败弹窗情况下开启" />
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
