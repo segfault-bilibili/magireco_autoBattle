@@ -4317,6 +4317,7 @@ function getMirrorsScoreAt(position) {
         log("getMirrorsScoreAt position", position, "score", score);
         return score;
     }
+    log("getMirrorsScoreAt position", position, "return 0");
     return 0;
 }
 
@@ -4426,7 +4427,7 @@ function mirrorsPickWeakestOpponent() {
             screenutilClick(clickSets["mirrorsOpponent"+"1"]);
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
         }
-        return;
+        return true;
     }
 
     //如果已经打开了信息面板，先关掉
@@ -4445,6 +4446,10 @@ function mirrorsPickWeakestOpponent() {
             if (totalScore[position] > 0) break;
             sleep(100);
         }
+        if (totalScore[position] <= 0) {
+            toastLog("获取位置", position, "的总战力失败，请尝试退出镜层后重新进入");
+            return false;
+        }
         if (totalScore[position] < lowestTotalScore) {
             lowestTotalScore = totalScore[position];
             lowestScorePosition = position;
@@ -4460,7 +4465,7 @@ function mirrorsPickWeakestOpponent() {
             sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
         }
-        return;
+        return true;
     }
 
     //找平均战力最低的
@@ -4489,7 +4494,7 @@ function mirrorsPickWeakestOpponent() {
 
     log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition], avgScore[lowestScorePosition]);
 
-    if (lowestScorePosition == 3) return; //最弱的就是第3个对手
+    if (lowestScorePosition == 3) return true; //最弱的就是第3个对手
 
     //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
     for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
@@ -4502,8 +4507,10 @@ function mirrorsPickWeakestOpponent() {
     while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
         screenutilClick(clickSets["mirrorsOpponent"+lowestScorePosition]);
         sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
-        if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
+        if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
     }
+    log("id(\"matchingWrap\").findOnce() == null");
+    return true;
 }
 
 
@@ -4524,7 +4531,10 @@ function mirrorsCycleMain() {
 
     while (true) {
         //挑选最弱的对手
-        mirrorsPickWeakestOpponent();
+        if (!mirrorsPickWeakestOpponent()) {
+            log("挑选镜层最弱对手时出错");
+            return;
+        }
 
         while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
             sleep(1000)
