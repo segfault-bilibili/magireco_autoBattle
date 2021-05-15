@@ -1317,7 +1317,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.33'
+    version: '2.4.34'
 }
 var clickSets = {
     ap: {
@@ -2685,7 +2685,7 @@ function autoMain() {
             let buttonToClick = "start";
             if (limit.useAutoRestart) {
                 if (questDetailInfo.questName == null) {
-                    toastLog("现在无法自动选关，故不使用游戏内建自动周回\n（除铃音外活动副本暂不能自动选关）");
+                    toastLog("现在无法自动选关，故不使用游戏内建自动周回\n（部分活动副本暂不能自动选关）");
                     buttonToClick = "start";
                 } else if (!isBtnExist["startAutoRestart"]) {
                     toastLog("自动续战按钮没有出现，只能点开始按钮");
