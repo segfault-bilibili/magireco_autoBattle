@@ -1317,7 +1317,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.32'
+    version: '2.4.33'
 }
 var clickSets = {
     ap: {
@@ -2562,6 +2562,12 @@ function clickResult() {
     while (id("ResultWrap").findOnce() || id("charaWrap").findOnce()) {
         log("点掉结算页面第一页（经验值、篇章点）");
         sleep(1000);
+
+        //vivo Y93s上发现会卡在结算页面第一页的点击上
+        if (id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
+            log("结算页面第二页的标志控件也出现了");
+            break;
+        }
 
         //助战选到路人时，关注
         if (text(keywords["follow"][currentLang]).findOnce()||desc(keywords["follow"][currentLang]).findOnce()) {
