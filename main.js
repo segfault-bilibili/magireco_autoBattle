@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.4.34"
+var version = "2.4.35"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -56,6 +56,10 @@ ui.layout(
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="useAutoRestart" w="*" checked="false" textColor="#666666" text="使用游戏内建自动周回(自动续战)功能" />
                     <text textColor="#666666" text="注意！没有选关列表的副本（类似杜鹃花、踩水等活动）以及星期狗粮副本不能启用此项。游戏内建自动周回耗尽AP后会退回选关界面，而脚本目前暂不支持部分副本自动选关" />
+                </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
+                    <Switch id="keepAPLow" w="*" checked="false" textColor="#666666" text="保持AP清空状态" />
+                    <text textColor="#666666" text="启用后，会持续检测AP余量，每当自回AP达到当前副本AP消耗量2倍时，就会开始战斗，用掉自回AP" />
                 </vertical>
                 {/*
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
@@ -214,7 +218,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = [/*"shuix", "shuiy"*/]
-const paramsNotInitList = ["apDrug50", "apDrugFull", "apMoney", "isStable", "justNPC", "useAutoRestart", "bpDrug"]
+const paramsNotInitList = ["apDrug50", "apDrugFull", "apMoney", "isStable", "justNPC", "useAutoRestart", "keepAPLow", "bpDrug"]
 var paramsMap = {}
 
 

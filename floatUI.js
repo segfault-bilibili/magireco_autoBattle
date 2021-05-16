@@ -1309,6 +1309,7 @@ var limit = {
     apDrugFullNum: '',
     apMoneyNum: '',
     bpDrugNum: '',
+    keepAPLow: false,
     isStable: false,
     justNPC: false,
     useAutoRestart: false,
@@ -1317,7 +1318,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.34'
+    version: '2.4.35'
 }
 var clickSets = {
     ap: {
@@ -2174,12 +2175,28 @@ function refillAP(drugNumLimit, questDetailInfo) {
         if (drugExausted || drugAllDisabled) {
             let str = "";
             if (!drugAllDisabled) str = "设定的AP药已经磕完，";
-            if (apNow >= questDetailInfo.apCost) {
-                toastLog(str+"进行最后一轮战斗");
-                return true;
+            if (limit.keepAPLow) {
+                let detectMax = 60;
+                for (let j=1; j<=detectMax; j++) {
+                    log("再次检测AP");
+                    apNow = detectAP(); //再次检测AP
+                    log("当前体力 AP=" + apNow);
+                    if (apNow >= questDetailInfo.apCost * 2) break;
+                    if (j == detectMax) {
+                        log("已经循环检测AP", j, "次，自回AP仍然不够，可能是AP检测有误，退出");
+                        exit();
+                    }
+                    log("AP剩余量尚不足消耗量的2倍。再等待5分钟...");
+                    sleep(5*60*1000);
+                }
             } else {
-                toastLog(str+"结束运行");
-                return false;
+                if (apNow >= questDetailInfo.apCost) {
+                    toastLog(str+"进行最后一轮战斗");
+                    return true;
+                } else {
+                    toastLog(str+"结束运行");
+                    return false;
+                }
             }
         }
 
