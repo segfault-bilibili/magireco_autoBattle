@@ -2967,8 +2967,8 @@ var knownFirstStandPointCoords = {
             bottomRight: { x: 259, y: 304, pos: "center" }
         },
         floor: {
-            topLeft:     { x: 231, y: 519, pos: "center" },
-            bottomRight: { x: 351, y: 576, pos: "center" }
+            topLeft:     { x: 258, y: 520, pos: "center" },
+            bottomRight: { x: 361, y: 573, pos: "center" }
         }
     },
     //our
