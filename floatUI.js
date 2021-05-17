@@ -1390,7 +1390,7 @@ function algo_init() {
 
     function getContent(element) {
         if (element) {
-            return element.text() === "" ? element.desc() : element.text();
+            return (element.text() === "" || element.text() == null) ? element.desc() : element.text();
         }
     }
 
