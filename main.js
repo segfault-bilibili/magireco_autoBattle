@@ -66,6 +66,7 @@ ui.layout(
                         <text text="脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="useAuto" w="*" margin="0 3" checked="false" textColor="#666666" text="优先使用官方自动周回（默认不使用；脚本完全退出后会恢复默认）" />
+                            <text margin="0 3" textColor="#666666" text="官方自动周回循环速度更快，但是因为是锁定了一个人反复循环，所以能照顾到的好友数量会减少许多。不使用官方自动周回，可以多多照顾好友，让更多好友在第二天登录时领到更多Pt，人人为我我为人人" />
                             <Switch id="refillMax" w="*" margin="0 3" checked="false" textColor="#666666" visibility="visible" text="嗑药到4倍上限（不开则每次嗑一瓶）" />
                         </vertical>
                     </vertical>
