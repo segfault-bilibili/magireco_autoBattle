@@ -538,8 +538,8 @@ var limit = {
     drug3num: '',
     jjcnum: '',
     default: 0,
-    useAuto: true,
-    refillMax: true,
+    useAuto: false,
+    refillMax: false,
 }
 var clickSets = {
     ap: {
