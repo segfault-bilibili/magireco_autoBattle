@@ -65,8 +65,8 @@ ui.layout(
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#666666" text="优先使用官方auto" />
-                            <Switch id="refillMax" w="*" margin="0 3" checked="true" textColor="#666666" visibility="visible" text="嗑药到4倍上限（不开则每次嗑一瓶）" />
+                            <Switch id="useAuto" w="*" margin="0 3" checked="false" textColor="#666666" text="优先使用官方自动周回（默认不使用；脚本完全退出后会恢复默认）" />
+                            <Switch id="refillMax" w="*" margin="0 3" checked="false" textColor="#666666" visibility="visible" text="嗑药到4倍上限（不开则每次嗑一瓶）" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -195,8 +195,8 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "refillMax"]
-const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "refillMax"]
+const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum", "useAuto"]
 
 var idmap={};
 var field=(new Ids()).getClass().getDeclaredField("ids");
