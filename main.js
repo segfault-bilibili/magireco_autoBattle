@@ -1,4 +1,5 @@
 "ui";
+importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust.autojs.project.ProjectConfig)
@@ -7,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = getProjectVersion();
+var version = "3.3.0";
 var appName = Name + " v" + version;
 
 function getProjectVersion() {
@@ -29,7 +30,7 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="foreground" margin="0 3" w="*" textColor="#666666" text="前台服务（防止系统清理）" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#666666" text="前台服务（常被鲨进程可以开启，按需）" />
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -61,9 +62,15 @@ ui.layout(
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#666666" text="只使用NPC（不选则先互关好友，后NPC）" />
                         </vertical>
                     </vertical>
-
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="坐标定位脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <text text="脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#666666" text="优先使用官方auto" />
+                            <Switch id="refillMax" w="*" margin="0 3" checked="true" textColor="#666666" visibility="visible" text="嗑药到4倍上限（不开则每次嗑一瓶）" />
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="备用脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#666666" text="稳定模式（战斗中不断点击重连弹窗位置）" />
                             <text text="活动周回关卡选择：" margin="0 5"/>
@@ -80,12 +87,6 @@ ui.layout(
                         </vertical>
                     </vertical>
 
-                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="控件定位脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
-                        <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="useAuto" w="*" margin="0 3" checked="false" textColor="#666666" text="使用自动续战（如设置用药则回复到4倍上限）" />
-                        </vertical>
-                    </vertical>
                     
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
@@ -150,11 +151,15 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     if (!checked && auto.service) auto.service.disableSelf()
     ui.autoService.setChecked(auto.service != null)
 });
-
+//前台服务
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
-ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+
+ui.useAuto.setOnCheckedChangeListener(function (widget, checked) {
+    ui.refillMax.setVisibility(checked ? View.VISIBLE : View.GONE);
+});
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -190,7 +195,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "refillMax"]
 const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
 
 var idmap={};
