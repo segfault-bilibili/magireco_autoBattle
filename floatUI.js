@@ -1667,6 +1667,33 @@ var cutoutParamsStr = null;
 //所以只有Android 9或以上才能不管游戏有没有在前台运行直接进行刘海参数检测
 if (device.sdkInt >= 28) ui.run(detectCutoutParams);
 
+//翻转刘海数据
+function flipCutoutParams() {
+    scr.cutout.left -= scr.cutout.insets.left;
+    scr.cutout.right += scr.cutout.insets.right;
+    scr.cutout.top -= scr.cutout.insets.top;
+    scr.cutout.bottom += scr.cutout.insets.bottom;
+    scr.cutout.offset.x -= (scr.cutout.insets.left - scr.cutout.insets.right) / 2;
+    scr.cutout.offset.y -= (scr.cutout.insets.top - scr.cutout.insets.bottom) / 2;
+
+    let temp = scr.cutout.insets.left;
+    scr.cutout.insets.left = scr.cutout.insets.right;
+    scr.cutout.insets.right = temp;
+    temp = scr.cutout.insets.top;
+    scr.cutout.insets.top = scr.cutout.insets.bottom;
+    scr.cutout.insets.bottom = temp;
+
+    scr.cutout.left += scr.cutout.insets.left;
+    scr.cutout.right -= scr.cutout.insets.right;
+    scr.cutout.top += scr.cutout.insets.top;
+    scr.cutout.bottom -= scr.cutout.insets.bottom;
+    scr.cutout.offset.x += (scr.cutout.insets.left - scr.cutout.insets.right) / 2;
+    scr.cutout.offset.y += (scr.cutout.insets.top - scr.cutout.insets.bottom) / 2;
+
+    cutoutParamsStr = "["+scr.cutout.left+","+scr.cutout.top+"]["+scr.cutout.right+","+scr.cutout.bottom+"]"
+    log("翻转后的刘海屏参数（包含右边缘和下边缘，不像Rect那样不包含）", cutoutParamsStr);
+}
+
 //换算坐标 1920x1080=>当前屏幕分辨率
 function convertCoords()
 {
@@ -1684,6 +1711,16 @@ function convertCoords()
         break;
     default:
         throw "convertCoordsIncorrectArgc";
+    }
+
+    let editText = selector().packageName(keywords["gamePkgName"][currentLang]).className("android.widget.EditText").algorithm("BFS").findOnce();
+    for (let i=0; i<2; i++) {
+        let supposed_x = scr.cutout.offset.x + parseInt((scr.res.width - scr.ref.width) / 2);
+        let actual_x = editText.bounds().left;
+        let x_diff = supposed_x - actual_x;
+        if (x_diff < 0) x_diff = -x_diff;
+        if (x_diff <= 2) break;
+        flipCutoutParams();
     }
 
     var verboselog = false
