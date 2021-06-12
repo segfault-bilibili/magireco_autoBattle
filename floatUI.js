@@ -1833,6 +1833,7 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    log("limit.useAuto", limit.useAuto);
                     var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (limit.useAuto) {
                         if (element) {
