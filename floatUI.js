@@ -1223,13 +1223,8 @@ floatUI.adjust = function (key, value) {
 function algo_init() {
 
     var useShizuku = true;
-    var isFirstRootClick = true;
 
     function clickRoot(x, y) {
-        if (isFirstRootClick) {
-            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
-            isFirstRootClick = false;
-        }
         //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
         if (useShizuku) {
             log("使用Shizuku模拟点击坐标 "+x+","+y);
@@ -1239,7 +1234,7 @@ function algo_init() {
                 result = $shell("input tap "+x+" "+y, false);
             } catch (e) {
                 useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
+                toastLog("Shizuku未安装/未启动,或者未授权");
                 log(e);
             }
 
@@ -1410,26 +1405,6 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
     }
 
-    function findPackageName(name, wait) {
-        var startTime = new Date().getTime();
-        var result = null;
-        var it = 0;
-        do {
-            it++;
-            try {
-                auto.root.refresh();
-            } catch (e) {
-                log(e);
-                sleep(100);
-                continue;
-            }
-            result = packageName(name).findOnce();
-            if (result && result.refresh()) break;
-            sleep(100);
-        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        return result;
-    }
-
     function waitAny(fnlist, wait) {
         var startTime = new Date().getTime();
         var result = null;
@@ -1466,14 +1441,10 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
-    //检测AP，缺省wait的情况下只检测一次就退出
-    function getAP(wait) {
-        var startTime = 0;
-        if (wait != null) startTime = new Date().getTime();
-
+    function getAP() {
         if (findID("baseContainer")) {
             // values and seperator are together
-            do {
+            while (true) {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = matchAll(/^\d+\/\d+$/, true);
@@ -1496,11 +1467,11 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(100);
-            } while (wait != null && new Date().getTime() < startTime + wait);
+                sleep(500);
+            }
         } else {
             // ... are seperate
-            do {
+            while (true) {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = findAll("/", true);
@@ -1527,8 +1498,8 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(100);
-            } while (wait != null && new Date().getTime() < startTime + wait);
+                sleep(500);
+            }
         }
     }
 
@@ -1664,33 +1635,34 @@ function algo_init() {
     };
 
     var string = {};
-    var lang = null;
-
-    function detectGameLang() {
-        let detectedLang = null;
-        for (detectedLang in strings) {
-            if (detectedLang == "name") continue;
-            if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
-                log("区服", detectedLang);
-                break;
-            }
-            detectedLang = null;
-        }
-        if (detectedLang != null) {
-            lang = detectedLang;
-            for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = strings[lang][i];
-            }
-            return detectedLang;
-        }
-        return null;
-    }
 
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
     var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
 
-    function detectScreenParams() {
+    function initialize() {
+        if (auto.root == null) {
+            toastLog("未开启无障碍服务");
+            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        }
+        let lang = null;
+        for (lang in strings) {
+            if (packageName(strings[lang][strings.name.findIndex((e) => e == "package_name")]).findOnce()) {
+                log("区服", lang);
+                break;
+            }
+            lang = null;
+        }
+        if (lang != null) {
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = strings[lang][i];
+            }
+        } else {
+            toastLog("未在前台检测到魔法纪录,退出");
+            stopThread();
+        }
+
+        //检测屏幕参数
         //开始脚本前可能转过屏之类的，所以参数需要先重置
         screen = {width: 0, height: 0, type: "normal"};
         gamebounds = null;
@@ -1780,22 +1752,6 @@ function algo_init() {
         log("gameoffset", gameoffset);
     }
 
-    function initialize() {
-        if (auto.root == null) {
-            toastLog("未开启无障碍服务");
-            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
-        }
-
-        //检测区服
-        if (detectGameLang() == null) {
-            toastLog("未在前台检测到魔法纪录,退出");
-            stopThread();
-        }
-
-        //检测屏幕参数
-        detectScreenParams();
-    }
-
     //绿药或红药，每次消耗1个
     //魔法石，每次碎5钻
     const drugCosts = [1, 1, 5];
@@ -1848,7 +1804,7 @@ function algo_init() {
 
         //检测AP药选择窗口在最开始是不是打开的状态
         var ap_refill_title_appeared = false;
-        var ap_refill_title_element = find(string.ap_refill_title, 200);
+        var ap_refill_title_element = find(string.ap_refill_title, 500);
         if (ap_refill_popup_element != null) ap_refill_title_appeared = true;
 
         var apCost = getCostAP();
@@ -1856,7 +1812,7 @@ function algo_init() {
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
-            var apinfo = getAP(limit.timeout);
+            var apinfo = getAP();
             if (apinfo == null) {
                 log("检测AP失败");
                 break;

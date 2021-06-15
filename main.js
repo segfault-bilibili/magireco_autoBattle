@@ -7,8 +7,8 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "3.7.0";
-var appName = Name + " v" + version;
+var version = "3.7.2";
+var appName = Name + " v" + version + "预览版";
 
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
@@ -83,7 +83,6 @@ ui.layout(
                                 <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
                                 <text text="毫秒" textColor="#000000" />
                             </linear>
-                            <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -247,17 +246,12 @@ function reportBug() {
     }
 
     if (resultLinks != "") {
-        log(resultLinks);
         ui.run(() => {
             clip = android.content.ClipData.newPlainText("auto_bugreport_result", resultLinks);
             activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
             toast("内容已复制到剪贴板");
         });
-        dialogs.build({
-            title: "上传完成",
-            content: "别忘了全选=>复制，然后粘贴给群里的小伙伴们看看哦~ 不然的话，我们也不知道你上传到哪里了啊！！！",
-            inputPrefill: resultLinks
-        }).show();
+        dialogs.rawInput("上传完成", resultLinks);
         log("报告问题对话框已关闭");
     }
 }
@@ -499,7 +493,7 @@ getAcceptedChars: function () {
     return ['0', '1', '2', '3', '4'];
 }
 }));
-
+/*
 //版本获取
 http.__okhttp__.setTimeout(5000);
 try {
@@ -513,10 +507,10 @@ try {
     } else {
         let resJson = res.body.json();
         if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-            ui.run(function () {
+            ui.run(function () {*/
                 ui.versionMsg.setText("当前无需更新")
                 ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-            });
+            /*});
         } else {
             ui.run(function () {
                 ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
@@ -530,9 +524,9 @@ try {
         ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
 }
-
+*/
 //版本更新
-function toUpdate() {
+function toUpdate() {/*
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
         if (res.statusCode != 200) {
@@ -564,4 +558,4 @@ function toUpdate() {
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     }
-}
+*/}

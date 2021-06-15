@@ -1,16 +1,29 @@
 {
-    "name": "auto",
-    "main": "main.js",
-    "ignore": [
-        "build"
-    ],
-    "packageName": "top.momoe.auto",
-    "versionName": "3.7.0",
-    "versionInfo": "",
-    "versionCode": 1,
-    "icon":"./images/icon.png",
-    "launchConfig":{
-        "splashIcon":"./images/start.jpg",
-        "splashText":""
-    }
+  "assets": [],
+  "build": {
+    "build_id": "4705FA24-6",
+    "build_number": 6,
+    "build_time": 1623674510150,
+    "release": true
+  },
+  "encryptLevel": 0,
+  "useFeatures": [],
+  "icon": "res/icon.png",
+  "launchConfig": {
+    "displaySplash": true,
+    "hideLogs": false,
+    "splashIcon": "res/splashIcon.png",
+    "splashText": "",
+    "stableMode": false
+  },
+  "main": "main.js",
+  "name": "auto3.7.2预览版",
+  "optimization": {
+    "removeOpenCv": false,
+    "unusedResources": false
+  },
+  "packageName": "top.momoe.auto.preview",
+  "scripts": {},
+  "versionCode": 1,
+  "versionName": "3.7.2"
 }
