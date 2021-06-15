@@ -1615,6 +1615,7 @@ function algo_init() {
             "regex_bonus",
             "regex_autobattle",
             "package_name",
+            "connection_lost",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -1633,6 +1634,7 @@ function algo_init() {
             /＋\d+个$/,
             /[\s\S]*续战/,
             "com.bilibili.madoka.bilibili",
+            "连线超时",
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -1651,6 +1653,7 @@ function algo_init() {
             /＋\d+個$/,
             /[\s\S]*周回/,
             "com.komoe.madokagp",
+            "連線超時",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -1669,6 +1672,7 @@ function algo_init() {
             /＋\d+個$/,
             /[\s\S]*周回/,
             "com.aniplex.magireco",
+            "通信エラー",
         ],
     };
 
@@ -1693,6 +1697,29 @@ function algo_init() {
             return detectedLang;
         }
         return null;
+    }
+
+    //检测游戏是否闪退或掉线
+    //注意！调用后会重新检测区服，从而可能导致string、lang变量被重新赋值
+    function isGameDead() {
+        var startTime = new Date().getTime();
+        var detectedLang = null;
+        do {
+            detectedLang = detectGameLang();
+        } while (new Date().getTime() < startTime + limit.timeout);
+        if (detectedLang == null) {
+            log("游戏已经闪退");
+            return "crashed";
+        }
+        var connection_lost_title_element = find(string.connection_lost, limit.timeout);
+        if (
+            connection_lost_title_element != null
+            && connection_lost_title_element.id() == "popupInfoDetailTitle"
+        ) {
+            log("游戏已经断线并强制回首页");
+            return "logged_out";
+        }
+        return false;
     }
 
     var screen = {width: 0, height: 0, type: "normal"};
