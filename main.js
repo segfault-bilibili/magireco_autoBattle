@@ -253,6 +253,7 @@ ui.start.click(() => {
     toastLog("修改完成")
 });
 
+/*
 //版本获取
 http.__okhttp__.setTimeout(5000);
 try {
@@ -283,9 +284,11 @@ try {
         ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
 }
+*/
 
 //版本更新
 function toUpdate() {
+/*
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
         if (res.statusCode != 200) {
@@ -302,12 +305,12 @@ function toUpdate() {
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)*/
                     engines.stopAll()
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
                         toast("更新完毕")
-                    })
+                    })/*
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
                 }
@@ -317,4 +320,5 @@ function toUpdate() {
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     }
+*/
 }
