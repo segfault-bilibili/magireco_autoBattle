@@ -502,6 +502,7 @@ getAcceptedChars: function () {
 }
 }));
 
+/*
 //版本获取
 http.__okhttp__.setTimeout(5000);
 try {
@@ -531,10 +532,10 @@ try {
         ui.versionMsg.setText("请求超时")
         ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
-}
+}*/
 
 //版本更新
-function toUpdate() {
+function toUpdate() {/*
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
         if (res.statusCode != 200) {
@@ -546,17 +547,17 @@ function toUpdate() {
             } else {
                 let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
                 let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
-                if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                    toastLog("更新加载中");
+                if (main_script.statusCode == 200 && float_script.statusCode == 200) {*/
+                    toastLog("更新加载中");/*
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)*/
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
                         toast("更新完毕")
                     })
-                    engines.stopAll()
+                    engines.stopAll()/*
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
                 }
@@ -565,5 +566,5 @@ function toUpdate() {
 
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
-    }
+    }*/
 }
