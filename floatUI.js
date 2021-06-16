@@ -2060,6 +2060,7 @@ function algo_init() {
                             () => find(string.support),
                             () => findID("helpBtn"),
                             () => match(/^BATTLE.+/),
+                            () => findID("nextPageBtn"),
                         ],
                         3000
                     );
@@ -2067,6 +2068,11 @@ function algo_init() {
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
+                        break;
+                    }
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
                         break;
                     }
 
