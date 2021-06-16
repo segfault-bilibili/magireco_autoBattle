@@ -32,6 +32,17 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+// 捕获异常时打log记录详细的调用栈
+//（不能先声明为空函数再赋值，否则不会正常工作）
+function logException(e) {
+    try { throw e; } catch (caught) {
+        Error.captureStackTrace(caught, logException);
+        //log(e, caught.stack); //输出挤在一行里了，不好看
+        log(e);
+        log(caught.stack);
+    }
+}
+
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
@@ -121,7 +132,7 @@ floatUI.main = function () {
             var text = recordElement(auto.root, 0, "");
         } catch (e) {
             toastLog("快照出错");
-            log(e);
+            logException(e);
             return;
         }
 
@@ -1246,7 +1257,7 @@ function algo_init() {
             } catch (e) {
                 useShizuku = false;
                 toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
-                log(e);
+                logException(e);
             }
 
             //这里useShizuku实际上指示了是否捕获到抛出的异常
@@ -1308,7 +1319,7 @@ function algo_init() {
             try {
                 auto.root.refresh();
             } catch (e) {
-                log(e);
+                logException(e);
                 sleep(100);
                 continue;
             }
@@ -1349,7 +1360,7 @@ function algo_init() {
             try {
                 auto.root.refresh();
             } catch (e) {
-                log(e);
+                logException(e);
                 sleep(100);
                 continue;
             }
@@ -1372,7 +1383,7 @@ function algo_init() {
             try {
                 auto.root.refresh();
             } catch (e) {
-                log(e);
+                logException(e);
                 sleep(100);
                 continue;
             }
@@ -1396,7 +1407,7 @@ function algo_init() {
             try {
                 auto.root.refresh();
             } catch (e) {
-                log(e);
+                logException(e);
                 sleep(100);
                 continue;
             }
@@ -1425,7 +1436,7 @@ function algo_init() {
             try {
                 auto.root.refresh();
             } catch (e) {
-                log(e);
+                logException(e);
                 sleep(100);
                 continue;
             }
