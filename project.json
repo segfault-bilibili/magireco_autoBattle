@@ -1,11 +1,11 @@
 {
-    "name": "auto",
+    "name": "auto3.9.2预览版",
     "main": "main.js",
     "ignore": [
         "build"
     ],
     "packageName": "top.momoe.auto",
-    "versionName": "3.9.0",
+    "versionName": "3.9.2",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
