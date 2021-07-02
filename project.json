@@ -4,7 +4,7 @@
     "ignore": [
         "build"
     ],
-    "packageName": "top.momoe.auto",
+    "packageName": "top.momoe.auto.preview",
     "versionName": "4.1.0",
     "versionInfo": "",
     "versionCode": 1,
