@@ -1318,7 +1318,7 @@ var limit = {
     useScreencapShellCmd: false,
     useInputShellCmd: false,
     guessSupportCoords: false,
-    version: '2.4.35'
+    version: '2.4.36'
 }
 var clickSets = {
     ap: {
