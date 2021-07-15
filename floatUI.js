@@ -1258,6 +1258,7 @@ var limit = {
     smartMirrorsPick: true,
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
+    CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -5158,7 +5159,7 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -5566,11 +5567,21 @@ function algo_init() {
             x: 100,
             y: 50,
             pos: "top"
+        },
+        recover_battle: {
+            x: 1230,
+            y: 730,
+            pos: "center"
+        },
+        skillPanelSwitch: {
+            x: 1773,
+            y: 927,
+            pos: "bottom"
         }
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
@@ -5590,6 +5601,10 @@ function algo_init() {
         woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
+        skillLocked: ImgURLBase+"/images/skillLocked.png",
+        skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
+        skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
+        skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -6659,6 +6674,226 @@ function algo_init() {
         return allActionDisks[max].charaID;
     }
 
+    //检测和使用主动技能
+
+    const skillCharaDistance = 328;
+    const skillDistance = 155;
+
+    var knownFirstSkillCoords = {
+        topLeft: {
+            x: 31,
+            y: 978,
+            pos: "bottom"
+        },
+        bottomRight: {
+            x: 163,
+            y: 1015,
+            pos: "bottom"
+        }
+    }
+
+    var knownFirstSkillFullCoords = {
+        topLeft: {
+            x: 22,
+            y: 920,
+            pos: "bottom"
+        },
+        bottomRight: {
+            x: 172,
+            y: 1071,
+            pos: "bottom"
+        }
+    }
+
+    function getSkillArea(diskPos, skillNo, isFull) {
+        let area = {};
+        for (let corner of ["topLeft", "bottomRight"]) {
+            area[corner] = {};
+            area[corner].pos = "bottom";
+            for (let axis of ["x", "y"]) {
+                if (isFull) {
+                    area[corner][axis] = knownFirstSkillFullCoords[corner][axis];
+                } else {
+                    area[corner][axis] = knownFirstSkillCoords[corner][axis];
+                }
+            }
+            area[corner].x += diskPos * skillCharaDistance;
+            area[corner].x += skillNo * skillDistance;
+        }
+        return getConvertedArea(area);
+    }
+
+    function getSkillFullArea(diskPos, skillNo) {
+        return getSkillArea(diskPos, skillNo, true);
+    }
+
+    function getSkillImg(screenshot, diskPos, skillNo) {
+        let area = getSkillArea(diskPos, skillNo);
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    function getSkillFullImg(screenshot, diskPos, skillNo) {
+        let area = getSkillFullArea(diskPos, skillNo);
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //检测技能是否可用
+    function isSkillAvailable(screenshot, diskPos, skillNo) {
+        log("检测第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能是否可用...");
+        let skillImg = getSkillImg(screenshot, diskPos, skillNo);
+        let skillImgGRAY = renewImage(images.grayscale(skillImg));
+        let skillImgGray = renewImage(images.cvtColor(skillImgGRAY, "GRAY2BGRA"));
+        let skillImgBGRA = renewImage(images.cvtColor(skillImg, "BGR2BGRA"));
+        let similarity = images.getSimilarity(skillImgGray, skillImgBGRA, {"type": "MSSIM"});
+        log("技能按钮区域图像 去色前后的相似度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            let firstSkillArea = getSkillArea(0, 0);
+            let gaussianX = parseInt(getAreaWidth(firstSkillArea) * 8);
+            let gaussianY = parseInt(getAreaHeight(firstSkillArea) * 8);
+            if (gaussianX % 2 == 0) gaussianX += 1;
+            if (gaussianY % 2 == 0) gaussianY += 1;
+            let gaussianSize = [gaussianX, gaussianY];
+            let skillImgBlur = renewImage(images.gaussianBlur(skillImg, gaussianSize));
+            let skillImgOnePx = renewImage(images.resize(skillImgBlur, [1, 1], "LINEAR"));
+            if (images.detectsColor(skillImgOnePx, colors.WHITE, 0, 0, 8, "diff")) {
+                log("技能【可用】且闪光到全白");
+                return true;
+            } else {
+                log("技能不可用");
+                return false;
+            }
+        } else {
+            let skillFullImg = getSkillFullImg(screenshot, diskPos, skillNo);
+            let skillFullImgGray = renewImage(images.grayscale(skillFullImg));
+            let minRadius = parseInt(getAreaWidth(getSkillFullArea(0, 0)) * 0.33);
+            let foundCircles = images.findCircles(skillFullImgGray, {minRadius: minRadius});
+            log("找圆结果", foundCircles);
+            if (foundCircles != null && foundCircles.length > 0) {
+                let firstSkillArea = getSkillArea(0, 0);
+                let gaussianX = parseInt(getAreaWidth(firstSkillArea) / 4);
+                let gaussianY = parseInt(getAreaHeight(firstSkillArea) / 4);
+                if (gaussianX % 2 == 0) gaussianX += 1;
+                if (gaussianY % 2 == 0) gaussianY += 1;
+                let gaussianSize = [gaussianX, gaussianY];
+                let imgA = renewImage(images.gaussianBlur(skillImg, gaussianSize));
+                similarity = -1;
+                for (var imgName of ["skillLocked", "skillEmptyCHS", "skillEmptyCHT", "skillEmptyJP"]) {
+                    let imgB = renewImage(images.gaussianBlur(knownImgs[imgName], gaussianSize));
+                    let s = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+                    if (s > similarity) {
+                        similarity = s;
+                    }
+                }
+                log("与小锁或未装备图标比对的最高相似度 MSSIM=", similarity);
+                if (similarity > 2.4) {
+                    log("技能不存在", imgName);
+                    return false;
+                } else {
+                    log("技能【可用】");
+                    return true;
+                }
+            } else {
+                log("技能不存在");
+                return false;
+            }
+        }
+    }
+
+    //是否有我方行动盘出现
+    function isDiskAppearing(screenshot) {
+        let img = getDiskImg(screenshot, 0, "action");
+        if (img != null) {
+            log("已截取第一个盘的动作图片");
+        } else {
+            log("截取第一个盘的动作图片时出现问题");
+        }
+        let diskAppeared = true;
+        try {
+            recognizeDisk(img, "action", 2.1);
+        } catch(e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            diskAppeared = false;
+        }
+        return diskAppeared;
+    }
+
+    //打开或关闭技能面板
+    function toggleSkillPanel(open) {
+        log((open?"打开":"关闭")+"技能面板...");
+        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+            if (attempt >= 10) {
+                log((open?"打开":"关闭")+"技能面板时出错");
+                stopThread();
+            }
+            if (attempt % 2 == 1) {
+                log("点击取消按钮");
+                click(convertCoords(clickSetsMod.reconnectYes));
+                sleep(500);
+                if (isBackButtonAppearing(compatCaptureScreen())) {
+                    log("误触打开了角色信息,点击返回关闭");
+                    click(convertCoords(clickSetsMod.back));
+                    sleep(500);
+                }
+            }
+            log("点击切换技能面板/行动盘面板");
+            click(convertCoords(clickSetsMod.skillPanelSwitch));
+            sleep(1000);
+        }
+    }
+
+    const knownBackButtonPoint = {
+        x: 57,
+        y: 64,
+        pos: "top"
+    };
+
+    //检测返回按钮是否出现
+    function isBackButtonAppearing(screenshot) {
+        let point = convertCoordsNoCutout(knownBackButtonPoint);
+        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+            log("似乎出现了返回按钮");
+            return true;
+        } else {
+            log("似乎没出现返回按钮");
+            return false;
+        }
+    }
+
+    //闭着眼放出所有主动技能
+    function clickAllSkills() {
+        //打开技能面板
+        toggleSkillPanel(true);
+
+        while (true) {
+            var hasAvailableSkill = false;
+            let screenshot = compatCaptureScreen();
+            for (let diskPos=0; diskPos<5; diskPos++) {
+                for (let skillNo=0; skillNo<2; skillNo++) {
+                    if (isSkillAvailable(screenshot, diskPos, skillNo)) {
+                        hasAvailableSkill = true;
+                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
+                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
+                        sleep(500);
+                        log("点击确认按钮使用技能");
+                        click(convertCoords(clickSetsMod.recover_battle));
+                        sleep(4000);
+                        while (isBackButtonAppearing(compatCaptureScreen())) {
+                            log("误触打开了角色信息,点击返回关闭");
+                            click(convertCoords(clickSetsMod.back));
+                            sleep(500);
+                        }
+                        toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        screenshot = compatCaptureScreen(); //toggleSkillPanel回收了screenshot，所以需要重新截图赋值
+                    }
+                }
+            }
+            if (!hasAvailableSkill) break;
+        }
+
+        //关闭技能面板
+        toggleSkillPanel(false);
+        return false;
+    }
 
     //等待己方回合
     function waitForOurTurn() {
@@ -6684,19 +6919,7 @@ function algo_init() {
 
             //如果有技能可用，会先闪过我方行动盘，然后闪过技能面板，最后回到显示我方行动盘
             //所以，必须是连续多次看到我方行动盘，这样才能排除还在闪烁式切换界面的情况
-            let img = getDiskImg(screenshot, 0, "action");
-            if (img != null) {
-                log("已截取第一个盘的动作图片");
-            } else {
-                log("截取第一个盘的动作图片时出现问题");
-            }
-            let diskAppeared = true;
-            try {
-                recognizeDisk(img, "action", 2.1);
-            } catch(e) {
-                if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-                diskAppeared = false;
-            }
+            let diskAppeared = isDiskAppearing(screenshot);
             if (diskAppeared) {
                 log("出现我方行动盘");
                 diskAppearedCount++;
@@ -6870,6 +7093,8 @@ function algo_init() {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
+            } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
+                knownArea = knownFirstSkillCoords[imgName];
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
@@ -7002,6 +7227,14 @@ function algo_init() {
             if(!waitForOurTurn()) break;
             //我的回合，抽盘
             turn++;
+
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= 3) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能
+                    clickAllSkills();
+                }
+            }
 
             //扫描行动盘和战场信息
             scanDisks();
