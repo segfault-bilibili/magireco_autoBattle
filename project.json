@@ -1,11 +1,11 @@
 {
-    "name": "auto4.4.1预览版",
+    "name": "auto4.4.2预览版",
     "main": "main.js",
     "ignore": [
         "build"
     ],
     "packageName": "top.momoe.auto.preview",
-    "versionName": "4.4.1",
+    "versionName": "4.4.2",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
