@@ -9,7 +9,7 @@ importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
 var version = "4.5.0";
-var appName = Name + " v" + version;
+var appName = Name + " v" + version + "预览版";
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
@@ -752,6 +752,7 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
     }
 }));
 
+/*
 //版本获取
 http.__okhttp__.setTimeout(5000);
 try {
@@ -765,10 +766,12 @@ try {
     } else {
         let resJson = res.body.json();
         if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+*/
             ui.run(function () {
                 ui.versionMsg.setText("当前无需更新")
                 ui.versionMsg.setTextColor(colors.parseColor("#666666"))
             });
+/*
         } else {
             ui.run(function () {
                 ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
@@ -782,9 +785,11 @@ try {
         ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
 }
+*/
 
 //版本更新
 function toUpdate() {
+/*
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
         if (res.statusCode != 200) {
@@ -818,4 +823,5 @@ function toUpdate() {
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     }
+*/
 }
