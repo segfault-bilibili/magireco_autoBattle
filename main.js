@@ -802,7 +802,7 @@ try {
         ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
 }
-/*
+*/
 
 //版本更新
 function toUpdate() {
