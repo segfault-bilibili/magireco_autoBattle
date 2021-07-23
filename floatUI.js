@@ -130,6 +130,10 @@ floatUI.scripts = [
         fn: tasks.testReLaunch,
     },
     {
+        name: "通用副本周回v3.6.0",
+        fn: default3_6_0,
+    },
+    {
         name: "副本周回2(备用可选)",
         fn: autoMain,
     },
@@ -4012,6 +4016,18 @@ function algo_init() {
         result.isEventTypeBRANCH = isEventTypeBRANCH;
         toastLog("要录制的【"+(result.isEventTypeBRANCH?"是":"不是")+"】\n杜鹃花型活动的选关动作");
 
+        if (!result.isEventTypeBRANCH) {
+            dialogs.alert("小贴士",
+                "录制下来的选关动作一般包含这几个步骤:\n"
+                +"1.在首页点击,进入主线/支线/活动剧情,\n"
+                +"2.点击选择要打的关卡所在的章节,\n"
+                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"什么也不做,继续\",检测不到就\"先强关游戏再报告失败并结束\",\n"
+                +"4.点击选择要打的关卡,进入助战选择界面,\n"
+                +"5.在助战选择界面再次利用\"检测文字是否出现\"来确保章节和关卡都没有选错,原理同上,\n"
+                +"6.结束并报告成功。"
+            );
+        }
+
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
             log("录制第"+(step+1)+"步操作...");
@@ -5213,39 +5229,32 @@ function algo_init() {
                             killGame(string.package_name);
                         }
                     } else {
-                        if (match(string.regex_event_branch)) {
-                            //杜鹃花型活动
-                            if (dialogs.confirm("警告",
-                                   "看上去你正在杜鹃花型活动的剧情地图中。"
-                                   +"\n在打完一局活动剧情后,杜鹃花型活动的剧情地图会发生移动,然后再次选关时,点击坐标就可能错位。"
-                                   +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
-                                   +"\n注意!"
-                                   +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
-                                   +"\n只要你现在是刚刚打开剧情地图(或者虽然刚刚打完一局活动剧情,但打的不是现在要周回的那一关),"
-                                   +"\n那么你仍然必须再把这一关打通关一次。"
-                                   +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
-                                   +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
-                                   +"\n"
-                                   +"\n如果你已经准备好,请点\"确定\"。"
-                                   +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
-                                   +"\n脚本会提示您先点击地图上的关卡按钮,接着会自动拖动剧情地图,让关卡按钮\"归中\",然后提示您再点击一次地图上的关卡按钮。"
-                               ))
-                            {
-                                log("等待捕获关卡坐标");
-                                battlepos = capture().pos_up;
-                            } else {
-                                log("等待第1次捕获杜鹃花关卡坐标");
-                                let temp_battlepos = capture("请点击需要周回的battle").pos_up;
-                                let bounds = getFragmentViewBounds();
-                                toastLog("正在自动拖动剧情地图,需要6秒完成...");
-                                swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
-                                toast("自动拖动剧情地图已完成");
-                                log("等待第2次捕获杜鹃花关卡坐标");
-                                battlepos = capture("请再点击一次需要周回的battle").pos_up;
-                            }
-                        } else {
+                        if (dialogs.confirm("警告",
+                               "在打完一局后,关卡列表或剧情地图会发生\"归中\"移动,然后再次选关时,点击坐标就可能错位。"
+                               +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
+                               +"\n注意!"
+                               +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
+                               +"\n只要你现在是刚刚进入关卡列表或剧情地图(或者虽然刚刚打完一局,但打的不是现在要周回的那一关),"
+                               +"\n那么你仍然必须再把这一关打通关一次。"
+                               +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
+                               +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
+                               +"\n"
+                               +"\n如果你已经准备好,请点\"确定\"。"
+                               +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
+                               +"\n脚本会提示您先点击选关一次,接着会自动拖动剧情地图或关卡列表,让关卡按钮\"归中\",然后提示您再点击选关一次。"
+                           ))
+                        {
                             log("等待捕获关卡坐标");
                             battlepos = capture().pos_up;
+                        } else {
+                            log("等待第1次捕获关卡坐标");
+                            let temp_battlepos = capture("请点击需要周回的battle").pos_up;
+                            let bounds = getFragmentViewBounds();
+                            toastLog("正在自动拖动,需要6秒完成...");
+                            swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
+                            toast("自动拖动已完成");
+                            log("等待第2次捕获坐标");
+                            battlepos = capture("请再点击一次需要周回的battle").pos_up;
                         }
                     }
                     break;
@@ -8471,8 +8480,270 @@ function algo_init() {
 
     /* ~~~~~~~~ 镜界自动战斗 结束 ~~~~~~~~ */
 
+    /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
+
+    function taskDefault3_6_0() {
+        initialize();
+        var state = STATE_MENU;
+        var battlename = "";
+        var charabound = null;
+        var tryusedrug = true;
+        var battlepos = null;
+        var inautobattle = false;
+        while (true) {
+            switch (state) {
+                case STATE_MENU: {
+                    waitAny(
+                        [
+                            () => find(string.support),
+                            () => findID("helpBtn"),
+                            () => match(/^BATTLE.+/),
+                        ],
+                        3000
+                    );
+                    // exit condition
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    // if AP is not enough
+                    if (findID("popupInfoDetailTitle")) {
+                        // try use drug
+                        tryusedrug = refillAP();
+                        break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
+                    }
+                    // if need to click to enter battle
+                    let button = find(string.battle_confirm);
+                    if (button) {
+                        log("点击确认进入battle");
+                        let bound = button.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        // wait for support screen for 5 seconds
+                        find(string.support, 5000);
+                    } else if (battlepos) {
+                        log("尝试点击关卡坐标");
+                        click(battlepos.x, battlepos.y);
+                        waitAny(
+                            [() => find(string.battle_confirm), () => find(string.support)],
+                            5000
+                        );
+                    }
+                    // click battle if available
+                    else if (battlename) {
+                        let battle = find(battlename);
+                        if (battle) {
+                            log("尝试点击关卡名称");
+                            let bound = battle.bounds();
+                            click(bound.centerX(), bound.centerY());
+                            waitAny(
+                                [() => find(string.battle_confirm), () => find(string.support)],
+                                5000
+                            );
+                        }
+                    } else {
+                        log("等待捕获关卡坐标");
+                        battlepos = capture();
+                    }
+                    break;
+                }
+
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
+                    // if we need to refill AP
+                    let apinfo = getAP();
+                    let apcost = getCostAP();
+                    log(
+                        "消费AP",
+                        apcost,
+                        "用药",
+                        usedrug,
+                        "当前AP",
+                        apinfo.value,
+                        "AP上限",
+                        apinfo.total
+                    );
+                    if (
+                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul)) ||
+                            (apcost && apinfo.value < apcost * 2)) &&
+                        usedrug &&
+                        tryusedrug
+                    ) {
+                        // open revive window
+                        let revive_window;
+                        do {
+                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                            revive_window = findID("popupInfoDetailTitle", 5000);
+                        } while (!revive_window);
+                        // try use drug
+                        tryusedrug = refillAP();
+                    }
+                    // save battle name if needed
+                    let battle = match(/^BATTLE.+/);
+                    if (battle) {
+                        battlename = getContent(battle);
+                    }
+                    // pick support
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
+                    if (ptlist.length) {
+                        let bound;
+                        if (
+                            ptlist.length > playercount &&
+                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
+                        ) {
+                            log("选择NPC助战");
+                            // NPC comes in the end of list if available
+                            bound = ptlist[ptlist.length - 1].bounds;
+                        } else {
+                            log("选择玩家助战");
+                            // higher PT bonus goes ahead
+                            bound = ptlist[0].bounds;
+                        }
+                        click(bound.centerX(), bound.centerY());
+                        // wait for start button for 5 seconds
+                        findID("nextPageBtn", 5000);
+                        break;
+                    }
+                    // if unexpectedly treated as long touch
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回");
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, 5000);
+                    }
+                    break;
+                }
+
+                case STATE_TEAM: {
+                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (limit.useAuto) {
+                        if (element) {
+                            inautobattle = true;
+                        } else {
+                            element = findID("nextPageBtn");
+                            if (element) {
+                                inautobattle = false;
+                                log("未发现自动续战，改用标准战斗");
+                            }
+                        }
+                    }
+                    // exit condition
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
+                    }
+                    // click start
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 500);
+                    }
+                    break;
+                }
+
+                case STATE_BATTLE: {
+                    // exit condition
+                    if (findID("charaWrap")) {
+                        state = STATE_REWARD_CHARACTER;
+                        log("进入角色结算");
+                        break;
+                    }
+                    break;
+                }
+
+                case STATE_REWARD_CHARACTER: {
+                    // exit condition
+                    if (findID("hasTotalRiche")) {
+                        state = STATE_REWARD_MATERIAL;
+                        log("进入掉落结算");
+                        break;
+                    }
+                    let element = findID("charaWrap");
+                    if (element) {
+                        if (element.bounds().height() > 0) charabound = element.bounds();
+                        let targetX = element.bounds().right;
+                        let targetY = element.bounds().bottom;
+                        // click if upgrade
+                        element = find("OK");
+                        if (element) {
+                            log("点击玩家升级确认");
+                            let bound = element.bounds();
+                            targetX = bound.centerX();
+                            targetY = bound.centerY();
+                        }
+                        click(targetX, targetY);
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_MATERIAL: {
+                    // exit condition
+                    let element = findID("hasTotalRiche");
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_REWARD_POST;
+                        log("结算完成");
+                        break;
+                    }
+                    // try click rebattle
+                    element = findID("questRetryBtn");
+                    if (element) {
+                        log("点击再战按钮");
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                    } else if (charabound) {
+                        log("点击再战区域");
+                        click(charabound.right, charabound.bottom);
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_POST: {
+                    // wait 5 seconds for transition
+                    match(/\d*\/\d*/, 5000);
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    } else if (match(/\d*\/\d*/)) {
+                        state = STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    } else if (inautobattle) {
+                        state = STATE_BATTLE;
+                        break;
+                    }
+                    // try to skip
+                    let element = className("EditText").findOnce();
+                    if (element && element.refresh() && !id("menu").findOnce()) {
+                        log("尝试跳过剧情");
+                        let bound = element.bounds();
+                        click(bound.right - 50, bound.top + 50);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 结束 ~~~~~~~~ */
+
     return {
         default: taskDefault,
+        default3_6_0: taskDefault3_6_0,
         mirrors: taskMirrors,
         CVAutoBattle: mirrorsAutoBattleMain,
         simpleAutoBattle: mirrorsSimpleAutoBattleMain,
