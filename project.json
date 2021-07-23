@@ -1,11 +1,11 @@
 {
-    "name": "auto5.1.1预览版",
+    "name": "auto5.1.2预览版",
     "main": "main.js",
     "ignore": [
         "build"
     ],
     "packageName": "top.momoe.auto.preview",
-    "versionName": "5.1.1",
+    "versionName": "5.1.2",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
