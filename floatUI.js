@@ -203,13 +203,16 @@ function getUIContent(key) {
         case "CheckBox":
             return ui[key].isChecked()?"已启用":"已停用";
         case "JsSpinner":
-            return ui[key].getSelectedItemPosition();
+            return ui[key].getSelectedItem();
         case "RadioGroup": {
             let name = "";
+            let text = "";
             let id = ui[key].getCheckedRadioButtonId();
-            if (id >= 0)
+            if (id >= 0) {
                 name = idmap[ui[key].getCheckedRadioButtonId()];
-            return name;
+                text = ui[name].getText();
+            }
+            return text;
         }
     }
 }
@@ -1983,10 +1986,17 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
+var canToastParamChanges = false;//启动时不弹toast
+floatUI.enableToastParamChanges = function () {
+    canToastParamChanges = true;
+}
 floatUI.adjust = function (key, value) {
     if (value !== undefined) {
         limit[key] = value
         log("更新参数：", key, value)
+
+        //默认执行脚本仍然会在启动时toast,原因未知
+        if (canToastParamChanges) toast(getUIContent(key) === "" ? "(参数留空)" : getUIContent(key));
 
         //如果需要就弹窗申请root或adb权限
         let isPrivNeeded = false;
@@ -5686,7 +5696,13 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            if (requestScreenCapture(screencap_landscape)) {
+            let result = false;
+            try {
+                result = requestScreenCapture(screencap_landscape);
+            } catch (e) {
+                logException(e);
+            }
+            if (result) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
@@ -5704,7 +5720,7 @@ function algo_init() {
         }
 
         if (!canCaptureScreen) {
-            log("截图权限获取失败，退出");
+            toastLog("截图权限获取失败，退出");
             stopThread();
         }
 
@@ -7534,7 +7550,10 @@ function algo_init() {
                                     } 
                             }
                         }
-                        toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        if (isSkillUsed) {
+                            sleep(2000);
+                            toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        }
                     }
                 }
             }
@@ -8482,12 +8501,21 @@ function algo_init() {
                         log("不过，开始镜层演习需要至少有1BP");
                         log("镜层周回结束");
                         return;
-                    } else if (isDrugEnough(3)) {
+                    } else if (isDrugEnabled(3)) {
                         while (!id("bpTextWrap").findOnce()) {
                             click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
                             sleep(1500)
                         }
-                        while (id("bpTextWrap").findOnce()) {
+                        let attemptMax = 10;
+                        for (let attempt=0; attempt<attemptMax; attempt++) {
+                            if (!id("bpTextWrap").findOnce()) {
+                                updateDrugLimit(3);
+                                break;
+                            }
+                            if (attempt == attemptMax - 1) {
+                                log("多次嗑BP药仍然没有反应,应该是BP药用完了,退出");
+                                return;
+                            }
                             click(convertCoords(clickSetsMod.bpDrugConfirm))
                             sleep(1500)
                         }
@@ -8495,7 +8523,6 @@ function algo_init() {
                             click(convertCoords(clickSetsMod.bpDrugRefilledOK))
                             sleep(1500)
                         }
-                        updateDrugLimit(3);
                     } else {
                         click(convertCoords(clickSetsMod.bpClose))
                         log("镜层周回结束")
