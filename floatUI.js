@@ -928,6 +928,7 @@ floatUI.main = function () {
                     logException(e);
                     //貌似只有完全退出脚本才可以避免getRotation错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
+                    limit.killSelf = true;//杀死自己的两个后台进程
                     engines.stopAll();
                     return; //不再继续往下执行
                 }
@@ -2216,24 +2217,30 @@ function algo_init() {
     }
 
     // find first element using regex
+    function matchFast(reg, wait) {
+        return match_(reg, wait, true);
+    }
     function match(reg, wait) {
-        var startTime = new Date().getTime();
+        return match_(reg, wait, false);
+    }
+    function match_(reg, wait, isFast) {
+        var startTime = wait ? new Date().getTime() : 0;
         var result = null;
         var it = 0;
         do {
             it++;
-            try {
+            if (!isFast) try {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                sleep(100);
+                if (wait) sleep(isFast ? 16 : 100);
                 continue;
             }
             result = textMatches(reg).findOnce();
-            if (result && result.refresh()) break;
+            if (result && (isFast || result.refresh())) break;
             result = descMatches(reg).findOnce();
-            if (result && result.refresh()) break;
-            sleep(100);
+            if (result && (isFast || result.refresh())) break;
+            if (wait) sleep(isFast ? 16 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2264,24 +2271,30 @@ function algo_init() {
     }
 
     // find first element using plain text
+    function findFast(txt, wait) {
+        return find_(txt, wait, true);
+    }
     function find(txt, wait) {
-        var startTime = new Date().getTime();
+        return find_(txt, wait, false);
+    }
+    function find_(txt, wait, isFast) {
+        var startTime = wait ? new Date().getTime() : 0;
         var result = null;
         var it = 0;
         do {
             it++;
-            try {
+            if (!isFast) try {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                sleep(100);
+                if (wait) sleep(isFast ? 16 : 100);
                 continue;
             }
             result = text(txt).findOnce();
-            if (result && result.refresh()) break;
+            if (result && (isFast || result.refresh())) break;
             result = desc(txt).findOnce();
-            if (result && result.refresh()) break;
-            sleep(100);
+            if (result && (isFast || result.refresh())) break;
+            if (wait) sleep(isFast ? 16 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2311,22 +2324,28 @@ function algo_init() {
         return result;
     }
 
+    function findIDFast(name, wait) {
+        return findID_(name, wait, true);
+    }
     function findID(name, wait) {
-        var startTime = new Date().getTime();
+        return findID_(name, wait, false);
+    }
+    function findID_(name, wait, isFast) {
+        var startTime = wait ? new Date().getTime() : 0;
         var result = null;
         var it = 0;
         do {
             it++;
-            try {
+            if (!isFast) try {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                sleep(100);
+                if (wait) sleep(isFast ? 16 : 100);
                 continue;
             }
             result = id(name).findOnce();
-            if (result && result.refresh()) break;
-            sleep(100);
+            if (result && (isFast || result.refresh())) break;
+            if (wait) sleep(isFast ? 16 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2360,7 +2379,13 @@ function algo_init() {
         return result;
     }
 
+    function waitAnyFast(fnlist, wait) {
+        return waitAny_(fnlist, wait, true);
+    }
     function waitAny(fnlist, wait) {
+        return waitAny_(fnlist, wait, false);
+    }
+    function waitAny_(fnlist, wait, isFast) {
         var startTime = new Date().getTime();
         var result = null;
         var it = 0;
@@ -2369,9 +2394,9 @@ function algo_init() {
             it++;
             if (current >= fnlist.length) current = 0;
             result = fnlist[current]();
-            if (result && result.refresh()) break;
+            if (result && (isFast || result.refresh())) break;
             current++;
-            sleep(50);
+            sleep(isFast ? 16 : 50);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (wait)
             log(
@@ -2413,7 +2438,7 @@ function algo_init() {
             }
         };
 
-        let element = findID("popupInfoDetailTitle", wait);
+        let element = wait ? findID("popupInfoDetailTitle", wait) : findIDFast("popupInfoDetailTitle", false);
 
         if (element == null) return null;
         result.element = element;
@@ -2422,7 +2447,7 @@ function algo_init() {
 
         if (element_text != null && element_text != "") {
             //MuMu模拟器上popupInfoDetailTitle自身就有文字
-            let title = getContent(element);
+            let title = element_text;
             result.title = ((title == null) ? "" : title);
         } else if (element.childCount() > 0) {
             //Android 10真机上popupInfoDetailTitle自身没有文字，文字是它的子控件
@@ -2445,12 +2470,13 @@ function algo_init() {
 
         if (title_to_find != null && result.title != title_to_find) return null;
 
-        let half_height = parseInt(element.bounds().height() / 2);
-        if (result.title != null && element.bounds().width() > result.title.length * (half_height * 2)) {
-            let close_x = element.bounds().right + (half_height * 2);
+        let element_bounds = element.bounds();
+        let half_height = parseInt(element_bounds.height() / 2);
+        if (result.title != null && element_bounds.width() > result.title.length * (half_height * 2)) {
+            let close_x = element_bounds.right + (half_height * 2);
             if (close_x <= default_x) result.close.x = close_x;
         }
-        result.close.y = element.bounds().top - half_height;
+        result.close.y = element_bounds.top - half_height;
         if (result.close.y < 0) result.close.y = half_height;
 
         return result;
@@ -4875,6 +4901,10 @@ function algo_init() {
             state = STATE_MENU;
         } else if (findID("questWrapTitle")) {
             state = STATE_MENU;
+        } else if (findID("helpBtn")) {//“游戏方式”按钮,一般是说明活动玩法
+            state = STATE_MENU;
+        } else if (findID("questLinkListWrap")) {//星期副本
+            state = STATE_MENU;
         } else if (find(string.support)) {
             state = STATE_SUPPORT;
         } else if (findID("nextPageBtn")) {
@@ -4896,34 +4926,6 @@ function algo_init() {
         log(StateNames[state]);
 
         return state;
-    }
-
-    function startSupportPickTestingIfNeeded() {
-        if (is_support_picking_tested) return;
-
-        if (files.isFile(supportPickingTestRecordPath)) {
-            let test_record = files.read(supportPickingTestRecordPath);
-            let tested_versions = test_record.split('\n');
-            if (tested_versions.find((val) => val == getCurrentVersion()) != null) {
-                is_support_picking_tested = true;
-            } else {
-                is_support_picking_tested = false;
-            }
-        } else {
-            is_support_picking_tested = false;
-        }
-        if (!is_support_picking_tested) {
-            if (dialogs.confirm("测试助战自动选择",
-                "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
-                +"\n要测试吗？"))
-            {
-                replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
-                //测试完再写入文件，来记录是否曾经测试过
-            } else {
-                files.create(supportPickingTestRecordPath);
-                files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
-            }
-        }
     }
 
     var isRelaunchTested = false; //只表示是否测试过,不表示是否成功过
@@ -4971,10 +4973,22 @@ function algo_init() {
         }
     }
 
+    /*
+    //用来测速的函数,一般要注释掉
+    var lastTime = 0;
+    function logTime(name, divisor) {
+        if (name == null) name = "";
+        if (divisor == null) divisor = 1;
+        let currentTime = new Date().getTime();
+        if (lastTime != 0 && name !== false) {
+            log("==== "+name+"耗时: "+((currentTime-lastTime)/divisor)+"ms ====");
+        }
+        lastTime = currentTime;
+    }
+    */
+
     function taskDefault() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
-
-        initialize();
 
         let lastOpListDateString = "";
         if (lastOpList == null) {
@@ -5203,14 +5217,15 @@ function algo_init() {
                     break;
                 }
                 case STATE_MENU: {
-                    waitAny(
+                    waitAnyFast(
                         [
-                            () => find(string.support),
-                            () => findID("helpBtn"),
-                            () => match(/^BATTLE.+/),
-                            () => findID("questLinkList"),
-                            () => findID("questWrapTitle"),
-                            () => findID("nextPageBtn"),
+                            () => findFast(string.support),
+                            () => findIDFast("helpBtn"),
+                            () => matchFast(/^BATTLE.+/),
+                            () => findIDFast("questLinkList"),
+                            () => findIDFast("questWrapTitle"),
+                            () => findIDFast("nextPageBtn"),
+                            () => findIDFast("questLinkListWrap"),
                         ],
                         3000
                     );
@@ -5459,20 +5474,6 @@ function algo_init() {
                     //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
                     click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
 
-                    //如果之前误触了队伍名称变更，先尝试关闭
-                    var found_popup = null;
-                    found_popup = findPopupInfoDetailTitle();
-                    if (found_popup != null) {
-                        log("在队伍调整界面发现有弹窗\""+found_popup.title+"\"已经打开");
-                        if (found_popup.title != string.team_name_change) {
-                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
-                        }
-                        log("尝试关闭弹窗");
-                        click(found_popup.close);
-                        sleep(200);
-                        break;
-                    }
-
                     var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (limit.useAuto) {
                         if (element) {
@@ -5498,6 +5499,22 @@ function algo_init() {
                         click(bound.centerX(), bound.centerY());
                         waitElement(element, 500);
                     }
+
+                    //如果之前误触了队伍名称变更，尝试关闭
+                    //这个窗口出现时，点击开始或自动续战按钮都不会有影响，所以放到后面
+                    var found_popup = null;
+                    found_popup = findPopupInfoDetailTitle();
+                    if (found_popup != null) {
+                        log("在队伍调整界面发现有弹窗\""+found_popup.title+"\"已经打开");
+                        if (found_popup.title != string.team_name_change) {
+                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
+                        }
+                        log("尝试关闭弹窗");
+                        click(found_popup.close);
+                        sleep(200);
+                        break;
+                    }
+
                     break;
                 }
 
@@ -5509,10 +5526,10 @@ function algo_init() {
                     // exit condition
                     //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
-                    waitAny(
+                    waitAnyFast(
                         [
-                            () => findID("charaWrap"),
-                            () => findID("hasTotalRiche")
+                            () => findIDFast("charaWrap"),
+                            () => findIDFast("hasTotalRiche")
                         ],
                         2000
                     );
