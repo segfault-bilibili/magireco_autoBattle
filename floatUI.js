@@ -5035,6 +5035,7 @@ function algo_init() {
             }
         }
 
+        //检测初始状态，可以支持在更多状态下点启动，然后就是有些比较费时的检测还是不要放在周回里。
         var state = detectInitialState();
         var last_state = -1;
 
@@ -5652,13 +5653,13 @@ function algo_init() {
                         log("点击再战按钮");
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
-                    } else if (charabound) {
+                    } else {
                         //走到这里的可能情况:
                         //(1) AP不够再战一局（常见原因是官方自动续战）
                         //(2) UI控件树残缺，明明有再战按钮却检测不到
                         log("点击再战区域");
                         //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
-                        //click(charabound.right, charabound.bottom);
+                        //if (charabound) click(charabound.right, charabound.bottom);
                         click(convertCoords(clickSets.restart));
                     }
                     sleep(500);
