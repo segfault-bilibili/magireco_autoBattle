@@ -1,0 +1,47 @@
+<html>
+    <meta charset='UTF-8'>
+    <meta http-equiv="cache-control" content="no-cache" />
+    <head>
+        <title>Test JavaScript Download</title>
+    </head>
+    <body>
+        <script>
+            const hashes = {
+                test: "sha256-Gn6Fqe8u3xPTiTOYD3hvFmrHEvFUvc6TeMnbGseiuQU=",
+                testbroken: "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                test2: "sha256-9ZrqWc7GGcD3Gm+uccevXejJZFX1h9fM8q6dhYbBNuA=",
+            };
+            function blobToDataURI(blob, callback) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    callback(e.target.result);
+                }
+                reader.readAsDataURL(blob);
+            }
+            function downloadFileAsync(url, callback) {
+                let request = new Request(url, {integrity: hashes[url.split(".")[0]]});
+                console.log(request.integrity);
+                fetch(request)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Fetching failed");
+                    } else {
+                        return response.blob();
+                    }
+                })
+                .then(blob => {
+                    blobToDataURI(blob, (result) => callback("URL=["+url+"]\nintegrity=["+request.integrity+"]\n"+result));
+                })
+                .catch(error => {
+                    alert("FAILED\nintegrity=["+request.integrity+"]\nURL=["+url+"]");
+                    console.error(error);
+                });
+            }
+            for (let filename of ["test", "testbroken", "test2"]) {
+                url = filename+".js";
+                console.log(url);
+                downloadFileAsync(url, (val) => alert(val));
+            }
+        </script>
+    </body>
+</html>
