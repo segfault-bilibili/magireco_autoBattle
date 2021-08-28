@@ -1,16 +1,15 @@
 {
-    "name": "auto",
+    "name": "全自动小彩羽",
     "main": "main.js",
     "ignore": [
         "build"
     ],
-    "packageName": "top.momoe.auto",
-    "versionName": "5.7.0",
+    "packageName": "top.momoe.autong",
+    "versionName": "1.0.0",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
     "launchConfig":{
-        "splashIcon":"./images/start.jpg",
-        "splashText":""
+        "splashLayoutXml":"splash.xml"
     }
 }
