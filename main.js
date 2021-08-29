@@ -256,6 +256,8 @@ function toggleAutoService(enable) {
     return disableSelfDone ? false : (auto.service != null ? true : false);
 }
 
+ui.statusBarColor("#00FFFFFF");
+
 ui.layout(
     <vertical h="*" w="*">
         <webview id="webview" w="*" h="*"/>
@@ -295,6 +297,12 @@ function handleWebViewCallAJ(fnName, paramString) {
     switch (fnName) {
         case "getVersionString":
             result = version;
+            break;
+        case "detectAutoJSVersion":
+            result = detectAutoJSVersion();
+            break;
+        case "setStatusBarColor":
+            if (params.length > 0) ui.statusBarColor(params[0]);
             break;
         case "isAutoServiceEnabled":
             result = auto.service ? true : false;
@@ -428,35 +436,35 @@ ui.emitter.on("resume", () => {
     }
 });
 
-/*
-    //检测AutoJS引擎版本
-
-    //经测试发现app.autojs.versionName不能用
-    //以下数值通过实际运行一遍代码取得，取自Pro 8.8.13-0
-    const lowestVersionCode = 8081200;
-
-    function detectAutoJSVersion() {
-        ui.run(function() {
-            let currentVersionCode = NaN;
-            try {
-                currentVersionCode = parseInt(app.autojs.versionCode);
-            } catch (e) {
-                currentVersionCode = NaN;
-            }
-            if (isNaN(currentVersionCode)) {
-                ui.autojs_ver_text.setText("无法检测 AutoJS Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
-                ui.autojs_ver_vertical.setVisibility(View.VISIBLE);
-                return;
-            }
-            if (currentVersionCode < lowestVersionCode) {
-                ui.autojs_ver_text.setText("AutoJS Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
-                ui.autojs_ver_vertical.setVisibility(View.VISIBLE);
-                return;
-            }
-        });
+//检测AutoJS引擎版本
+//经测试发现app.autojs.versionName不能用
+//以下数值通过实际运行一遍代码取得，取自Pro 8.8.13-0
+const lowestVersionCode = 8081200;
+function detectAutoJSVersion() {
+    let isAJObsolete = false;
+    let AJObsoleteWarningMsg = "";
+    let currentVersionCode = NaN;
+    try {
+        currentVersionCode = parseInt(app.autojs.versionCode);
+    } catch (e) {
+        currentVersionCode = NaN;
     }
-    detectAutoJSVersion();
-*/
+    if (isNaN(currentVersionCode)) {
+        AJObsoleteWarningMsg = "无法检测 AutoJS Pro 引擎版本\n"
+                              +"继续使用可能碰到问题\n"
+                              +"推荐下载最新apk安装包进行更新";
+        isAJObsolete = true;
+    } else if (currentVersionCode < lowestVersionCode) {
+        AJObsoleteWarningMsg = "AutoJS Pro 引擎版本过低\n"
+                              +"当前版本 versionCode=["+currentVersionCode+"]\n"
+                              +"最低要求 versionCode=["+lowestVersionCode+"]\n"
+                              +"继续使用可能碰到问题\n"
+                              +"推荐下载最新apk安装包进行更新";
+        isAJObsolete = true;
+    }
+    return {currentVersionCode: currentVersionCode, isAJObsolete: isAJObsolete, AJObsoleteWarningMsg: AJObsoleteWarningMsg};
+}
+
 
 function performOnlineUpdate() {
     // TODO
