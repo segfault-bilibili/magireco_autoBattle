@@ -303,6 +303,20 @@ function handleWebViewCallAJ(fnName, paramString) {
             result = false;
             if (params.length > 0) result = toggleAutoService(params[0]);
             break;
+        case "isForegroundServiceEnabled":
+            result = $settings.isEnabled("foreground_service") ? true : false;
+            break;
+        case "toggleForegroundService":
+            if (params.length > 0) $settings.setEnabled("foreground_service", params[0]);
+            result = $settings.isEnabled("foreground_service");
+            break;
+        case "isStopOnVolUpEnabled":
+            result = $settings.isEnabled("stop_all_on_volume_up") ? true : false;
+            break;
+        case "toggleStopOnVolUp":
+            if (params.length > 0) $settings.setEnabled("stop_all_on_volume_up", params[0]);
+            result = $settings.isEnabled("stop_all_on_volume_up");
+            break;
         case "getScripts":
             result = [];
             if (floatUI != null) {
@@ -381,20 +395,37 @@ function callWebviewJS(script, callback) {
     }
 }
 
+//修正前台服务/按音量上键完全退出脚本等设置值存在的以下问题：
+//刚安装好后返回错误的数值，点进设置再出来又变成正确的数值
+for (let name of ["foreground_service", "stop_all_on_volume_up"])
+    $settings.setEnabled(name, $settings.isEnabled(name));
+
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
-    // 此时根据无障碍服务的开启情况，同步开关的状态
-    let jscode = "window.updateSettingsUI(\"isAutoServiceEnabled\","+(auto.service!=null?true:false)+");";
-    callWebviewJS(jscode);
+    //根据无障碍服务/前台服务/按音量上键停止所有脚本的开启情况，同步开关的状态
+    let switches = [
+        {
+            name: "isAutoServiceEnabled",
+            func: () => auto.service != null,
+        },
+        {
+            name: "isForegroundServiceEnabled",
+            func: () => $settings.isEnabled('foreground_service'),
+        },
+        {
+            name: "isStopOnVolUpEnabled",
+            func: () => $settings.isEnabled('stop_all_on_volume_up'),
+        },
+    ];
+    for (let s of switches) {
+        let jscode = "window.updateSettingsUI(\""+s.name+"\","+(s.func()?"true":"false")+");";
+        callWebviewJS(jscode);
+    }
+
     if (!floatIsActive) {
         floatUI.main();
         floatIsActive = true;
     }
-    //TODO
-    //if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
-    //    ui.foreground.setChecked($settings.isEnabled('foreground_service'));
-    //if ($settings.isEnabled('stop_all_on_volume_up') != ui.stopOnVolUp.isChecked())
-    //    ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
 });
 
 /*
