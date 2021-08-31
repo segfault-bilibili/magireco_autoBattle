@@ -98,22 +98,6 @@ const http = require("http");
 const hostname = '127.0.0.1';
 var port = 9090;
 
-const mimeTypes = {
-    js:   'text/javascript',
-    json: 'application/json',
-    txt:  'text/plain',
-    htm:  'text/html',
-    html: 'text/html',
-    css:  'text/css',
-    xml:  'text/xml',
-    png:  'image/png',
-    jpg:  'image/jpeg',
-    jpeg: 'image/jpeg',
-    ico:  'image/vnd.microsoft.icon',
-    gif:  'image/gif',
-    bmp:  'image/bmp',
-    webp: 'image/webp',
-};
 const HTMLHead1 =
    "<html>"
 +"\n    <meta charset='UTF-8'>"
@@ -148,7 +132,7 @@ const HTMLHead2 =
 +"\n                    blobToDataURI(blob, (result) => callback(result));"
 +"\n                })"
 +"\n                .catch(error => {"
-+"\n                    alert(\"SRI-enabled fetch has failed.\\nYou will then be navigated to the clicked link (in a new tab), however this is irrelevant to SRI-enabled fetch.\\nintegrity=[\"+request.integrity+\"]\\nURL=[\"+url+\"]\");"
++"\n                    alert(\"SRI-enabled fetch has failed.\\nintegrity=[\"+request.integrity+\"]\\nURL=[\"+url+\"]\");"
 +"\n                    console.error(error);"
 +"\n                });"
 +"\n            }"
@@ -158,8 +142,15 @@ const HTMLHead2 =
 +"\n                    alert(\"This link has been downloaded through SRI-enabled fetch, and its SRI hash is consistent.\\nDownloaded data is shown above.\");"
 +"\n                    return false;"
 +"\n                }"
-+"\n                alert(\"Downloading data through SRI-enabled fetch...\\nYou will then be navigated to the clicked link (in a new tab), however this is irrelevant to SRI-enabled fetch.\");"
-+"\n                downloadFileAsync(e.href, (result) => {e.title = result; e.target = \"\"; e.href = \"javascript:void(0)\"; alert(\"SRI-enabled fetch completed successfully.\\nYou will then be navigated to the clicked link (in a new tab), however this is irrelevant to SRI-enabled fetch.\"); return;});"
++"\n                alert(\"Downloading data through SRI-enabled fetch...\");"
++"\n                downloadFileAsync(e.href, (result) => {"
++"\n                    document.getElementById(\"iframeOfData\").setAttribute(\"src\", e.title, 0);"
++"\n                    e.title = result;"
++"\n                    e.target = \"\";"
++"\n                    document.getElementById(\"iframeOfData\").setAttribute(\"src\", e.title, 0);"
++"\n                    alert(\"SRI-enabled fetch completed successfully.\\nDownloaded data will be shown above.\");"
++"\n                    return;"
++"\n                });"
 +"\n                return false;"
 +"\n            }"
 +"\n        </script>"
@@ -168,15 +159,37 @@ const HTMLHead2 =
 +"\n        <b>SRI-consistent downloaded data (click links below to show here):</b><br>"
 +"\n        <iframe id=\"iframeOfData\" width=\"100%\" height=\"50%\"></iframe>"
 +"\n        <b>Links of all files:</b><br>"
-+"\n        <font color=\"red\">After clicking any of the links below for the its first time, please press the <b><u>BACK</u></b> button, or just <b><u>close the new tab</u></b>!</font><br>"
 const HTMLTail =
  "\n    </body>"
 +"\n</html>";
+
+const mimeTypes = {
+    js:   'text/javascript',
+    json: 'application/json',
+    txt:  'text/plain',
+    htm:  'text/html',
+    html: 'text/html',
+    css:  'text/css',
+    xml:  'text/xml',
+    png:  'image/png',
+    jpg:  'image/jpeg',
+    jpeg: 'image/jpeg',
+    ico:  'image/vnd.microsoft.icon',
+    gif:  'image/gif',
+    bmp:  'image/bmp',
+    webp: 'image/webp',
+};
 function getMimeType(filename) {
     let mimetype = mimeTypes[path.extname(filename).replace(/^\./, '')];
     if (mimetype == null) mimetype = 'application/octect-stream';
     return mimetype;
-}//DEBUG
+}
+function getMimeTypeUTF8(filename) {
+    let contenttype = getMimeType(filename);
+    if (contenttype === 'application/json' || contenttype.match(/^text((\/)|())/))
+        contenttype += "; charset=utf-8";
+    return contenttype;
+}
 function generateHTMLResult(data) {
     if (data == null) data = result;
     let linkLines = "";
@@ -185,7 +198,7 @@ function generateHTMLResult(data) {
         linkLines +=
  "\n    <link rel=\"preload\" href=\""+item.src+"\" integrity=\""+item.integrity+"\">";
         aLines +=
- "\n        <a href=\""+item.src+"\" onclick=\"clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(item.src)+"</b> "+item.src+"</a><br>";
+ "\n        <a href=\""+item.src+"\" onclick=\"return clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(item.src)+"</b> "+item.src+"</a><br>";
     });
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
 }
@@ -193,18 +206,18 @@ const server = http.createServer((req, res) => {
     let found = result.find((item) => "/"+item.src === req.url);
     if (req.url === "/") {
         res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
         console.log(`Serving index page`);
         res.end(generateHTMLResult(result));
     } else if ("/update/updateList.json" === req.url) {
         res.statusCode = 200;
-        res.setHeader('Content-Type', "application/json");
+        res.setHeader('Content-Type', getMimeTypeUTF8("/update/updateList.json"));
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
         res.end(JSON.stringify(result));
     } else if (found != null) {
         res.statusCode = 200;
-        res.setHeader('Content-Type', getMimeType(found.src));
+        res.setHeader('Content-Type', getMimeTypeUTF8(found.src));
         res.setHeader('Cache-control', 'no-cache');
         let servingfilepath = path.resolve(path.join(rootpath, found.src));
         console.log(`Serving file: ${servingfilepath}`);
