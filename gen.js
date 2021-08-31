@@ -73,24 +73,26 @@ function walkThrough(fullpath) {
         }
     }
 }
-walkThrough(rootpath);
-
-console.log(result);
 
 
 const resultDir = path.join(rootpath, "update");
 const resultPath = path.join(resultDir, "updateList.json");
 
-if (fs.existsSync(resultDir)) {
-    if (!fs.statSync(resultDir).isDirectory()) {
-        throw new Error("Cannot create directory at path "+resultDir+", file already exists.");
-    }
-} else {
-    fs.mkdirSync(resultDir);
-}
-fs.writeFileSync(resultPath, JSON.stringify(result));
-console.log("Written to "+resultPath);
 
+function regenerate() {
+    console.log("Regenerating update/updateList.json ...");
+    walkThrough(rootpath);
+    if (fs.existsSync(resultDir)) {
+        if (!fs.statSync(resultDir).isDirectory()) {
+            throw new Error("Cannot create directory at path "+resultDir+", file already exists.");
+        }
+    } else {
+        fs.mkdirSync(resultDir);
+    }
+    fs.writeFileSync(resultPath, JSON.stringify(result));
+    console.log("Written to "+resultPath);
+}
+regenerate();
 
 
 //https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/development_environmentc
@@ -203,25 +205,57 @@ function generateHTMLResult(data) {
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
 }
 const server = http.createServer((req, res) => {
-    let found = result.find((item) => "/"+item.src === req.url);
+    let relativepath = req.url.replace(/^\//, "");
+    let fullpath = path.resolve(relativepath);
+    let found = includeRules.find((rule) => {
+        if (path.basename(relativepath).match(rule.filename)) {
+            if (rule.dirname === path.dirname(relativepath)) {
+                return true;
+            } else if (rule.recursive) {
+                let fullpath2 = path.resolve(rule.dirname);
+                if (!path.relative(fullpath2, fullpath).includes(".."))
+                    return true;
+            }
+        }
+        return false;
+    });
     if (req.url === "/") {
+        regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
         console.log(`Serving index page`);
         res.end(generateHTMLResult(result));
     } else if ("/update/updateList.json" === req.url) {
+        regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("/update/updateList.json"));
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
         res.end(JSON.stringify(result));
     } else if (found != null) {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', getMimeTypeUTF8(found.src));
         res.setHeader('Cache-control', 'no-cache');
-        let servingfilepath = path.resolve(path.join(rootpath, found.src));
-        console.log(`Serving file: ${servingfilepath}`);
-        res.end(fs.readFileSync(servingfilepath));
+        let servingfilepath = path.resolve(path.join(rootpath, relativepath));
+        if (path.relative(rootpath, servingfilepath).includes("..") || relativepath.includes(":") || relativepath.includes("$")) {
+            res.statusCode = 403;
+            res.end('403 Forbidden\n');
+        } else {
+            if (fs.existsSync(servingfilepath)) {
+                if (fs.statSync(servingfilepath).isDirectory()) {
+                    res.statusCode = 403;
+                    console.log(`isDirectory: ${servingfilepath}`);
+                    res.end('403 Forbidden\n');
+                } else {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', getMimeTypeUTF8(path.basename(relativepath)));
+                    console.log(`Serving file: ${servingfilepath}`);
+                    res.end(fs.readFileSync(servingfilepath));
+                }
+            } else {
+                res.statusCode = 404;
+                console.log(`Not found: ${servingfilepath}`);
+                res.end('404 Not found\n');
+            }
+        }
     } else {
         res.statusCode = 403;
         res.end('403 Forbidden\n');
