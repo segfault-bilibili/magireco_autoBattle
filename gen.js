@@ -117,10 +117,10 @@ const HTMLHead2 =
 +"\n                }"
 +"\n                reader.readAsDataURL(blob);"
 +"\n            }"
-+"\n            function downloadFileAsync(url, callback) {"
-+"\n                let a = [];"
-+"\n                for (let e of document.getElementsByTagName(\"link\")) a.push(e);"
-+"\n                let request = new Request(url, {integrity: a.find((item) => item.href === url).integrity});"
++"\n            function downloadFileAsync(fileInfo, callback) {"
++"\n                let options = {mode: \"cors\"};"
++"\n                if (fileInfo.integrity != null) options.integrity = fileInfo.integrity;"
++"\n                let request = new Request(fileInfo.url, options);"
 +"\n                console.log(request.url, request.integrity);"
 +"\n                fetch(request)"
 +"\n                .then(response => {"
@@ -134,18 +134,18 @@ const HTMLHead2 =
 +"\n                    blobToDataURI(blob, (result) => callback(result));"
 +"\n                })"
 +"\n                .catch(error => {"
-+"\n                    alert(\"SRI-enabled fetch has failed.\\nintegrity=[\"+request.integrity+\"]\\nURL=[\"+url+\"]\");"
++"\n                    alert(\"SRI-enabled fetch has failed.\\nintegrity=[\"+request.integrity+\"]\\nURL=[\"+request.url+\"]\");"
 +"\n                    console.error(error);"
 +"\n                });"
 +"\n            }"
 +"\n            function clickHandler(e) {"
-+"\n                if (e.title != null && e.title !== \"\") {"
++"\n                if (e.title != null && typeof e.title === \"string\" && e.title.startsWith(\"data:\")) {"
 +"\n                    document.getElementById(\"iframeOfData\").setAttribute(\"src\", e.title, 0);"
 +"\n                    alert(\"This link has been downloaded through SRI-enabled fetch, and its SRI hash is consistent.\\nDownloaded data is shown above.\");"
 +"\n                    return false;"
 +"\n                }"
 +"\n                alert(\"Downloading data through SRI-enabled fetch...\");"
-+"\n                downloadFileAsync(e.href, (result) => {"
++"\n                downloadFileAsync({url: e.href, integrity: e.id}, (result) => {"
 +"\n                    document.getElementById(\"iframeOfData\").setAttribute(\"src\", e.title, 0);"
 +"\n                    e.title = result;"
 +"\n                    e.target = \"\";"
@@ -197,10 +197,8 @@ function generateHTMLResult(data) {
     let linkLines = "";
     let aLines = "";
     result.forEach((item) => {
-        linkLines +=
- "\n    <link rel=\"preload\" href=\""+item.src+"\" integrity=\""+item.integrity+"\">";
         aLines +=
- "\n        <a href=\""+item.src+"\" onclick=\"return clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(item.src)+"</b> "+item.src+"</a><br>";
+ "\n        <a href=\""+item.src+"\" id=\""+item.integrity+"\" onclick=\"return clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(item.src)+"</b> "+item.src+"</a><br>";
     });
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
 }
