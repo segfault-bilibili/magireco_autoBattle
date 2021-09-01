@@ -210,24 +210,22 @@ function isDevMode() {
 function toggleDevMode(enable) {
     let orig = isDevMode();
     if (enable) {
-        ui.run(function() {
+        dialogs.rawInput(
+            "Vue开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
+            getDevServerPort("vue")
+        ).then((vueport) => {
+            setDevServerPort("vue", vueport);
             dialogs.rawInput(
-                "Vue开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
-                getDevServerPort("vue")
-            ).then((vueport) => {
-                setDevServerPort("vue", vueport);
-                dialogs.rawInput(
-                    "gen.js开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
-                    getDevServerPort("genjs")
-                ).then((genjsport) => {
-                    setDevServerPort("genjs", genjsport);
-                    restartSelf(false);
-                });
+                "gen.js开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
+                getDevServerPort("genjs")
+            ).then((genjsport) => {
+                setDevServerPort("genjs", genjsport);
+                restartSelf(false);
             });
-            if (!files.exists(devModeMarkerFilePath)) {
-                files.create(devModeMarkerFilePath);
-            }
         });
+        if (!files.exists(devModeMarkerFilePath)) {
+            files.create(devModeMarkerFilePath);
+        }
     } else {
         files.remove(devModeMarkerFilePath);
         restartSelf(false);
@@ -401,24 +399,22 @@ function webviewErrorHandler(view) {
                 //no break
             default:
                 log("无法加载Webview，URL=["+webviewUrl+"]");
-                ui.run(function () {
-                    dialogs.alert(
-                        "Webview加载失败",
-                         "当前处于开发模式。\n"
-                        +"请先启动开发服务器，并设置好adb reverse端口映射，然后再重新打开本app。"
-                    ).then(() => {
-                        dialogs.confirm(
-                            "要停用开发模式吗？",
-                            "点击\"确定\"即可重启并停用开发模式。"
-                        ).then((value) => {
-                            if (value) {
-                                toastLog("停用开发模式...");
-                                toggleDevMode(false);
-                            } else {
-                                //重新设置端口号
-                                toggleDevMode(true);
-                            }
-                        });
+                dialogs.alert(
+                    "Webview加载失败",
+                     "当前处于开发模式。\n"
+                    +"请先启动开发服务器，并设置好adb reverse端口映射，然后再重新打开本app。"
+                ).then(() => {
+                    dialogs.confirm(
+                        "要停用开发模式吗？",
+                        "点击\"确定\"即可重启并停用开发模式。"
+                    ).then((value) => {
+                        if (value) {
+                            toastLog("停用开发模式...");
+                            toggleDevMode(false);
+                        } else {
+                            //重新设置端口号
+                            toggleDevMode(true);
+                        }
                     });
                 });
         }
@@ -436,18 +432,16 @@ function webviewErrorHandler(view) {
                 //no break
             default:
                 log("无法加载Webview，URL=["+webviewUrl+"]");
-                ui.run(function () {
-                    dialogs.confirm(
-                        "Webview加载失败",
-                         "请加QQ群453053507以获得帮助。\n"
-                        +"如果你不懂下面这是啥意思，请【不要】点击确定，以防万一敏感权限被偷偷获取。\n"
-                        +"要切换到开发模式么？"
-                    ).then((value) => {
-                        if (value === true) {
-                            toastLog("切换到开发模式...");
-                            toggleDevMode(true);
-                        }
-                    });
+                dialogs.confirm(
+                    "Webview加载失败",
+                     "请加QQ群453053507以获得帮助。\n"
+                    +"如果你不懂下面这是啥意思，请【不要】点击确定，以防万一敏感权限被偷偷获取。\n"
+                    +"要切换到开发模式么？"
+                ).then((value) => {
+                    if (value === true) {
+                        toastLog("切换到开发模式...");
+                        toggleDevMode(true);
+                    }
                 });
         }
     }
