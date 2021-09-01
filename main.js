@@ -194,6 +194,7 @@ function restartSelf(toastMsg) {
         if (toastMsg !== false) toast(toastMsg);
     })
     updateRestartPending = true;
+    ui.webview.loadUrl("about:blank");//貌似stopAll后之前的webview还在跑，所以这里把它停掉
     engines.stopAll();
 }
 
