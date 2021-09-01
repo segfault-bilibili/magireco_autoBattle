@@ -399,6 +399,7 @@ function webviewErrorHandler(view) {
                 //no break
             default:
                 log("无法加载Webview，URL=["+webviewUrl+"]");
+                ui.webview.loadUrl("about:blank");//避免反复请求、反复失败、反复弹框报错
                 dialogs.alert(
                     "Webview加载失败",
                      "当前处于开发模式。\n"
@@ -432,6 +433,7 @@ function webviewErrorHandler(view) {
                 //no break
             default:
                 log("无法加载Webview，URL=["+webviewUrl+"]");
+                ui.webview.loadUrl("about:blank");//避免反复请求、反复失败、反复弹框报错
                 dialogs.confirm(
                     "Webview加载失败",
                      "请加QQ群453053507以获得帮助。\n"
