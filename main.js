@@ -363,7 +363,7 @@ ui.layout(
 );
 
 //正式发布
-let indexPath = "/autoWebview/dist/index.html"
+let indexPath = "/autoWebviewBuild/dist/index.html"
 let releaseUrlBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest";
 var releaseUrl = releaseUrlBase+indexPath;
 

@@ -22,7 +22,7 @@ const includeRules = [
         filename: /.+/,
     },
     {
-        dirname: "autowebView/dist",
+        dirname: "autowebViewBuild/dist",
         recursive: true,
         filename: /.+/,
     },
