@@ -221,12 +221,14 @@ const server = http.createServer((req, res) => {
         regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
+        res.setHeader('Access-Control-Allow-Origin', '*');
         console.log(`Serving index page`);
         res.end(generateHTMLResult(result));
     } else if ("/update/updateList.json" === req.url) {
         regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("/update/updateList.json"));
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
         res.end(JSON.stringify(result));
@@ -245,6 +247,7 @@ const server = http.createServer((req, res) => {
                 } else {
                     res.statusCode = 200;
                     res.setHeader('Content-Type', getMimeTypeUTF8(path.basename(relativepath)));
+                    res.setHeader('Access-Control-Allow-Origin', '*');
                     console.log(`Serving file: ${servingfilepath}`);
                     res.end(fs.readFileSync(servingfilepath));
                 }
