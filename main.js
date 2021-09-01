@@ -183,7 +183,106 @@ function reportBug() {
     }
 }
 
-var isDevMode = true;//TODO 以后用上Webpack了就改成根据NODE_ENV来判断
+//重启整个app
+var updateRestartPending = false;
+function restartSelf(toastMsg) {
+    if (toastMsg == null) toastMsg = "更新完毕";
+    events.on("exit", function () {
+        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
+        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+        app.launch(context.getPackageName());
+        if (toastMsg !== false) toast(toastMsg);
+    })
+    updateRestartPending = true;
+    engines.stopAll();
+}
+
+//判断和切换是否开发模式
+const devModeMarkerFilePath = files.join(files.cwd(), "dev_mode");
+function isDevMode() {
+    if (files.isFile(devModeMarkerFilePath))
+        return true;
+    if (files.exists(devModeMarkerFilePath))
+        toastLog("路径已存在但不是文件:\n["+devModeMarkerFilePath+"]");
+    return false;
+}
+function toggleDevMode(enable) {
+    let orig = isDevMode();
+    if (enable) {
+        ui.run(function() {
+            dialogs.rawInput(
+                "Vue开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
+                getDevServerPort("vue")
+            ).then((vueport) => {
+                setDevServerPort("vue", vueport);
+                dialogs.rawInput(
+                    "gen.js开发服务器在本设备上（Android真机或模拟器，不是电脑！）的端口号",
+                    getDevServerPort("genjs")
+                ).then((genjsport) => {
+                    setDevServerPort("genjs", genjsport);
+                    restartSelf(false);
+                });
+            });
+            if (!files.exists(devModeMarkerFilePath)) {
+                files.create(devModeMarkerFilePath);
+            }
+        });
+    } else {
+        files.remove(devModeMarkerFilePath);
+        restartSelf(false);
+    }
+    //不返回切换后的状态，而是返回之前的状态，防止用户误以为开发模式不重启就可以切换（实际上必须重启）
+    return orig;
+}
+const defaultDevServerPort = {
+    vue: 8080,
+    genjs: 9090,
+}
+function getDevServerPort(svrname) {
+    switch (svrname) {
+        case "vue":
+        case "genjs":
+            break;
+        default: throw new Error("getDevServerPort: unknown svrname");
+    }
+    try {
+        let path = files.join(files.cwd(), svrname+"_dev_server_port");
+        if (!files.isFile(path)) return defaultDevServerPort[svrname];
+        let result = files.read(path);
+        result = parseInt(result);
+        if (!isNaN(result) && result >= 1024 && result <= 65535) return result;
+        files.remove(path);
+    } catch (e) {logException(e);}
+    return defaultDevServerPort[svrname];
+}
+function setDevServerPort(svrname, port) {
+    switch (svrname) {
+        case "vue":
+        case "genjs":
+            break;
+        default: throw new Error("setDevServerPort: unknown svrname");
+    }
+    if (port == null) {
+        toastLog("将保持现有端口设置 "+getDevServerPort(svrname));
+        return;
+    }
+    try {
+        let path = files.join(files.cwd(), svrname+"_dev_server_port");
+        if (files.exists(path) && !files.isFile(path)) {
+            toastLog("无法保存端口号");
+            return;
+        }
+        port = parseInt(port);
+        if (!isNaN(port) && port >= 1024 && port <= 65535) {
+            files.write(path, ""+port);
+        } else {
+            toastLog("输入的端口号非法\n必须是1024-65535范围内的整数");
+            toastLog("将保持现有端口设置 "+getDevServerPort(svrname));
+            return;
+        }
+        toastLog("端口号已设为 "+getDevServerPort(svrname));
+    } catch (e) {logException(e);toastLog("无法保存端口号");}
+}
 
 var floatIsActive = false;
 // 悬浮窗权限检查
@@ -265,20 +364,121 @@ ui.layout(
 );
 
 //正式发布
-let path = "/autoWebview/dist/index.html"
+let indexPath = "/autoWebview/dist/index.html"
 let releaseUrlBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest";
-let releaseUrl = releaseUrlBase+path;
+var releaseUrl = releaseUrlBase+indexPath;
 
 //开发环境，可以用adb reverse tcp:8080 tcp:8080来映射端口到npm run serve启动的HTTP服务器
-let debugUrlBase = "http://127.0.0.1:8080";
-let debugUrl = debugUrlBase+"/index.html";
+let debugUrlBase = "http://127.0.0.1:"+getDevServerPort("vue");
+var debugUrl = debugUrlBase+"/index.html";
 
-//优先使用本地URL，文件不存在时使用在线URL
-let onlineUrl = isDevMode ? debugUrl : releaseUrl;
-let fileUrl = files.join(files.cwd(), path);
-fileUrl = "file://"+fileUrl;
-let url = files.isFile(path) ? fileUrl : onlineUrl;
-ui.webview.loadUrl(url);
+//本地文件
+var fileUrl = "file://"+files.join(files.cwd(), indexPath);
+
+var webviewUrl =
+    isDevMode() ? debugUrl//开发模式下优先使用开发服务器URL
+                : fileUrl//非开发模式，优先使用本地文件
+
+function webviewErrorHandler(view) {
+    if (isDevMode()) {
+        toastLog("当前处于开发模式，Webview加载失败");
+        switch (webviewUrl) {
+            case debugUrl:
+                log("无法从开发服务器加载Webview");
+                toastLog("尝试改从本地加载Webview...");
+                webviewUrl = fileUrl;
+                ui.webview.loadUrl(webviewUrl);
+                break;
+            case fileUrl:
+                log("无法从本地加载Webview");
+                toastLog("尝试改从JSDelivr加载Webview...");
+                webviewUrl = releaseUrl;
+                ui.webview.loadUrl(webviewUrl);
+                break;
+            case releaseUrl:
+                log("无法从JSDelivr加载Webview");
+                //no break
+            default:
+                log("无法加载Webview，URL=["+webviewUrl+"]");
+                ui.run(function () {
+                    dialogs.alert(
+                        "Webview加载失败",
+                         "当前处于开发模式。\n"
+                        +"请先启动开发服务器，并设置好adb reverse端口映射，然后再重新打开本app。"
+                    ).then(() => {
+                        dialogs.confirm(
+                            "要停用开发模式吗？",
+                            "点击\"确定\"即可重启并停用开发模式。"
+                        ).then((value) => {
+                            if (value) {
+                                toastLog("停用开发模式...");
+                                toggleDevMode(false);
+                            } else {
+                                //重新设置端口号
+                                toggleDevMode(true);
+                            }
+                        });
+                    });
+                });
+        }
+    } else {
+        toastLog("Webview加载失败");
+        switch (webviewUrl) {
+            case fileUrl:
+                log("无法从本地加载Webview");
+                toastLog("尝试改从JSDelivr加载Webview...");
+                webviewUrl = releaseUrl;
+                ui.webview.loadUrl(webviewUrl);
+                break;
+            case releaseUrl:
+                log("无法从JSDelivr加载Webview");
+                //no break
+            default:
+                log("无法加载Webview，URL=["+webviewUrl+"]");
+                ui.run(function () {
+                    dialogs.confirm(
+                        "Webview加载失败",
+                         "请加QQ群453053507以获得帮助。\n"
+                        +"如果你不懂下面这是啥意思，请【不要】点击确定，以防万一敏感权限被偷偷获取。\n"
+                        +"要切换到开发模式么？"
+                    ).then((value) => {
+                        if (value === true) {
+                            toastLog("切换到开发模式...");
+                            toggleDevMode(true);
+                        }
+                    });
+                });
+        }
+    }
+}
+var webvc = new JavaAdapter(WebViewClient, {
+    onReceivedError:
+        device.sdkInt < 23 ? function (view, errorCode, description, failingUrl) {
+            webviewErrorHandler(view);
+        }
+        : function (view, request, error) {
+            webviewErrorHandler(view);
+        },
+    onReceivedHttpError: function (view, request, errorResponse) {
+        webviewErrorHandler(view);
+    },
+});
+ui.webview.setWebViewClient(webvc);
+
+//如果没有从Vue的开发服务器加载，则热重载应该是不可用的
+function getDevModeType() {
+    if (!isDevMode()) return null;
+    switch (webviewUrl) {
+        case debugUrl:
+            return "debugUrl";
+        case fileUrl:
+            return "fileUrl";
+        case releaseUrl:
+            return "releaseUrl";
+        default:
+            return "otherUrl";
+    }
+}
 
 //借用prompt处理Web端主动发起的对AutoJS端的通信
 //参考：https://www.jianshu.com/p/94277cb8f835
@@ -297,6 +497,16 @@ function handleWebViewCallAJ(fnName, paramString) {
     switch (fnName) {
         case "getVersionString":
             result = version;
+            break;
+        case "isDevMode":
+            result = isDevMode();
+            break;
+        case "getDevModeType":
+            result = getDevModeType();
+            break;
+        case "toggleDevMode":
+            result = false;
+            if (params.length > 0) result = toggleDevMode(params[0]);
             break;
         case "detectAutoJSVersion":
             result = detectAutoJSVersion();
@@ -469,6 +679,9 @@ function detectAutoJSVersion() {
 function performOnlineUpdate() {
     // TODO
 }
+
+//放在最后再加载Webview，防止前面出现玄学崩溃后弹出一堆“未知的callAJ命令”toast
+ui.webview.loadUrl(webviewUrl);
 
 //改变参数时instantToast反馈
 floatUI.enableToastParamChanges();
