@@ -9,7 +9,7 @@ const includeRules = [
     {
         dirname: ".",
         recursive: false,
-        filename: /\.(js|xml)$/,
+        filename: /\.(js|json|xml)$/,
     },
     {
         dirname: "images",
@@ -29,8 +29,6 @@ const includeRules = [
 ]
 
 
-var result = [];
-
 function walkThrough(fullpath) {
     let relativepath = path.relative(rootpath, fullpath).replace(new RegExp('\\' + path.sep, 'g'), '/');
 
@@ -47,7 +45,12 @@ function walkThrough(fullpath) {
             }
             return false;
         })) {
-            fs.readdirSync(fullpath).forEach((filename) => walkThrough(path.join(fullpath, filename)));
+            let result = [];
+            fs.readdirSync(fullpath).forEach((filename) => {
+                let item = walkThrough(path.join(fullpath, filename));
+                if (item != null) result.push(item);
+            });
+            return result;
         }
     } else {
         if (includeRules.find((rule) => {
@@ -66,10 +69,10 @@ function walkThrough(fullpath) {
             let content = fs.readFileSync(fullpath);
             hash.update(content);
             let digest = hash.digest("base64");
-            result.push({
+            return {
                 src: relativepath,
                 integrity: hashFuncName+"-"+digest,
-            });
+            };
         }
     }
 }
@@ -81,7 +84,7 @@ const resultPath = path.join(resultDir, "updateList.json");
 
 function regenerate() {
     console.log("Regenerating update/updateList.json ...");
-    walkThrough(rootpath);
+    let result = walkThrough(rootpath);
     if (fs.existsSync(resultDir)) {
         if (!fs.statSync(resultDir).isDirectory()) {
             throw new Error("Cannot create directory at path "+resultDir+", file already exists.");
@@ -91,6 +94,7 @@ function regenerate() {
     }
     fs.writeFileSync(resultPath, JSON.stringify(result));
     console.log("Written to "+resultPath);
+    return result;
 }
 regenerate();
 
@@ -163,6 +167,11 @@ const HTMLHead2 =
 +"\n        <b>Links of all files:</b><br>"
 const HTMLTail =
  "\n    </body>"
++"\n    <style>"
++"\n        article {"
++"\n            margin: .5rem"
++"\n        }"
++"\n    </style>"
 +"\n</html>";
 
 const mimeTypes = {
@@ -192,15 +201,45 @@ function getMimeTypeUTF8(filename) {
         contenttype += "; charset=utf-8";
     return contenttype;
 }
-function generateHTMLResult(data) {
-    if (data == null) data = result;
-    let linkLines = "";
+function generateATags(data) {
     let aLines = "";
-    result.forEach((item) => {
-        aLines +=
- "\n        <a href=\""+item.src+"\" id=\""+item.integrity+"\" onclick=\"return clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(item.src)+"</b> "+item.src+"</a><br>";
-    });
+    if (Array.isArray(data)) {
+        if (data.length > 0) {
+            aLines += "\n<article>";
+            data.forEach((item) => {
+                aLines += generateATags(item);
+            });
+            aLines += "\n</article>";
+        }
+    } else {
+        aLines += "\n<a href=\""+data.src+"\" id=\""+data.integrity+"\" onclick=\"return clickHandler(this);\" target=\"_blank\"><b>"+getMimeType(data.src)+"</b> "+data.src+"</a><br>";
+    }
+    return aLines;
+}
+function generateHTMLResult(data) {
+    if (data == null) data = regenerate();
+    let linkLines = "";
+    let aLines = generateATags(data);
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
+}
+var rateLimit = {
+    lastTime: new Date().getTime(),
+    remainingReqCount: 20,
+};
+function isTooFrequent() {
+    let currentTime = new Date().getTime();
+    if (currentTime > rateLimit.lastTime + 10000) {
+        rateLimit = {
+            lastTime: currentTime,
+            remainingReqCount: 10,
+        };
+    } else {
+        if (rateLimit.remainingReqCount-- <= 0) {
+            rateLimit.remainingReqCount = 0;
+            return true;
+        }
+    }
+    return false;
 }
 const server = http.createServer((req, res) => {
     let relativepath = req.url.replace(/^\//, "");
@@ -218,20 +257,30 @@ const server = http.createServer((req, res) => {
         return false;
     });
     if (req.url === "/") {
+        if (isTooFrequent()) {
+            res.statusCode = 429;
+            res.end('429 Too Many Requests\n');
+            return;
+        };
         regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
         res.setHeader('Access-Control-Allow-Origin', '*');
         console.log(`Serving index page`);
-        res.end(generateHTMLResult(result));
+        res.end(generateHTMLResult(regenerate()));
     } else if ("/update/updateList.json" === req.url) {
+        if (isTooFrequent()) {
+            res.statusCode = 429;
+            res.end('429 Too Many Requests\n');
+            return;
+        };
         regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("/update/updateList.json"));
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
-        res.end(JSON.stringify(result));
+        res.end(JSON.stringify(regenerate()));
     } else if (found != null) {
         res.setHeader('Cache-control', 'no-cache');
         let servingfilepath = path.resolve(path.join(rootpath, relativepath));
@@ -250,6 +299,9 @@ const server = http.createServer((req, res) => {
                     res.setHeader('Access-Control-Allow-Origin', '*');
                     console.log(`Serving file: ${servingfilepath}`);
                     res.end(fs.readFileSync(servingfilepath));
+                    //setTimeout(() => {
+                    //    res.end(fs.readFileSync(servingfilepath) + (relativepath.includes("main.js")?"/*DEBUG*/":""));//DEBUG
+                    //}, 1000);
                 }
             } else {
                 res.statusCode = 404;
