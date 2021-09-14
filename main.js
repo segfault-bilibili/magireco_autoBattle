@@ -10,6 +10,7 @@ importClass(android.webkit.WebView)
 importClass(android.webkit.WebChromeClient)
 importClass(android.webkit.WebResourceResponse)
 importClass(android.webkit.WebViewClient)
+importClass(android.webkit.ConsoleMessage)
 
 var Name = "全自动小彩羽";
 var version = "1.0.0";
@@ -32,6 +33,13 @@ function logException(e) {
 }
 
 var floatUI = require('floatUI.js');
+
+function decodeBase64ToBytes(str) {
+    return android.util.Base64.decode(str, android.util.Base64.NO_WRAP);
+}
+function encodeBase64FromBytes(bytes) {
+    return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+}
 
 function setFollowRedirects(value) {
     let newokhttp = new Packages.okhttp3.OkHttpClient.Builder().followRedirects(value);
@@ -187,6 +195,7 @@ function reportBug() {
 var updateRestartPending = false;
 function restartSelf(toastMsg) {
     if (toastMsg == null) toastMsg = "更新完毕";
+    log("restartSelf(toastMsg=["+toastMsg+"])");
     events.on("exit", function () {
         //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
         //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
@@ -364,12 +373,14 @@ ui.layout(
 
 //正式发布
 let indexPath = "/autoWebviewBuild/dist/index.html"
-let releaseUrlBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest";
+var releaseUpgradeUrlBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle"
+var releaseUrlBase = releaseUpgradeUrlBase+"@"+version;
 var releaseUrl = releaseUrlBase+indexPath;
 
 //开发环境，可以用adb reverse tcp:8080 tcp:8080来映射端口到npm run serve启动的HTTP服务器
-let debugUrlBase = "http://127.0.0.1:"+getDevServerPort("vue");
-var debugUrl = debugUrlBase+"/index.html";
+var debugWebviewUrlBase = "http://127.0.0.1:"+getDevServerPort("vue");
+var debugUrl = debugWebviewUrlBase+"/index.html";
+var debugUpgradeUrlBase = "http://127.0.0.1:"+getDevServerPort("genjs");
 
 //本地文件
 var fileUrl = "file://"+files.join(files.cwd(), indexPath);
@@ -378,7 +389,17 @@ var webviewUrl =
     isDevMode() ? debugUrl//开发模式下优先使用开发服务器URL
                 : fileUrl//非开发模式，优先使用本地文件
 
+//提供更新网址给Webview端
+function getUpgradeUrlBase() {
+    return {
+        "debug": debugUpgradeUrlBase,
+        "release": releaseUpgradeUrlBase,
+    };
+}
+
+var ignoreWebviewError = false;
 function webviewErrorHandler(view) {
+    if (ignoreWebviewError) return; //一般是在线更新的时候,如果只是下载更新时出错就不要切换页面
     if (isDevMode()) {
         toastLog("当前处于开发模式，Webview加载失败");
         switch (webviewUrl) {
@@ -457,6 +478,9 @@ var webvc = new JavaAdapter(WebViewClient, {
             webviewErrorHandler(view);
         },
     onReceivedHttpError: function (view, request, errorResponse) {
+        webviewErrorHandler(view);
+    },
+    onReceivedSslError: function (view, handler, error) {
         webviewErrorHandler(view);
     },
 });
@@ -557,8 +581,11 @@ function handleWebViewCallAJ(fnName, paramString) {
         case "openURL":
             if (params.length == 1) app.openUrl(params[0]);
             break;
-        case "upgrade":
-            result = performOnlineUpdate();
+        case "getUpgradeUrlBase":
+            result = getUpgradeUrlBase();
+            break;
+        case "setIgnoreWebviewError":
+            if (params.length == 1) ignoreWebviewError = params[0];
             break;
         default:
             toastLog("未知的callAJ命令:\n["+fnName+"]");
@@ -589,6 +616,15 @@ var webcc = new JavaAdapter(WebChromeClient, {
         }
         jsPromptResult.confirm(result);//必须confirm，否则会在Webview上阻塞JS继续执行
         return true;
+    },
+    onConsoleMessage: function (consoleMessage) {
+        let s = "";
+        for (let key of ["messageLevel", "message", "lineNumber", "sourceId"]) {
+            s += "\n"+key+": "+consoleMessage[key]();
+        }
+        s += "\n";
+        log(s);
+        return false;
     }
 });
 ui.webview.setWebChromeClient(webcc);
@@ -608,6 +644,202 @@ function callWebviewJS(script, callback) {
         logException(e);
         log("在Webview端执行JS代码时出错");
     }
+}
+function snackBarMsg(msg) {
+    let jscode = "window.snackBarMsg("+JSON.stringify(msg)+");";
+    callWebviewJS(jscode);
+}
+
+//监视下载动作，用于在线更新
+//雷电（Android 5）和MuMu（Android 6）模拟器上不能一次传输太多数据，只能分块
+var dataFragments = {total: 0, added: 0};
+function handleDataUriDownload(dataUri) {
+    let head = dataUri.substring(0, dataUri.length > 256 ? 256 : dataUri.length).match(/^data:((.+;)|())base64,/)[0];
+    let dataFragWithInfo = $base64.decode(dataUri.substring(head.length));
+    let partInfo = dataFragWithInfo.substring(0, dataFragWithInfo.length > 256 ? 256 : dataFragWithInfo.length).match(/^\d+,\d+;/)[0];
+    let dataFrag = dataFragWithInfo.substring(partInfo.length);
+    let curStr = partInfo.match(/^\d+/)[0];
+    let totalStr = partInfo.substring(curStr.length + 1).match(/^\d+/)[0];
+    let cur = parseInt(curStr);
+    let total = parseInt(totalStr);
+    if (total != dataFragments.total) {
+        log("total ("+total+") != dataFragments.total ("+dataFragments.total+")");
+        dataFragments = {total: total, added: 0};
+    }
+    dataFragments["part" + cur] = dataFrag;
+    dataFragments.added++;
+    log("Got part"+cur+" ("+dataFragments.added+" of "+total+")");
+    if (total == dataFragments.added) {
+        updateFilesAndRestart();
+        dataFragments = {total: total, added: 0};
+    }
+}
+ui.webview.setDownloadListener(new android.webkit.DownloadListener({
+    onDownloadStart: function(url, userAgent, contentDisposition, mimetype, contentLength) {
+        handleDataUriDownload(url);
+    }
+}));
+function parseTLV(s, regex, start, end) {
+    start = parseInt(start); end = parseInt(end);
+    if (!(start >= 0)) throw new Error("parseTLV: start should be greater than zero");//NaN
+    if (!(end <= s.length)) throw new Error("parseTLV: end should be equal or lesser than length");
+    let windowSize = end - start;
+    if (!(windowSize > 0)) throw new Error("parseTLV: no bytes left for windowSize, or start exceeds end");
+    let head = s.substring(start, start + (windowSize > 256 ? 256 : windowSize)).match(regex)[0];
+    let dataLen = parseInt(head.match(/\d+/)[0]);
+    if (!(dataLen > 0)) throw new Error("parseTLV: dataLen should be greater than zero");
+    let TLVsize = head.length + dataLen;
+    let remainingSize = windowSize - TLVsize;
+    if (!(remainingSize >= 0)) throw new Error("parseTLV: TLVsize exceeds windowSize");
+    let result = {s: s, head: head, start: start, end: start + TLVsize};
+    result.data = {s: s, len: dataLen, start: start + head.length, end: start + TLVsize};
+    if (remainingSize > 0) result.remaining = {s: s, start: start + TLVsize, end: start + windowSize};
+    return result;
+}
+function splitConcatenatedTLVs(s, regex, start, end) {
+    start = parseInt(start); end = parseInt(end);
+    if (!(start >= 0)) throw new Error("splitConcatenatedTLVs: start should be greater than zero");//NaN
+    if (!(end <= s.length)) throw new Error("splitConcatenatedTLVs: end should be equal or lesser than length");
+    let result = [];
+    while (true) {
+        let item = parseTLV(s, regex, start, end);
+        result.push(item);
+        if (item.remaining == null) break;
+        start = item.remaining.start;
+        end = item.remaining.end;
+    }
+    return result;
+}
+function decodeUpdateDataString(s) {
+    let fileList = [];
+    let bundleTLV = parseTLV(s, /^,B\d+_/, 0, s.length);
+    let fileTLVs = splitConcatenatedTLVs(s, /^,F\d+_/, bundleTLV.data.start, bundleTLV.data.end);
+    for (let fileTLV of fileTLVs) {
+        let fileEntry = {};
+        let kvTLVs = splitConcatenatedTLVs(s, /^,KV\d+_/, fileTLV.data.start, fileTLV.data.end);
+        for (let kvTLV of kvTLVs) {
+            let keyTLV = parseTLV(s, /^,K\d+_/, kvTLV.data.start, kvTLV.data.end);
+            let valTLV = parseTLV(s, /^,V\d+_/, keyTLV.remaining.start, keyTLV.remaining.end);
+            if (valTLV.remaining != null) throw new Error("decodeUpdateDataString: unexpected data after key and val");
+            let key = s.substring(keyTLV.data.start, keyTLV.data.end);
+            let val = s.substring(valTLV.data.start, valTLV.data.end);
+            fileEntry[key] = val;
+        }
+        fileList.push(fileEntry);
+    }
+    return fileList;
+}
+function decodeDataUriToBytes(dataUri) {
+    let start = dataUri.substring(0, dataUri.length > 256 ? 256 : dataUri.length).match(/^data:(()|[^;]+);base64,/)[0].length;
+    let dataBase64 = dataUri.substring(start, dataUri.length);
+    return decodeBase64ToBytes(dataBase64);
+}
+function updateFilesAndRestart() {
+    const tempDir = files.join(files.cwd(), "updateTemp");
+    const backDir = files.join(files.cwd(), "updateRollback");
+
+    let s = "";
+    for (let i=1; i<=dataFragments.total; i++) {
+        s += dataFragments["part" + i];
+    }
+    let fileList = decodeUpdateDataString(s);
+    log("文件数量=["+fileList.length+"]");
+
+    for (let dir of [tempDir, backDir]) {
+        if (files.exists(dir)) {
+            if (files.isDir(dir)) {
+                files.removeDir(dir);
+            } else {
+                toastLog("路径 ["+dir+"] 不是目录,\n尝试删除...");
+                files.remove(dir);
+            }
+        };
+        if (files.exists(dir)) {
+            toastLog("删除 ["+dir+"] 失败,\n请尝试卸载重装");
+            return;
+        }
+    }
+
+    for (let fileEntry of fileList) {
+        log("写入文件 ["+fileEntry.src+"] ...");
+        if (fileEntry.src === "project.json" || fileEntry.src === "./project.json") {
+            log("跳过文件 ["+fileEntry.src+"]");
+            continue;
+        }
+        let dataBytes = decodeDataUriToBytes(fileEntry.data);
+
+        let path = files.join(files.cwd(), fileEntry.src);
+
+        let tempPath = files.join(tempDir, fileEntry.src);
+        let backPath = files.join(backDir, fileEntry.src);
+
+        files.ensureDir(tempPath);
+        files.writeBytes(tempPath, dataBytes);
+
+        let fileBytes = files.readBytes(tempPath);
+        let fileHashBase64 = $crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
+        let fileIntegrity = "sha256-"+fileHashBase64;
+        if (fileEntry.integrity !== fileIntegrity) {
+            toastLog("升级出错,\n文件 ["+fileEntry.src+"] 校验失败");
+            files.removeDir(tempDir);
+            return;
+        }
+
+        log("写入文件 ["+fileEntry.src+"] 完成且校验通过");
+    }
+
+    let contentsInTempDir = files.listDir(tempDir); //貌似是Java数组,所以得for i这样遍历
+    let isReplaceFileFailed = false;
+    let rollBacks = [];
+    for (let i=0; i<contentsInTempDir.length; i++) {
+        let name = contentsInTempDir[i];
+        if (name === "." || name === "./") continue;
+        log("替换文件或目录 ["+name+"] ...");
+        let destPath = files.join(files.cwd(), name);
+        let backPath = files.join(backDir, name);
+        let fromPath = files.join(tempDir, name);
+        rollBacks.unshift({destPath: destPath, backPath: backPath});
+        if (files.exists(destPath)) {
+            files.ensureDir(backPath);
+            if (!files.move(destPath, backPath)) {
+                toastLog("移动旧文件或目录 ["+name+"] 失败\n请尝试卸载重装");
+                isReplaceFileFailed = true;
+                break;
+            }
+        }
+        if (!files.move(fromPath, destPath)) {
+            toastLog("移动新文件或目录 ["+name+"] 失败\n请尝试卸载重装");
+            isReplaceFileFailed = true;
+            break;
+        }
+        log("替换文件或目录 ["+name+"] 完成");
+    }
+    if (isReplaceFileFailed) {
+        toastLog("升级出错,\n回滚...");
+        for (let item of rollBacks) {
+            files.ensureDir(item.destPath);
+            if (files.exists(item.destPath)) {
+                if (files.isDir(item.destPath)) {
+                    files.removeDir(item.destPath);
+                } else {
+                    files.remove(item.destPath);
+                }
+            }
+            if (files.exists() || !files.move(item.backPath, item.destPath)) {
+                toastLog("无法回滚,\n请尝试卸载重装");
+                return;
+            }
+        }
+    }
+
+    files.removeDir(backDir);
+    files.removeDir(tempDir);
+    log("已删除用于升级的临时和备份回滚目录");
+
+    let msg = (isReplaceFileFailed?"回滚完成":"升级完成")+"，即将重启";
+    snackBarMsg(msg);
+
+    ui.post(function () {restartSelf(msg);}, 1500);
 }
 
 //修正前台服务/按音量上键完全退出脚本等设置值存在的以下问题：
@@ -672,10 +904,6 @@ function detectAutoJSVersion() {
     return {currentVersionCode: currentVersionCode, isAJObsolete: isAJObsolete, AJObsoleteWarningMsg: AJObsoleteWarningMsg};
 }
 
-
-function performOnlineUpdate() {
-    // TODO
-}
 
 //放在最后再加载Webview，防止前面出现玄学崩溃后弹出一堆“未知的callAJ命令”toast
 ui.webview.loadUrl(webviewUrl);
