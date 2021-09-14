@@ -836,8 +836,8 @@ function updateFilesAndRestart() {
     files.removeDir(tempDir);
     log("已删除用于升级的临时和备份回滚目录");
 
-    let msg = (isReplaceFileFailed?"回滚完成":"升级完成")+"，即将重启";
-    snackBarMsg(msg);
+    let msg = (isReplaceFileFailed?"回滚完成":"升级完成");
+    snackBarMsg(msg+"，即将重启");
 
     ui.post(function () {restartSelf(msg);}, 1500);
 }
