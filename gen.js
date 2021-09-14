@@ -1,4 +1,5 @@
 const fs = require("fs");
+const fsPromises = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
 
@@ -29,10 +30,11 @@ const includeRules = [
 ]
 
 
-function walkThrough(fullpath) {
+//May return null
+async function walkThrough(fullpath) {
     let relativepath = path.relative(rootpath, fullpath).replace(new RegExp('\\' + path.sep, 'g'), '/');
 
-    if (fs.statSync(fullpath).isDirectory()) {
+    if ((await fsPromises.stat(fullpath)).isDirectory()) {
         if (includeRules.find((rule) => {
             if (rule.dirname === path.dirname(relativepath)) {
                 return true;
@@ -46,11 +48,13 @@ function walkThrough(fullpath) {
             return false;
         })) {
             let result = [];
-            fs.readdirSync(fullpath).forEach((filename) => {
-                let item = walkThrough(path.join(fullpath, filename));
+            let dirContent = await fsPromises.readdir(fullpath);
+            for (let i=0; i<dirContent.length; i++) {
+                let filename = dirContent[i];
+                let item = await walkThrough(path.join(fullpath, filename));
                 if (item != null) result.push(item);
-            });
-            return result;
+            };
+            return result.length > 0 ? result : null;
         }
     } else {
         if (includeRules.find((rule) => {
@@ -66,7 +70,7 @@ function walkThrough(fullpath) {
             return false;
         })) {
             let hash = crypto.createHash(hashFuncName);
-            let content = fs.readFileSync(fullpath);
+            let content = await fsPromises.readFile(fullpath);
             hash.update(content);
             let digest = hash.digest("base64");
             return {
@@ -82,17 +86,23 @@ const resultDir = path.join(rootpath, "update");
 const resultPath = path.join(resultDir, "updateList.json");
 
 
-function regenerate() {
+async function regenerate() {
     console.log("Regenerating update/updateList.json ...");
-    let result = walkThrough(rootpath);
-    if (fs.existsSync(resultDir)) {
-        if (!fs.statSync(resultDir).isDirectory()) {
+    let result = await walkThrough(rootpath);
+    if (result == null) result = [];
+    try {
+        let stat = await fsPromises.stat(resultDir);
+        if (!stat.isDirectory()) {
             throw new Error("Cannot create directory at path "+resultDir+", file already exists.");
         }
-    } else {
-        fs.mkdirSync(resultDir);
+    } catch (e) {
+        if (e.code === 'ENOENT') {
+            await fsPromises.mkdir(resultDir);
+        } else {
+            throw e;
+        }
     }
-    fs.writeFileSync(resultPath, JSON.stringify(result));
+    await fsPromises.writeFile(resultPath, JSON.stringify(result));
     console.log("Written to "+resultPath);
     return result;
 }
@@ -216,8 +226,8 @@ function generateATags(data) {
     }
     return aLines;
 }
-function generateHTMLResult(data) {
-    if (data == null) data = regenerate();
+async function generateHTMLResult(data) {
+    if (data == null) data = await regenerate();
     let linkLines = "";
     let aLines = generateATags(data);
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
@@ -241,7 +251,7 @@ function isTooFrequent() {
     }
     return false;
 }
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
     let relativepath = req.url.replace(/^\//, "");
     let fullpath = path.resolve(relativepath);
     let found = includeRules.find((rule) => {
@@ -262,25 +272,25 @@ const server = http.createServer((req, res) => {
             res.end('429 Too Many Requests\n');
             return;
         };
-        regenerate();
+        await regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
         res.setHeader('Access-Control-Allow-Origin', '*');
         console.log(`Serving index page`);
-        res.end(generateHTMLResult(regenerate()));
+        res.end(await generateHTMLResult(await regenerate()));
     } else if ("/update/updateList.json" === req.url) {
         if (isTooFrequent()) {
             res.statusCode = 429;
             res.end('429 Too Many Requests\n');
             return;
         };
-        regenerate();
+        await regenerate();
         res.statusCode = 200;
         res.setHeader('Content-Type', getMimeTypeUTF8("/update/updateList.json"));
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
-        res.end(JSON.stringify(regenerate()));
+        res.end(JSON.stringify(await regenerate()));
     } else if (found != null) {
         res.setHeader('Cache-control', 'no-cache');
         let servingfilepath = path.resolve(path.join(rootpath, relativepath));
@@ -288,8 +298,9 @@ const server = http.createServer((req, res) => {
             res.statusCode = 403;
             res.end('403 Forbidden\n');
         } else {
-            if (fs.existsSync(servingfilepath)) {
-                if (fs.statSync(servingfilepath).isDirectory()) {
+            try {
+                let stat = await fsPromises.stat(servingfilepath);
+                if (stat.isDirectory()) {
                     res.statusCode = 403;
                     console.log(`isDirectory: ${servingfilepath}`);
                     res.end('403 Forbidden\n');
@@ -298,15 +309,19 @@ const server = http.createServer((req, res) => {
                     res.setHeader('Content-Type', getMimeTypeUTF8(path.basename(relativepath)));
                     res.setHeader('Access-Control-Allow-Origin', '*');
                     console.log(`Serving file: ${servingfilepath}`);
-                    res.end(fs.readFileSync(servingfilepath));
+                    res.end(await fsPromises.readFile(servingfilepath));
                     //setTimeout(() => {
-                    //    res.end(fs.readFileSync(servingfilepath) + (relativepath.includes("main.js")?"/*DEBUG*/":""));//DEBUG
+                    //    res.end(await fsPromises.readFile(servingfilepath) + (relativepath.includes("main.js")?"/*DEBUG*/":""));//DEBUG
                     //}, 1000);
                 }
-            } else {
-                res.statusCode = 404;
-                console.log(`Not found: ${servingfilepath}`);
-                res.end('404 Not found\n');
+            } catch (e) {
+                if (e.code === 'ENOENT') {
+                    res.statusCode = 404;
+                    console.log(`Not found: ${servingfilepath}`);
+                    res.end('404 Not found\n');
+                } else {
+                    throw e;
+                }
             }
         }
     } else {
