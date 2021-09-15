@@ -194,17 +194,13 @@ function reportBug() {
 //重启整个app
 var updateRestartPending = false;
 function restartSelf(toastMsg) {
-    if (toastMsg == null) toastMsg = "更新完毕";
+    if (toastMsg == null) toastMsg = "更新完毕，即将重启";
     log("restartSelf(toastMsg=["+toastMsg+"])");
-    events.on("exit", function () {
-        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
-        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
-        app.launch(context.getPackageName());
-        if (toastMsg !== false) toast(toastMsg);
-    })
+    if (toastMsg !== false) toast(toastMsg);
     updateRestartPending = true;
-    ui.webview.loadUrl("about:blank");//貌似stopAll后之前的webview还在跑，所以这里把它停掉
-    engines.stopAll();
+    activity.finishAffinity();
+    app.launch(context.getPackageName());
+    java.lang.System.exit(0);
 }
 
 //判断和切换是否开发模式
@@ -836,10 +832,10 @@ function updateFilesAndRestart() {
     files.removeDir(tempDir);
     log("已删除用于升级的临时和备份回滚目录");
 
-    let msg = (isReplaceFileFailed?"回滚完成":"升级完成");
-    snackBarMsg(msg+"，即将重启");
+    let msg = (isReplaceFileFailed?"回滚完成":"升级完成")+"，即将重启";
+    snackBarMsg(msg);
 
-    ui.post(function () {restartSelf(msg);}, 1500);
+    ui.post(function () {restartSelf(false);}, 1500);
 }
 
 //修正前台服务/按音量上键完全退出脚本等设置值存在的以下问题：
