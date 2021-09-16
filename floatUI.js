@@ -115,6 +115,8 @@ var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
 
+floatUI.storage = null;
+
 // available script list
 floatUI.scripts = [
     {
@@ -191,6 +193,10 @@ floatUI.scripts = [
                      +"警告：清除后不可撤销，数据一旦被清除则不可恢复！",
     },
     {
+        name: "文字抓取",
+        fn: tasks.captureText,
+    },
+    {
         name: "测试助战自动选择",
         fn: tasks.testSupportSel,
         introduction: "在选择助战时，脚本默认会优先选互关好友（Pt收益最多），如果没有互关好友则选择Pt收益同样是最多的NPC，如果没有NPC则会选择单向好友或路人助战。\n"
@@ -258,36 +264,65 @@ floatUI.presetOpLists = [
     },
     {
         name: "国服主线2-1-4普通本(水波祭)",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-8-6_"
-            +"9-51-6\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRA"
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-3_"
+            +"11-1-1\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRA"
             +"NCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1563"
             +",\"y\":845,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime"
-            +"\":3000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1207,\"y\":862,"
-            +"\"pos\":\"center\"},{\"x\":1264,\"y\":405,\"pos\":\"center\"}],\"duration\":20"
-            +"00}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1228,\"y\":846,\"pos"
-            +"\":\"center\"},{\"x\":1223,\"y\":405,\"pos\":\"center\"}],\"duration\":2000}}"
-            +",{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1188,\"y\":826,\"pos\":\"c"
-            +"enter\"},{\"x\":1203,\"y\":399,\"pos\":\"center\"}],\"duration\":2000}},{\"a"
-            +"ction\":\"click\",\"click\":{\"point\":{\"x\":1202,\"y\":379,\"pos\":\"center\""
-            +"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1180,\"y\":852,\"pos\""
-            +":\"center\"},{\"x\":1211,\"y\":404,\"pos\":\"center\"}],\"duration\":1970}},"
-            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1181,\"y\":840,\"pos\":\"ce"
-            +"nter\"},{\"x\":1200,\"y\":405,\"pos\":\"center\"}],\"duration\":1825}},{\"ac"
-            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1224,\"y\":560,\"pos\":\"center\"}"
-            +"}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"clic"
-            +"k\",\"click\":{\"point\":{\"x\":1193,\"y\":570,\"pos\":\"top\"}}},{\"action\":\""
-            +"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkT"
-            +"ext\":{\"text\":\"BATTLE 4\",\"boundsCenter\":{\"x\":304,\"y\":514,\"pos\":\"t"
-            +"op\"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"igno"
-            +"re\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fa"
-            +"il\"}}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"第2章\",\"boundsCe"
-            +"nter\":{\"x\":305,\"y\":250,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopS"
-            +"cript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"sto"
-            +"pScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"che"
-            +"ckText\":{\"text\":\"1话\",\"boundsCenter\":{\"x\":303,\"y\":296,\"pos\":\"top\""
-            +"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"success"
-            +"\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail"
-            +"\"}}}]}",
+            +"\":3000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,"
+            +"\"pos\":\"center\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":20"
+            +"00}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos"
+            +"\":\"center\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}}"
+            +",{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"c"
+            +"enter\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"cente"
+            +"r\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"actio"
+            +"n\":\"click\",\"click\":{\"point\":{\"x\":1160,\"y\":201,\"pos\":\"center\"}}},"
+            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1159,\"y\":820,\"pos\":\"ce"
+            +"nter\"},{\"x\":1170,\"y\":206,\"pos\":\"center\"}],\"duration\":2000}},{\"ac"
+            +"tion\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1152,\"y\":843,\"pos\":\"center"
+            +"\"},{\"x\":1131,\"y\":218,\"pos\":\"center\"}],\"duration\":2000}},{\"action"
+            +"\":\"click\",\"click\":{\"point\":{\"x\":1122,\"y\":190,\"pos\":\"center\"}}},{"
+            +"\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"click\",\""
+            +"click\":{\"point\":{\"x\":1193,\"y\":570,\"pos\":\"top\"}}},{\"action\":\"slee"
+            +"p\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\""
+            +":{\"text\":\"BATTLE 4\",\"boundsCenter\":{\"x\":304,\"y\":514,\"pos\":\"top\"}"
+            +",\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"}"
+            +",\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}"
+            +"}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"第2章\",\"boundsCenter"
+            +"\":{\"x\":305,\"y\":250,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScrip"
+            +"t\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"stopScr"
+            +"ipt\":false,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"checkTe"
+            +"xt\":{\"text\":\"1话\",\"boundsCenter\":{\"x\":303,\"y\":296,\"pos\":\"top\"},\"f"
+            +"ound\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"success\"},\""
+            +"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}}"
+            +"]}",
+    },
+    {
+        name: "国服门票活动剧情1",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-2_"
+            +"21-35-50\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeB"
+            +"RANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":16"
+            +"20,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTi"
+            +"me\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,"
+            +"\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y"
+            +"\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2"
+            +"000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"po"
+            +"s\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"ac"
+            +"tion\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"}"
+            +",{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"sw"
+            +"ipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":114"
+            +"0,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swi"
+            +"pe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,"
+            +"\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poin"
+            +"t\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\""
+            +":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\""
+            +"剧情副本\",\"boundsCenter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\""
+            +"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\""
+            +"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}}"
+            +",{\"action\":\"checkText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCen"
+            +"ter\":{\"x\":298,\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopSc"
+            +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
+            +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
     },
 ];
 
@@ -307,33 +342,39 @@ var openedDialogs = {openedDialogCount: 0};
 var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
-var menuItems = [];
-function lockUI(isLocked) {
+floatUI.toolBarMenuItems = [];
+floatUI.lockToolbarMenu = function (isLocked) {
     ui.run(() => {
-        //隐藏或显示设置界面
-        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
-        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
         activity.setSupportActionBar(isLocked?null:ui.toolbar);
         let menu = ui["toolbar"].getMenu();
         menu.close();
         if (isLocked) {
-            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            for (let i=0; i<menu.size(); i++) floatUI.toolBarMenuItems.push(menu.getItem(i));
             menu.clear();
         } else {
             menu.clear();
-            while (menuItems.length > 0) {
-                menu.add(menuItems[0].getTitle())
-                    .setIcon(menuItems[0].getIcon())
+            while (floatUI.toolBarMenuItems.length > 0) {
+                menu.add(floatUI.toolBarMenuItems[0].getTitle())
+                    .setIcon(floatUI.toolBarMenuItems[0].getIcon())
                     .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
-                menuItems.splice(0, 1);
+                floatUI.toolBarMenuItems.splice(0, 1);
             }
         }
-
-        //更新状态监控文字
-        ui["running_stats_params_text"].setText(getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
-        ui["running_stats_status_text"].setText(getStatusText());
     });
 }
+var lockUI = syncer.syn(function (isLocked) {
+    //隐藏或显示设置界面
+    updateUI("swipe", "setVisibility", isLocked?View.GONE:View.VISIBLE);
+    updateUI("running_stats", "setVisibility", isLocked?View.VISIBLE:View.GONE);
+
+    updateUI("lockToolbarMenu", "lockToolbarMenu", isLocked);
+
+    //更新状态监控文字
+    ui.run(function () {
+        updateUI("running_stats_params_text", "setText", getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
+        updateUI("running_stats_status_text", "setText", getStatusText());
+    })
+});
 function getUIContent(key) {
     switch (ui[key].getClass().getSimpleName()) {
         case "JsEditText":
@@ -362,8 +403,8 @@ function getParamsText() {
     let drugnumarr = [];
     for (let i=1; i<=4; i++) {
         let drugName = ui["drug"+i].text;
-        let drugNum = ui["drug"+i+"num"].getText();
-        let ischecked = ui["drug"+i].isChecked();
+        let drugNum = limit["drug"+i+"num"];
+        let ischecked = limit["drug"+i];
         drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
     }
     result += drugnumarr.join("<br>")+"<br>";
@@ -398,7 +439,7 @@ function getParamsText() {
     for (let taskParams of [globalTaskParams, extraTaskParams]) {
         for (let key in taskParams) {
             let name = taskParams[key];
-            let content = getUIContent(key);
+            let content = limit[key];
             let isdisabled = (content=="" || content=="已停用");
             content = content==""?ui[key].hint:content;
             taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
@@ -731,13 +772,13 @@ floatUI.main = function () {
                     break;
                 case TASK_RUNNING:
                     toastLog("继续运行脚本");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    updateUI("task_paused_vertical", "setVisibility", View.GONE);
                     lockUI(true);
                     return;
                     break;
                 case TASK_STOPPED:
                     log("脚本已停止运行");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    updateUI("task_paused_vertical", "setVisibility", View.GONE);
                     //monitoredTask会执行lockUI(false)
                     return;
                     break;
@@ -1376,13 +1417,8 @@ floatUI.main = function () {
                 if (drugnum < drugCosts[index]) {
                     limit["drug"+(index+1)] = false;
                 }
-                ui.run(() => {
-                    //注意,这里会受到main.js里注册的listener影响
-                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = ui["drug"+(index+1)];
-                    let newvalue = limit["drug"+(index+1)];
-                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
-                });
+                updateUI("drug"+(index+1), "setChecked", limit["drug"+(index+1)]);
+                updateUI("drug"+(index+1)+"num", "setText", limit["drug"+(index+1)+"num"]);
             } else {
                 //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
                 log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
@@ -1399,10 +1435,8 @@ floatUI.main = function () {
         }
         currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
         log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
-        ui.run(function () {
-            //实际上嗑药数量设置会不断扣减，这里没有更新显示
-            ui["running_stats_status_text"].setText(getStatusText());
-        });
+        //实际上嗑药数量设置会不断扣减，这里没有更新显示
+        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
     isDrugEnabled = function (index) {
@@ -1455,9 +1489,7 @@ floatUI.main = function () {
     updateCycleCount = function () {
         currentTaskCycles++;
         log("周回数增加到", currentTaskCycles);
-        ui.run(function () {
-            ui["running_stats_status_text"].setText(getStatusText());
-        });
+        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
 };
@@ -1479,6 +1511,11 @@ var limit = {
     drug3: false,
     autoReconnect: true,
     justNPC: false,
+    dragSupportList: false,
+    preferredSupportCharaNames: "",
+    excludedSupportCharaNames: "",
+    preferredSupportMemorias: "",//未实现
+    autoForPreferredOnly: false,
     drug4: false,
     drug1num: '0',
     drug2num: '0',
@@ -1674,7 +1711,12 @@ var clickSets = {
         x: 960,
         y: 769,
         pos: "center"
-    }
+    },
+    battleFinishedOK: {
+        x: 960,
+        y: 660,
+        pos: "center"
+    },
 }
 
 var gamex = 0;
@@ -2195,6 +2237,40 @@ floatUI.adjust = function (key, value) {
             }
         }
     }
+}
+
+floatUI.settingsUIRefreshingList = {};
+floatUI.refreshUI = function() {
+    //会在main.js的on resume listener里被调用
+    ui.run(function () {
+        for (let name in floatUI.settingsUIRefreshingList) {
+            let item = floatUI.settingsUIRefreshingList[name];
+            if (name === "lockToolbarMenu") {
+                let isLocked = item.arg;
+                floatUI.lockToolbarMenu(isLocked);
+            } else if (ui[name][item.funcName] != null) {
+                ui[name][item.funcName](item.arg);
+            }
+            delete floatUI.settingsUIRefreshingList[name];
+        }
+    });
+}
+function updateUI() {
+    let args = arguments;
+    ui.run(function () {
+        if (args.length != 3) {
+            throw new Error("updateUI: incorrect argument count");
+        }
+        let name = args[0];
+        let funcName = args[1];
+        let arg = args[2];
+        let item = {name: name, funcName: funcName, arg: arg};
+        delete floatUI.settingsUIRefreshingList[name];//防止更新顺序出错
+        floatUI.settingsUIRefreshingList[name] = item;//同样的操作只进行最后一次,覆盖掉前一次
+        if (auto.service != null && auto.root.packageName() === context.getPackageName()) {
+            floatUI.refreshUI();
+        }
+    });
 }
 
 floatUI.logParams = function () {
@@ -2763,6 +2839,64 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
+    //屏幕范围内的最后一个助战Y坐标
+    //考虑到屏幕底部可能有手势导航条之类的,稍微往里收窄一些
+    const screenBottomYInnerMargin = 20;
+    function clampSupportY() {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
+        let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        let convertedFirst = convertCoords(knownFirstPtPoint);
+        let rangeY = screenBottomY - convertedFirst.y;
+        return parseInt(screenBottomY - (rangeY % convertedPtDistanceY));
+    }
+
+    function swipeToPointIfNeeded(point) {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
+        let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        if (!limit.dragSupportList && point.y > screenBottomY) {
+            toastLog("助战位置超出游戏画面之外\n限制到屏幕范围内");
+            point.y = clampSupportY();
+            return point;
+        }
+        while (point.y > screenBottomY) {
+            toastLog("助战位置超出游戏画面之外\n自动拖动助战列表...");
+            let remainingDistance = point.y - screenBottomY;
+            //一开始步子迈的大一些，然后减小步伐
+            //步子迈太小了也不行，会误识别成长按，所以得留一步距离给下一次拖动
+            let swipeDistanceX = 0;
+            let swipeDistanceY = 0;
+            let swipeDuration = 4000;
+            if (remainingDistance > convertedPtDistanceY * 4) {
+                swipeDistanceY = convertedPtDistanceY * 3;
+                swipeDuration = 4000;
+            } else if (remainingDistance > convertedPtDistanceY * 3) {
+                swipeDistanceY = convertedPtDistanceY * 2;
+                swipeDuration = 3500;
+            } else if (remainingDistance > convertedPtDistanceY * 2) {
+                swipeDistanceY = convertedPtDistanceY;
+                swipeDuration = 3000;
+            } else if (remainingDistance > convertedPtDistanceY) {
+                //最后两步并一步
+                swipeDistanceY = remainingDistance;
+                swipeDuration = 3000;
+            } else if (remainingDistance > 0 && remainingDistance <= convertedPtDistanceY) {
+                //正常情况下走不到这里
+                swipeDistanceX = convertedPtDistanceY;
+                swipeDistanceY = remainingDistance;
+                swipeDuration = 3000;
+            } else {
+                toastLog("自动拖动助战列表时出错");
+                log("返回第一个助战");
+                return convertCoords(knownFirstPtPoint);
+            }
+            if (swipeDistanceX != 0) log("警告 swipeDistanceX不为零 swipeDistanceX="+swipeDistanceX);
+            swipe(point.x, screenBottomY, point.x - swipeDistanceX, screenBottomY - swipeDistanceY, swipeDuration);
+            sleep(500);
+            point.y -= swipeDistanceY;
+        }
+        return point;
+    }
+
     function pickSupportWithMostPt(isTestMode) {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
@@ -2804,7 +2938,8 @@ function algo_init() {
             +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
             +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
             +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
-            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
+            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length
+            +"\n");
 
         let AllLvIndices = [];
         let PlayerLvIndices = [];
@@ -3008,6 +3143,135 @@ function algo_init() {
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         }
 
+        //优选助战：
+        //优先选指定角色（比如龙城明日香，但现在还不能和恶搞玩家名区分），
+        //或者加成记忆（未实现，貌似有点复杂，可能以后也不会在这里实现）。
+
+        let preferredSupportCharaNames =
+            limit.preferredSupportCharaNames == null
+                ? []
+                : (""+limit.preferredSupportCharaNames)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ *$/));
+        let excludedSupportCharaNames =
+            limit.excludedSupportCharaNames == null
+                ? []
+                : (""+limit.excludedSupportCharaNames)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ *$/));
+        let preferredSupportMemorias =
+            limit.preferredSupportMemorias == null
+                ? []
+                : (""+limit.preferredSupportMemorias)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ *$/));
+
+        if (preferredSupportCharaNames.length > 0 || preferredSupportMemorias.length > 0) {
+            log("已启用优选助战");
+            let HighPtPlayers = [];//在这个数组里保存每个互关好友的Lv/ATK/DEF/HP控件和Pt控件两个序号
+            for (let i=0; i<PlayerHighPtIndices.length; i++) {
+                let ptIndex = PlayerHighPtIndices[i];
+                let lvIndexMax = -1;
+                PlayerLvIndices.forEach((lvIndex) => {
+                    if (lvIndex < ptIndex && lvIndex > lvIndexMax)
+                        lvIndexMax = lvIndex;
+                });
+                if (lvIndexMax <= -1) {
+                    hasError = true;
+                    toastLog("优选助战时出错,找不到第"+i+"个互关好友的Lv控件,返回第一个助战");
+                    return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+                }
+                let playerLvPt = {lvIndex: lvIndexMax, ptIndex: ptIndex};
+                HighPtPlayers.push(playerLvPt);
+            };
+            //排序，以防万一
+            HighPtPlayers.sort((i, j) => i.lvIndex - j.lvIndex);
+            //在互关好友中寻找优先选择的角色名
+            let foundPreferredChara = null;//如果找到了就放在这个变量里
+            function matchingCallback(textPattern, innerCallbackIfMatched) {
+                //排除规则和优选规则的匹配逻辑其实是类似的，所以这里单独抽出来一个回调函数
+                for (let i=0; i<HighPtPlayers.length; i++) {
+                    //都是要顺着互关好友列表依次捋一遍
+                    let splittedTextPatterns = textPattern.split(" ").filter((val) => !val.match(/^ *$/));
+                    let playerLvPt = HighPtPlayers[i];
+                    playerLvPt.indexInHighPtPlayers = i;
+
+                    //跑在优选规则里，这里很显然是跳过被标记为排除的助战。
+                    //跑在排除规则里，其实也是已经被标记为排除的自然不需要再被标记一次。
+                    if (playerLvPt.isExcluded) continue;
+
+                    //把当前这个互关好友的玩家名、角色名、角色类型还有其他统统放到这个数组里
+                    let allCharaText = [];
+                    for (let j=playerLvPt.lvIndex+1; j<playerLvPt.ptIndex; j++)
+                        allCharaText.push(getContent(AllElements[j]));
+
+                    if (allCharaText.find((text) => text === textPattern) != null) {
+                        //直接匹配上了
+                        innerCallbackIfMatched(playerLvPt);
+                        return true;
+                    } else if (splittedTextPatterns.find((splitTxtPtn) =>//“拆开后的每一条规则”
+                        //直接匹配没匹配上，但是按照空格拆开后仍然是全部都匹配上了
+                        //这里逻辑有点绕：“拆开后的每一条规则”里都“找不到”“跟（上述数组里）所有文字都匹配不上”的，那就是全都规则都匹配上了
+                        allCharaText.find((text) => text === splitTxtPtn) == null//“跟所有文字都匹配不上”
+                    ) == null) {//“找不到”
+                        innerCallbackIfMatched(playerLvPt);
+                        return true;
+                    }
+                }
+                //所有互关好友全捋过一遍了，一个都都匹配不上
+                return false;
+            }
+            excludedSupportCharaNames.forEach((textPattern) => {//排除规则，看看哪些需要排除，所以用forEach挨个捋一遍，一个也不放过
+                matchingCallback(textPattern, (playerLvPt) => {
+                    //innerCallbackIfMatched
+                    //匹配上了排除规则，那就标记为排除
+                    playerLvPt.isExcluded = true;
+                });
+            });
+            preferredSupportCharaNames.find((textPattern) => {//优选规则，只要找到一个匹配上的，就可以停了，所以用find
+                return matchingCallback(textPattern, (playerLvPt) => {
+                    //innerCallbackIfMatched
+                    //匹配上了优选规则，找到了
+                    playerLvPt.charaName = textPattern;
+                    foundPreferredChara = playerLvPt;
+                });
+            });
+            if (foundPreferredChara != null) {
+                let logText = "找到了和指定角色名匹配的助战";
+                log(logText);
+                log(foundPreferredChara);
+                testOutputString += "\n"+logText+":";
+                testOutputString += "\n  "+"角色名:";
+                testOutputString += "\n    ["+foundPreferredChara.charaName+"]";
+                testOutputString += "\n  "+"是第"+(foundPreferredChara.indexInHighPtPlayers+1)+"个互关好友\n";
+                //找到了指定的角色名（虽然可能是恶搞玩家名）
+                //这个角色在列表里的位置，需要跳过NPC
+                let supportPos = NPCPtIndices.length + foundPreferredChara.indexInHighPtPlayers;
+                let point = {
+                    x: knownFirstPtPoint.x,
+                    y: knownFirstPtPoint.y + ptDistanceY * supportPos,
+                    pos: knownFirstPtPoint.pos
+                }
+                point = convertCoords(point);
+                if (point.y <= getWindowSize().y - screenBottomYInnerMargin) {
+                    //没超出屏幕范围
+                    log("返回优选助战结果(未超出屏幕范围)");
+                    return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                } else {
+                    //超出屏幕范围
+                    if (limit.dragSupportList) {
+                        log("返回优选助战结果(超出屏幕范围,需要拖动)");
+                        return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                    } else {
+                        log("优选助战结果在屏幕范围外,因为禁用了拖动所以放弃优选结果");
+                    }
+                }
+            }
+        }
+
         if (AllPtIndices.length == 0) {
             toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
@@ -3035,9 +3299,13 @@ function algo_init() {
                 pos: knownFirstPtPoint.pos
             }
             point = convertCoords(point);
-            if (point.y >= getWindowSize().y - 1) {
-                toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
-                //在click里会限制到屏幕范围之内
+            if (point.y > getWindowSize().y - screenBottomYInnerMargin) {
+                if (limit.dragSupportList) {
+                    log("推算出的第一个互关好友坐标已经超出屏幕范围,需要拖动");
+                } else {
+                    toastLog("推算出的第一个互关好友坐标已经超出屏幕范围\n限制到屏幕范围内");
+                    point.y = clampSupportY();
+                }
             }
             return {point: point, testdata: testOutputString};
         } else if (NPCPtIndices.length > 0) {
@@ -3928,6 +4196,9 @@ function algo_init() {
         log("点击OK按钮区域");
         click(convertCoords(clickSets.dataDownloadOK));
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+        log("点击战斗已结束OK按钮区域");
+        click(convertCoords(clickSets.battleFinishedOK));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
     function selectBattle() { }
@@ -4206,6 +4477,10 @@ function algo_init() {
             click(convertCoords(clickSets.dataDownloadOK));
             log("点击OK按钮区域完成,等待1秒...");
             sleep(1000);
+            log("点击战斗已结束OK按钮区域...");
+            click(convertCoords(clickSets.battleFinishedOK));
+            log("点击战斗已结束OK按钮区域完成,等待1秒...");
+            sleep(1000);
         }
         return false;
     }
@@ -4223,9 +4498,9 @@ function algo_init() {
             if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏！真机则大多没有这个问题（但游戏不能被锁后台）。\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(true);
-                });
+                limit["rootForceStop"] = true;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
+                updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
                 if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
                 } else {
@@ -4234,9 +4509,9 @@ function algo_init() {
                 return false;//等到权限获取完再重试
             } else {
                 limit.firstRequestPrivilege = false;//下次不会提醒了
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(false);
-                });
+                limit["rootForceStop"] = false;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
+                updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
             }
         }
         return true;//可能没有特权，但用户选择不获取特权
@@ -5135,6 +5410,49 @@ function algo_init() {
         });
     }
 
+    function captureTextRunnable() {
+        initialize();
+
+        capture_text_point = capture("文字抓取\n请点击文字出现的位置").pos_up;
+        if (capture_text_point == null) {
+            toastLog("文字抓取出错");
+            stopThread();
+        }
+
+        let all_text = [];
+        let all_found_text = boundsContains(capture_text_point.x, capture_text_point.y, capture_text_point.x, capture_text_point.y)
+                             .find();
+        for (let i=0; i<all_found_text.length; i++) {
+            let found_text = all_found_text[i];
+            let content = getContent(found_text);
+            if (content != null && content != "") {
+                all_text.push(content);
+            }
+        }
+        let selected = -1;
+        switch (all_text.length) {
+            case 0:
+                toastLog("在点击位置没有检测到有文字的控件,请重新选择");
+                break;
+            case 1:
+                selected = 0;
+                break;
+            default:
+                selected = dialogs.select("在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                selected = parseInt(selected);
+                if (isNaN(selected)) selected = -1;
+        }
+        let captured_text = all_text[selected];
+        if (selected > -1 && captured_text != null) {
+            ui.run(() => {
+                clip = android.content.ClipData.newPlainText("auto_export_op_list", captured_text);
+                activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+                toast("内容已复制到剪贴板");
+            });
+            dialogs.rawInputWithContent("文字抓取", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", captured_text);
+        }
+    }
+
     //返回游戏并继续运行脚本
     floatUI.backToGame = function () {
         if (isCurrentTaskPaused.compareAndSet(TASK_PAUSED, TASK_RESUMING)) {
@@ -5188,12 +5506,12 @@ function algo_init() {
                     "测试助战自动选择",
                     "要继续让脚本点击自动选择的助战么？如果是，请在点击\"确定\"后，拖动助战列表，使其回到初始状态，让第一个助战显示在顶部。"
                 )) {
-                    toastLog("10秒后将会自动点击助战...");
-                    sleep(8000);
+                    toastLog("5秒后将会自动点击助战...");
+                    sleep(3000);
                     toastLog("2秒后将会自动点击助战...");
                     sleep(2000);
-                    toast("请勿拖动助战列表!\n自动点击助战...");
-                    click(result.point);
+                    toast("请勿手动拖动助战列表!\n自动点击助战...");
+                    click(swipeToPointIfNeeded(result.point));
                 } else {
                     toastLog("助战选择测试结束");
                     return;
@@ -5401,9 +5719,9 @@ function algo_init() {
                         +"如果暂时不想用自动重开,又不想清除掉导入进来或录制下来的选关动作数据,请点\"确定\"。\n"
                         +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
                     {
-                        ui.run(function () {
-                            ui["promptAutoRelaunch"].setChecked(false);
-                        });
+                        limit["promptAutoRelaunch"] = false;
+                        floatUI.storage.put("promptAutoRelaunch", limit["promptAutoRelaunch"]);
+                        updateUI("promptAutoRelaunch", "setChecked", limit["promptAutoRelaunch"]);
                     }
                 }
             }
@@ -5451,7 +5769,7 @@ function algo_init() {
         var battlename = "";
         var charabound = null;
         var battlepos = null;
-        var inautobattle = null; //null表示状态未知
+        var inautobattle = null; //null表示状态未知,另外注意undefined !== null
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
         var lastStuckRemindTime = new Date().getTime();
@@ -5460,6 +5778,8 @@ function algo_init() {
         var BRANCHclickAttemptCount = 0;
         var bypassPopupCheckCounter = 0;
         var ensureGameDeadCounter = 0;
+        var lastFoundPreferredChara = null;
+        var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5681,7 +6001,7 @@ function algo_init() {
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
                         toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
+                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))?"官方周回":"战斗")+"结束后,\n"+
                                  "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
@@ -5830,7 +6150,7 @@ function algo_init() {
                                 +"为了避免这个问题,在启动脚本前,请先把要刷的那一关重新打一遍,再用脚本周回。\n"
                                 +"如果你没按照这样准备好,请先停止脚本,准备好了再启动。\n"
                                 +"请不要偷懒,不要点进助战选择后直接点返回。一定要完整打一遍。\n"
-                                +"如果实在是想偷懒,那么你可以先停止脚本,直接在助战选择界面启动脚本(因为这样可以让脚本直接读取被选中的关卡名称),然后观察这样能否正常周回。"
+                                +"如果实在是想偷懒,那么你可以先停止脚本,然后点进助战选择界面,在助战选择界面启动脚本(因为这样可以让脚本直接读取被选中的关卡名称),接着再观察这样能否正常周回。"
                             );
                             log("等待捕获关卡坐标");
                             battlepos = capture().pos_up;
@@ -5882,11 +6202,15 @@ function algo_init() {
                         log("已记下关卡名: \""+battlename+"\"");
                     }
                     // pick support
+                    lastFoundPreferredChara = null;//是否匹配到优选助战
                     let pt_point = pickSupportWithMostPt();
-                    if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
-                        toast("请勿拖动助战列表!\n自动点击助战...");
-                        click(pt_point);
+                        lastFoundPreferredChara = pt_point.foundPreferredChara;
+                        pt_point = pt_point.point;
+                    }
+                    if (pt_point != null) {
+                        toast("请勿手动拖动助战列表!\n自动点击助战...");
+                        click(swipeToPointIfNeeded(pt_point));
                         // wait for start button for 5 seconds
                         if (findID("nextPageBtn", parseInt(limit.timeout))) {
                             state = STATE_TEAM;
@@ -5911,29 +6235,66 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    //如果在开启“优先使用官方自动续战”的同时,还开启了“只对优选助战使用官方自动续战”,
+                    //那么是否要优先点击自动续战按钮还得考虑这一次(每次情况都可能不一样)有没有找到符合优选条件的助战
+                    //这里赋值为true或false,避免把object或undefined赋值进去
+                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? true : false;
+
                     //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
-                    //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
-                    //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
-                    click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
+                    //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,
+                    //然后(如果需要优先点击自动续战的话)即便按钮实际不存在也只是多点空一次,无害,
+                    //即使这次点空了,后面检测完按钮仍然会再点一次补上
+                    var BtnNameStartOrAuto = shouldUseAuto && isStartAutoRestartBtnAvailable ? "startAutoRestart" : "start";
+                    log("抢先点击"+(shouldUseAuto&&isStartAutoRestartBtnAvailable?"自动续战":"开始")+"按钮");
+                    click(convertCoords(clickSets[BtnNameStartOrAuto]));
                     sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
-                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if (limit.useAuto) {
+                    //检测自动续战或开始按钮是否存在(但并不是每次都会把两个按钮都检测一遍)
+                    var element = shouldUseAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (shouldUseAuto) {
                         if (element) {
+                            //这次需要点击自动续战按钮,确定这个按钮确实存在
+                            isStartAutoRestartBtnAvailable = true;
                             inautobattle = true;
                         } else {
+                            //这次需要点自动续战按钮,但没找到这个按钮,
+                            //可能是这个副本确实没有自动续战按钮,只有开始按钮可以点,也可能是其实因为已经进入战斗了,所以两个按钮都找不到
                             element = findID("nextPageBtn");
                             if (element) {
+                                //没有自动续战按钮,只有开始按钮
+                                isStartAutoRestartBtnAvailable = false;
                                 inautobattle = false;
                                 log("未发现自动续战，改用标准战斗");
+                            } else {
+                                //应该只是进入战斗了,这个时候虽然确实检测不到自动续战按钮,
+                                //但这(可能)并不是因为只有开始按钮、没有自动续战按钮,
+                                //而仅仅是因为战斗开始后两个按钮(如果有自动续战的话)其实都消失了,
+                                //所以,这个时候其实压根就没检测出来自动续战按钮是什么情况,
+                                //就不对isStartAutoRestartBtnAvailable重新赋值了,
+                                //让isStartAutoRestartBtnAvailable继续沿用之前的值就好
+                                log("自动续战和开始按钮都没出现");
+                                //对inautobattle则是必须重新赋值
+                                inautobattle = shouldUseAuto && isStartAutoRestartBtnAvailable;
+                                log("inautobattle="+inautobattle);
                             }
                         }
+                    } else {
+                        //如果这次本来就不需要点击自动续战按钮,那么只需要检测开始按钮是否存在,然后以此作为战斗是否开始的判定一句即可
+                        //因为没去检测自动续战按钮是否存在,所以就不对isStartAutoRestartBtnAvailable重新赋值了(而且也用不到这个变量了)
+                        inautobattle = false;
                     }
                     // exit condition
                     if (findID("android:id/content") && !element) {
+                        if (inautobattle == null) {
+                            //正常情况下应该走不到这里
+                            let guessedinautobattle = shouldUseAuto && isStartAutoRestartBtnAvailable;
+                            toastLog("警告:不知道本轮战斗是否使用了自动续战\n当作"+(guessedinautobattle?"使用了":"没使用")+"自动续战继续运行");
+                            log("shouldUseAuto="+shouldUseAuto);
+                            log("isStartAutoRestartBtnAvailable="+isStartAutoRestartBtnAvailable);
+                            inautobattle = guessedinautobattle;
+                        }
                         state = STATE_BATTLE;
-                        if (inautobattle === null) inautobattle = limit.useAuto;
                         log("进入战斗");
                         break;
                     }
@@ -5941,6 +6302,7 @@ function algo_init() {
                     if (element) {
                         battleStartBtnClickTime = new Date().getTime();
                         let bound = element.bounds();
+                        log("再次点击"+getContent(element)+"按钮");
                         click(bound.centerX(), bound.centerY());
                         sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
                         waitElement(element, 200);
@@ -6126,7 +6488,7 @@ function algo_init() {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if (inautobattle === null) {
+                    } else if (inautobattle == null) {
                         toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态");
                         if (lastOpList == null) {
                             toastLog("结束运行");
@@ -9912,6 +10274,7 @@ function algo_init() {
         clearSteps: clearOpList,
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
+        captureText: captureTextRunnable,
     };
 }
 
@@ -9967,6 +10330,7 @@ function backtoMain() {
     else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
     it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
     app.startActivity(it);
+    floatUI.refreshUI();
 }
 
 module.exports = floatUI;
