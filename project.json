@@ -1,15 +1,18 @@
 {
-    "name": "全自动小彩羽",
+    "name": "auto",
     "main": "main.js",
     "ignore": [
-        "build"
+        ".git",
+        "build",
+        "autoWebview"
     ],
-    "packageName": "top.momoe.autong",
-    "versionName": "1.0.0",
+    "packageName": "top.momoe.auto",
+    "versionName": "7.0.0",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
     "launchConfig":{
-        "splashLayoutXml":"splash.xml"
+        "splashIcon":"./images/start.jpg",
+        "splashText":""
     }
 }
