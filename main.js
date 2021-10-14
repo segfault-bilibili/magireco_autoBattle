@@ -12,15 +12,42 @@ importClass(android.webkit.WebResourceResponse)
 importClass(android.webkit.WebViewClient)
 importClass(android.webkit.ConsoleMessage)
 
-var Name = "全自动小彩羽";
-var version = "1.0.0";
-var appName = Name + " v" + version;
-
-//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
-function getProjectVersion() {
-    var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
-    if (conf) return conf.versionName;
+const defaultProjectInfo = {
+    name: "auto",
+    versionName: "0.0.0",
+};
+var projectInfo = null;
+function getProjectInfo(key) {
+    let isUpdatedProjectJsonAbsent = false;
+    if (projectInfo == null) {
+        let path = files.join(files.cwd(), "project-updated.json");
+        if (!files.isFile(path)) {
+            path = files.join(files.cwd(), "project.json");
+            isUpdatedProjectJsonAbsent = true;
+            log("project-updated.json文件不存在");
+        }
+        if (files.isFile(path)) {
+            try {
+                let json = files.read(path);
+                projectInfo = JSON.parse(json);
+                if (isUpdatedProjectJsonAbsent) {
+                    projectInfo.isUpdatedProjectJsonAbsent = isUpdatedProjectJsonAbsent;
+                }
+            } catch (e) {
+                projectInfo = null;
+            }
+        }
+    }
+    if (projectInfo == null || (key != null && projectInfo[key] == null)) {
+        toastLog("无法获取版本信息"+(key!=null?key:""));
+        return defaultProjectInfo[key];
+    }
+    return key == null ? projectInfo : projectInfo[key];
 }
+
+var Name = getProjectInfo("name");
+var version = getProjectInfo("versionName");
+var appName = Name + " v" + version;
 
 // 捕获异常时打log记录详细的调用栈
 function logException(e) {
@@ -512,8 +539,8 @@ function handleWebViewCallAJ(fnName, paramString) {
     }
 
     switch (fnName) {
-        case "getVersionString":
-            result = version;
+        case "getProjectInfo":
+            result = getProjectInfo(params.length > 0 ? params[0] : null);
             break;
         case "isDevMode":
             result = isDevMode();
@@ -756,12 +783,24 @@ function updateFilesAndRestart() {
         }
     }
 
+    const renameList = [
+        {
+            regex: /^((\.\/)|())project\.json$/,
+            renameTo: "$1project-updated.json",
+        },
+    ];
     for (let fileEntry of fileList) {
+        renameList.forEach((item) => {
+            let oldName = fileEntry.src;
+            let newName = oldName.replace(item.regex, item.renameTo);
+            if (oldName !== newName) {
+                fileEntry.src = newName;
+                log("重定向要写入的文件名 ["+oldName+"] => ["+fileEntry.src+"]");
+            }
+        });
+
         log("写入文件 ["+fileEntry.src+"] ...");
-        if (fileEntry.src === "project.json" || fileEntry.src === "./project.json") {
-            log("跳过文件 ["+fileEntry.src+"]");
-            continue;
-        }
+
         let dataBytes = decodeDataUriToBytes(fileEntry.data);
 
         let path = files.join(files.cwd(), fileEntry.src);
