@@ -1109,7 +1109,7 @@ var isDevMode = false;
 function getDownloadURLBase(specifiedVersionName, useGitee) {
     if (specifiedVersionName == null) specifiedVersionName = "latest";
     if (isDevMode) return localURLBase;
-    else return (useGitee?giteeURLBase:jsdelivrURLBase)+"@"+specifiedVersionName;
+    else return (useGitee?giteeURLBase+"/":jsdelivrURLBase+"@")+specifiedVersionName;
 }
 
 var updateRestartPending = false;
