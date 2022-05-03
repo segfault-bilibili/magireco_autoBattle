@@ -5,7 +5,17 @@
         "build"
     ],
     "packageName": "bilibili.magireco.clickdiskworkaround",
-    "versionName": "1.0.0",
+    "versionName": "1.0.1",
     "versionInfo": "",
-    "versionCode": 1
+    "versionCode": 1,
+    "permissionConfig": {
+      "manifestPermissions": [
+        "moe.shizuku.manager.permission.API_V23",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.PERSISTENT_ACTIVITY",
+        "android.permission.OPEN_ACCESSIBILITY_DETAILS_SETTINGS",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "requestListOnStartup": []
+    }
 }
