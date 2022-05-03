@@ -1,16 +1,11 @@
 {
-    "name": "auto",
+    "name": "魔纪M盘临时对策",
     "main": "main.js",
     "ignore": [
         "build"
     ],
-    "packageName": "top.momoe.auto",
-    "versionName": "6.1.8",
+    "packageName": "bilibili.magireco.clickdiskworkaround",
+    "versionName": "1.0.0",
     "versionInfo": "",
-    "versionCode": 1,
-    "icon":"./images/icon.png",
-    "launchConfig":{
-        "splashIcon":"./images/start.jpg",
-        "splashText":""
-    }
+    "versionCode": 1
 }
